@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="fa">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">درباره Thot</translation>
+<translation id="5639860668557220477">دریافت راهنما برای مرورگر Thot</translation>
+<translation id="1692689520561928457">درباره JemaOS</translation>
+<translation id="8692765844418174375">نسخه JemaOS</translation>
+<translation id="2943260250558374955">دریافت راهنما برای JemaOS</translation>
+<translation id="713321354492170993">مرورگر حافظه را از برگه‌های غیرفعال آزاد می‌کند. این کار به برگه‌های فعال و برنامه‌های دیگر منابع محاسباتی بیشتری می‌دهد و مرورگر را سریع نگه می‌دارد. برگه‌های غیرفعال شما هنگام بازگشت به آن‌ها به‌طور خودکار دوباره فعال می‌شوند.</translation>
+<translation id="1774190491044887444">مرورگر با محدود کردن فعالیت‌های پس‌زمینه و جلوه‌های بصری مانند پیمایش روان و نرخ فریم ویدیو، در مصرف باتری صرفه‌جویی می‌کند.</translation>
+<translation id="180121268008059459">مرورگر صفحات را از قبل بارگذاری می‌کند و مرور و جستجو را سریع‌تر می‌سازد.</translation>
+<translation id="7127093527178692287">بازیابی نسخه پشتیبان (بتا)</translation>
+<translation id="4439042171549201806">برای بازیابی JemaOS از فایل پشتیبان، لطفاً درایو قابل جابه‌جایی حاوی فایل پشتیبان را اکنون به دستگاه JemaOS خود متصل کنید و مشخص کنید کدام فایل پشتیبان را می‌خواهید بازیابی کنید. لطفاً توجه داشته باشید که فایل پشتیبان شما باید در پوشه ریشه درایو قابل جابه‌جایی باشد تا این جادوگر آن را شناسایی کند.</translation>
+<translation id="2955409026764742995">فایل پشتیبانی که باید بازیابی شود را انتخاب کنید:</translation>
+<translation id="7040434808685140085">متأسفیم، فایل پشتیبان انتخاب‌شده قابل شناسایی نیست؛ لطفاً فایل جدیدی انتخاب کنید.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />برای بازیابی JemaOS از فایل پشتیبان انتخاب‌شده، داشتن اطلاعات دقیق درباره نسخه پشتیبان هنگام ایجاد آن ضروری است. در غیر این صورت، فرایند بازیابی با شکست مواجه می‌شود.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />«نام حساب» اعتبارنامه اصلی ورود به حسابی است که فایل پشتیبان شما در آن ایجاد شده است. معمولاً همان آدرس ایمیلی است که برای ثبت‌نام در حساب JemaOS/Google خود استفاده کرده‌اید. اگر حساب محلی بود، نام کاربری به همراه «@jemaos.local» خواهد بود.<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />گذرواژه همان عبارتی است که هنگام ایجاد نسخه پشتیبان از شما خواسته شده بود وارد کنید. معمولاً همان گذرواژه‌ای است که برای ورود به میزکار JemaOS برای این حساب استفاده می‌کردید.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">نام حساب</translation>
+<translation id="5490570429039308155">متأسفیم، لطفاً نام حساب صحیح را وارد کنید</translation>
+<translation id="6657585470893396449">گذرواژه</translation>
+<translation id="8200189938001188563">متأسفیم، گذرواژه نمی‌تواند خالی باشد</translation>
+<translation id="3157931365184549694">بازیابی</translation>
+<translation id="8556278756526311953">در حال بازیابی نسخه پشتیبان</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />اکنون در حال بازیابی فایل پشتیبان شما هستیم؛ این کار ممکن است مدتی طول بکشد، پس لطفاً صبور باشید.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />لطفاً توجه داشته باشید که رابط کاربری پس از تکمیل موفقیت‌آمیز فرایند بازیابی به‌طور خودکار راه‌اندازی مجدد می‌شود.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">بازیابی نسخه پشتیبان ناموفق بود</translation>
+<translation id="5003531399442003695">برای جزئیات بیشتر، لطفاً روی پیوند زیر کلیک کنید تا گزارش‌ها را مشاهده کنید. اگر این خطا همچنان ادامه داشت، لطفاً با کانال‌های پشتیبانی فنی JemaOS تماس بگیرید و گزارش‌های خطا را ارائه دهید.</translation>
+<translation id="6363786367719063276">مشاهده گزارش‌ها</translation>
+<translation id="8730621377337864115">انجام شد</translation>
+<translation id="975238173507911396">بازیابی داده‌ها با موفقیت انجام شد</translation>
+<translation id="6276879052695618521">گزارش‌های بازیابی نسخه پشتیبان</translation>
+<translation id="4901207598072637766">JemaOS، ارائه‌شده توسط <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS و خدمات آن با GDPR و مقررات قانون حفاظت از داده‌های اروپا مطابقت دارند. برای اطلاعات بیشتر، لطفاً <ph name="BEGIN_LINK_PRIVACY" />خط‌مشی رازداری<ph name="END_LINK_PRIVACY" /> و <ph name="BEGIN_LINK_TOS" />شرایط استفاده از خدمات.<ph name="END_LINK_TOS" /> ما را ببینید.</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, کلیه حقوق محفوظ است.</translation>
+<translation id="370679569376308836">JemaOS یک محصول تجاری مبتنی بر دستگاه Jema و SaaS آن است.</translation>
+<translation id="2773644194450163486">JemaOS به لطف پروژه متن‌باز <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> ممکن شده است.</translation>
+<translation id="2330680727776977160">Chromium نیز به لطف <ph name="BEGIN_LINK_1" />نرم‌افزار متن‌باز<ph name="END_LINK_1" /> دیگر و <ph name="BEGIN_LINK_2" />نرم‌افزار متن‌باز اضافی<ph name="END_LINK_2" /> ممکن شده است.</translation>
+<translation id="1419954813084261088">طراحی و ساخته‌شده توسط Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, کلیه حقوق محفوظ است.</translation>
+<translation id="6168072053306020326">Jema Technology نام تجاری Jema Technology LTD و Jema Technology (Beijing) Limited است.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD شرکتی ثبت‌شده در انگلستان و ولز با شماره شرکت 12273803 است.</translation>
+<translation id="1251589813188467292">اطلاعات مهم درباره گارانتی و خدمات دستگاه</translation>
+<translation id="4851115775198886021">شماره سریال دستگاه:</translation>
+</translationbundle>

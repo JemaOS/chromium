@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="th">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">เกี่ยวกับ Thot</translation>
+<translation id="5639860668557220477">รับความช่วยเหลือเกี่ยวกับเบราว์เซอร์ Thot</translation>
+<translation id="1692689520561928457">เกี่ยวกับ JemaOS</translation>
+<translation id="8692765844418174375">เวอร์ชัน JemaOS</translation>
+<translation id="2943260250558374955">รับความช่วยเหลือเกี่ยวกับ JemaOS</translation>
+<translation id="713321354492170993">เบราว์เซอร์จะคืนหน่วยความจำจากแท็บที่ไม่ได้ใช้งาน ซึ่งช่วยให้แท็บที่ใช้งานอยู่และแอปอื่นๆ มีทรัพยากรการประมวลผลมากขึ้น และทำให้เบราว์เซอร์ทำงานได้รวดเร็วอยู่เสมอ แท็บที่ไม่ได้ใช้งานของคุณจะกลับมาใช้งานอีกครั้งโดยอัตโนมัติเมื่อคุณกลับไปที่แท็บนั้น</translation>
+<translation id="1774190491044887444">เบราว์เซอร์ช่วยประหยัดแบตเตอรี่โดยจำกัดกิจกรรมเบื้องหลังและเอฟเฟกต์ภาพ เช่น การเลื่อนที่ลื่นไหลและอัตราเฟรมของวิดีโอ</translation>
+<translation id="180121268008059459">เบราว์เซอร์จะโหลดหน้าเว็บล่วงหน้า ทำให้การท่องเว็บและการค้นหาเร็วขึ้น</translation>
+<translation id="7127093527178692287">กู้คืนข้อมูลสำรอง (เบต้า)</translation>
+<translation id="4439042171549201806">หากต้องการกู้คืน JemaOS จากไฟล์ข้อมูลสำรอง โปรดเสียบไดรฟ์แบบถอดได้ที่มีไฟล์ข้อมูลสำรองเข้ากับอุปกรณ์ JemaOS ของคุณตอนนี้ แล้วระบุไฟล์ข้อมูลสำรองที่ต้องการกู้คืน โปรดทราบว่าไฟล์ข้อมูลสำรองของคุณต้องอยู่ในไดเรกทอรีรากของไดรฟ์แบบถอดได้จึงจะถูกตรวจพบโดยตัวช่วยสร้างนี้</translation>
+<translation id="2955409026764742995">เลือกไฟล์ข้อมูลสำรองที่จะกู้คืน:</translation>
+<translation id="7040434808685140085">ขออภัย ไม่สามารถรู้จำไฟล์ข้อมูลสำรองที่เลือกได้ โปรดเลือกไฟล์ใหม่</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />หากต้องการกู้คืน JemaOS จากไฟล์ข้อมูลสำรองที่เลือก จำเป็นอย่างยิ่งที่จะต้องมีข้อมูลที่ถูกต้องเกี่ยวกับข้อมูลสำรอง ณ เวลาที่สร้าง มิฉะนั้นกระบวนการกู้คืนจะล้มเหลว<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"ชื่อบัญชี" คือข้อมูลเข้าสู่ระบบหลักของบัญชีที่ใช้สร้างไฟล์ข้อมูลสำรองของคุณ โดยปกติคืออีเมลที่คุณใช้ลงทะเบียนบัญชี JemaOS/Google หากเป็นบัญชีในเครื่อง จะเป็นชื่อผู้ใช้ต่อท้ายด้วย "@jemaos.local"<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />รหัสผ่านคือวลีรหัสผ่านที่คุณถูกขอให้ป้อนเมื่อสร้างข้อมูลสำรอง โดยปกติจะเป็นรหัสผ่านเดียวกับที่คุณใช้เข้าสู่ระบบเดสก์ท็อป JemaOS สำหรับบัญชีนี้<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">ชื่อบัญชี</translation>
+<translation id="5490570429039308155">ขออภัย โปรดป้อนชื่อบัญชีที่ถูกต้อง</translation>
+<translation id="6657585470893396449">รหัสผ่าน</translation>
+<translation id="8200189938001188563">ขออภัย รหัสผ่านต้องไม่ว่างเปล่า</translation>
+<translation id="3157931365184549694">กู้คืน</translation>
+<translation id="8556278756526311953">กำลังกู้คืนข้อมูลสำรอง</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />ขณะนี้เรากำลังดำเนินการกู้คืนไฟล์ข้อมูลสำรองของคุณ ซึ่งอาจใช้เวลาสักครู่ โปรดรออย่างใจเย็น<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />โปรดทราบว่า UI จะรีสตาร์ทโดยอัตโนมัติเมื่อกระบวนการกู้คืนเสร็จสมบูรณ์<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">การกู้คืนข้อมูลสำรองล้มเหลว</translation>
+<translation id="5003531399442003695">สำหรับรายละเอียดเพิ่มเติม โปรดคลิกลิงก์ด้านล่างเพื่อดูบันทึก หากข้อผิดพลาดนี้ยังคงอยู่ โปรดติดต่อช่องทางฝ่ายสนับสนุนทางเทคนิคของ JemaOS พร้อมแนบบันทึกข้อผิดพลาด</translation>
+<translation id="6363786367719063276">ดูบันทึก</translation>
+<translation id="8730621377337864115">เสร็จสิ้น</translation>
+<translation id="975238173507911396">กู้คืนข้อมูลสำเร็จ</translation>
+<translation id="6276879052695618521">บันทึกการกู้คืนข้อมูลสำรอง</translation>
+<translation id="4901207598072637766">JemaOS จัดเตรียมโดย <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS และบริการของตนเป็นไปตาม GDPR และบทบัญญัติของกฎหมายคุ้มครองข้อมูลของยุโรป สำหรับข้อมูลเพิ่มเติม โปรดดู<ph name="BEGIN_LINK_PRIVACY" />นโยบายความเป็นส่วนตัว<ph name="END_LINK_PRIVACY" />และ<ph name="BEGIN_LINK_TOS" />ข้อกำหนดในการให้บริการ<ph name="END_LINK_TOS" />ของเรา</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, สงวนลิขสิทธิ์</translation>
+<translation id="370679569376308836">JemaOS เป็นผลิตภัณฑ์เชิงพาณิชย์ที่สร้างจากอุปกรณ์ Jema และ SaaS ของอุปกรณ์</translation>
+<translation id="2773644194450163486">JemaOS เกิดขึ้นได้ด้วยโปรเจ็กต์โอเพนซอร์ส <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /></translation>
+<translation id="2330680727776977160">Chromium ก็เกิดขึ้นได้ด้วย<ph name="BEGIN_LINK_1" />ซอฟต์แวร์โอเพนซอร์ส<ph name="END_LINK_1" />อื่นๆ และ<ph name="BEGIN_LINK_2" />ซอฟต์แวร์โอเพนซอร์สเพิ่มเติม<ph name="END_LINK_2" />เช่นกัน</translation>
+<translation id="1419954813084261088">ออกแบบและผลิตโดย Jema Technology</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, สงวนลิขสิทธิ์</translation>
+<translation id="6168072053306020326">Jema Technology เป็นชื่อทางการค้าของ Jema Technology LTD และ Jema Technology (Beijing) Limited
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD เป็นบริษัทที่จดทะเบียนในประเทศอังกฤษและเวลส์ ด้วยหมายเลขบริษัท 12273803</translation>
+<translation id="1251589813188467292">ข้อมูลสำคัญเกี่ยวกับการรับประกันและบริการของอุปกรณ์</translation>
+<translation id="4851115775198886021">SN ของอุปกรณ์:</translation>
+</translationbundle>

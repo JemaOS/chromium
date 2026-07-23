@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="no">
+	<translation id="7386402409475121504">Opprett din lokale JemaOS-konto</translation>
+	<translation id="3760308806144055927">Logg på din lokale JemaOS-konto</translation>
+	<translation id="3325117507482096812">Vennligst skriv inn et passord</translation>
+	<translation id="1838206877831947154">Passordene dine stemmer ikke overens</translation>
+	<translation id="2158276988029582286">Opprett en ny lokal konto</translation>
+	<translation id="8592849747346274067">Logg på en eksisterende konto</translation>
+	<translation id="482190417986201746">Brukernavnet eller passordet du skrev inn er feil</translation>
+	<translation id="6603987686259425085">Du kan <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>logge på med en JemaOS lokal konto<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">E-postadressen <ph name="EMAIL_ADDRESS">$1</ph> eksisterer allerede. Prøv på nytt med en annen e-post.</translation>
+	<translation id="7215016743510876720">Bruk lokal konto</translation>
+	<translation id="6657635042185516718">Fortsett å bruke nettkonto</translation>
+	<translation id="6867476688065565618">Bytte til lokal konto?</translation>
+	<translation id="4840454774882557974">Hvis du velger å bruke en lokal konto, vil nyttige funksjoner som synkronisering av data og preferanser på tvers av flere enheter og automatisk pålogging av nettapper ved hjelp av JemaOS-kontoen din ikke fungere.</translation>
+	<translation id="8951507920859729424">Vi anbefaler å bruke en nettkonto for å utnytte JemaOS til det fulle.</translation>
+	<translation id="479773200536372215">Du vil ikke kunne legge til Google-kontoer fordi Google API-nøkler mangler. Se <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> for detaljer.</translation>
+	<translation id="1198491307547164157">Du vil ikke kunne legge til JemaOS-kontoer fordi JemaOS API-nøkler mangler. Se <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> for detaljer.</translation>
+	<translation id="5042404702659901995">Personvernerklæring</translation>
+	<translation id="4907736162587268100">Personvernerklæringens innhold</translation>
+	<translation id="5988344732274877691">Registrer deg for (svært sjelden, lovet) nyhetsbrev for JemaOS</translation>
+	<translation id="1706203008474708805">Bli med i JemaOS-plan for forbedring av brukeropplevelsen</translation>
+	<translation id="1147139514756087229">Logg på med en lokal konto</translation>
+	<translation id="2054784944085654098">Oppretter sikkerhetskopifil nå. Dette kan ta en stund; vennligst vent...</translation>
+	<translation id="3554401467586751874">Sikkerhetskopieringsfilen ble opprettet</translation>
+	<translation id="2349211327705667074">Se sikkerhetskopifilen</translation>
+	<translation id="3049367131589710124">Se feillogg</translation>
+	<translation id="1079017345574916945">Eksternt skrivebord</translation>
+	<translation id="3064478898280877715">App store</translation>
+	<translation id="5890206344045530832">Installatør</translation>
+	<translation id="2173278076276376488">Dette verktøyet hjelper deg med å installere <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> på den interne lagringen til denne enheten.</translation>
+	<translation id="5323182426977498659">Advarsel! Denne prosedyren er destruktiv og kan ikke angres. Vær oppmerksom på at vi ikke vil holde noe ansvar for potensielt tap av data eller gi noen presserende teknisk støtte, fortsett på egen risiko.</translation>
+	<translation id="8517836015601969896">Full diskinstallasjon</translation>
+	<translation id="7300045760790370189">Installer <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> for å okkupere en hel harddisk, alle data på målharddisken vil bli slettet.</translation>
+	<translation id="8762511733918256595">Multi-boot installasjon</translation>
+	<translation id="248900698427753678">Installer <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> til en eksisterende partisjon på en harddisk, der <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> kan eksistere parallelt med andre operativsystemer. Alle data på målpartisjonen vil bli slettet.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> vil bli installert på den valgte harddisken; alle data på måldisken vil bli slettet.</translation>
+	<translation id="4039091757234555415">Disk</translation>
+	<translation id="7783580523889684697">Ingen disk tilgjengelig</translation>
+	<translation id="8217653566575018388">Installasjonen fullført</translation>
+	<translation id="8846746259444262774">Installasjonen mislyktes</translation>
+	<translation id="7263815009235541549">Installasjonen er fullført. Slå av enheten først, fjern deretter eventuelle installasjonsmedier, og slå den på igjen for å starte <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>.</translation>
+	<translation id="3380151284134965398">Beklager, noe har gått galt og installasjonen ble ikke fullført. Vennligst prøv prosessen på nytt. Hvis den samme feilen vedvarer, vennligst kontakt JemaOS Support med loggen ovenfor.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> vil bli installert på den valgte partisjonen på harddisken. Under den nåværende multi-boot-ordningen kan dette bare fortsette hvis enheten din støtter UEFI og harddiskene dine er formatert med GPT.</translation>
+	<translation id="7831363758161884243">Målpartisjonen vil bli slettet; du må også spesifisere din aktive EFI-partisjon (vanligvis gjøres automatisk) ettersom installasjonsprogrammet må endre systemoppstartskonfigurasjoner.</translation>
+	<translation id="5670799238446305550">Velg <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> målpartisjon</translation>
+	<translation id="3695537760133394753">Partisjon</translation>
+	<translation id="5610519566593708119">Velg EFI-partisjon</translation>
+	<translation id="3367650349940010965">Det er ingen partisjoner tilgjengelig for den valgte disken</translation>
+	<translation id="7453223384507098390">Det er ingen EFI-partisjoner tilgjengelig for den valgte disken</translation>
+	<translation id="1854532683465500847">Størrelsen på den valgte partisjonen er mindre enn 20 GB, installasjonen kan mislykkes</translation>
+	<translation id="4144613075340468247">Den valgte partisjonen har blitt montert til <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> multi-boot, installering på den igjen kan mislykkes</translation>
+	<translation id="5793361052649920836">Etter installasjonen, hvordan vil du starte <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>?</translation>
+	<translation id="4273235330352963866">Installer og konfigurer rEFInd for meg (anbefalt)</translation>
+	<translation id="1858708492548921044">rEFInd er et oppstartsbehandlingsprogram som tilbyr et fint grafisk grensesnitt for OS-oppstartsalternativer når PC-en starter opp, vil du kunne velge ønsket OS for å starte opp med det. For mer informasjon om rEFInd, vennligst se hjemmesiden.</translation>
+	<translation id="3861924051442564602">Legg til et UEFI-oppstartsmenyalternativ for meg</translation>
+	<translation id="8622370666798589804">Når PC-en starter opp, kan du kanskje gå inn i UEFI-oppstartsalternativmenyen (mest sannsynlig ved å trykke på en hurtigtast), dette alternativet legger til <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> som en oppføring til den menyen. (Støtter bare enkelte modeller av BIOS og UEFI-fastvare).</translation>
+	<translation id="1569398690544416170">Ikke gjør noe her, jeg konfigurerer det selv</translation>
+	<translation id="3554866444001249532">Dette installasjonsskriptet vil bare sette nødvendige .efi-filer for oppstart av <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> til EFI-partisjonen din, du må konfigurere hvordan du starter den opp selv.</translation>
+	<translation id="7492832751164189534">Tvinge avslutning</translation>
+	<translation id="5159534860632584026">Installasjonsprosessen er avsluttet</translation>
+	<translation id="8686749782014838344">Kunne ikke hente diskinformasjon</translation>
+	<translation id="5688543378771259173">Installasjonen avsluttes...</translation>
+	<translation id="5350452134936384991">Installer i USB</translation>
+	<translation id="8008470485414925603">Installer <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> på en USB-disk; alle data på mål-USB-disken vil bli slettet.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> vil bli installert på den valgte USB-disken; alle data på måldisken vil bli slettet.</translation>
+	<translation id="5725593226060700263">Ingen USB-disk tilgjengelig</translation>
+	<translation id="4357040841587078287">Vi har oppdaget at du kjører denne kopien av JemaOS fra en nedlastet bildefil. For å utnytte de mest omfattende støttefunksjonene (inkludert Over-The-Air-oppdateringer) som JemaOS kan tilby, anbefaler vi på det sterkeste at du starter "Installer"-funksjonen for å utføre en fulldiskinstallasjon av JemaOS til en separat lagringsenhet.</translation>
+	<translation id="1246398339704431302">Du kan <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>fortsette å bruke denne kopien av JemaOS uansett<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, installasjonsprosessen kan utføres på et senere tidspunkt i systemet, men alle dataene dine vil bli slettet fra denne siden, og du vil begynne på nytt etter installasjonen.</translation>
+	<translation id="3654532222088291133">I stedet for å skrive inn JemaOS-kontopassordet for å logge på, kan du opprette et <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph>-passord for denne enheten</translation>
+	<translation id="8377684629839541977">Bruk JemaOS-kontopassord</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">Hold <ph name="DEVICE_OS" /> automatisk oppdatert</translation>
+<translation id="2347352406101856238"><ph name="DEVICE_OS" />-oppdatering aktivert</translation>
+<translation id="185834232609012804"><ph name="DEVICE_OS" />-oppdatering deaktivert</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Plattform <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Eksternt skrivebord</translation>
+<translation id="6898090158927982244">Linux er oppdatert</translation>
+<translation id="4886703929102211360">En kritisk oppdatering er tilgjengelig for Linux (beta)-komponenten. Det anbefales på det sterkeste å installere oppdateringen så snart som mulig, ellers kan Linux (beta) slutte å fungere.</translation>
+<translation id="6694016202036959050"><ph name="DEVICE_OS" />-innstillinger</translation>
+<translation id="8362858344151826493">JemaOS-konto, sikkerhetskopiering, diverse</translation>
+<translation id="9150429437595727962">Wi-Fi-innstillinger</translation>
+<translation id="4938972461544498524">Styreplateinnstillinger</translation>
+<translation id="1210024513248363065">Fjernbetjening</translation>
+<translation id="2878862288885588535">Diagnostisk fjernbetjening</translation>
+<translation id="7409197984340676806">Den diagnostiske fjernbetjeningen lar offisielle JemaOS-supportrepresentanter identifisere systemproblemer. For øyeblikket kan den diagnostiske fjernbetjeningen bare startes av offisielle JemaOS-supportrepresentanter.</translation>
+<translation id="1791028023086176332">Del dette nummeret med offisielle JemaOS-supportrepresentanter</translation>
+<translation id="6279304275399437025">Starter diagnostisk fjernbetjening...</translation>
+<translation id="1501882165699826662">Stopp den diagnostiske fjernbetjeningen og prøv på nytt</translation>
+<translation id="3100283258447375201">Mer informasjon</translation>
+<translation id="4070039109671307724">Diverse</translation>
+<translation id="7326893024940073254">«Start på nytt»-knappen</translation>
+<translation id="3002423764319968103">Vis «Start på nytt»-knappen i systemmenyen</translation>
+<translation id="6243454903512423518">«Roter skjermen»-knappen</translation>
+<translation id="6491049336868978729">Du er ikke i nettbrettmodus nå, så «Roter skjermen»-knappen er skjult</translation>
+<translation id="5496012402277579695">Vis «Roter skjermen»-knappen i systemmenyen</translation>
+<translation id="5882838977344999606">Bryter for nettbrett-/laptopmodus</translation>
+<translation id="472164133625585606">Vis en bryter for nettbrett-/laptopmodus i systemmenyen</translation>
+<translation id="1851103550468466960">Aktiver Widevine</translation>
+<translation id="4058176713282795846">Aktiver Widevine for å strømme beskyttet premiuminnhold. <ph name="BEGIN_LINK_LEARN_MORE" />Finn ut mer<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">Velg «libwidevine.so»</translation>
+<translation id="4838463656205005584">Kunne ikke aktivere Widevine...</translation>
+<translation id="2164041826798266548">Installasjonen av Widevine CDM-modulen mislyktes. Sjekk tilkoblingen din og prøv på nytt.</translation>
+<translation id="4106982328079440606">JemaOS-kontoinnstillinger</translation>
+<translation id="6468776556018764845">Eksperimentelle funksjoner</translation>
+<translation id="3487615413425326553">Omgå Trusted Platform Module (TPM)-kontroller</translation>
+<translation id="4817176087932811573">Noen funksjoner kan mislykkes på grunn av en inkompatibel TPM-brikke i enheten din; du kan omgå TPM-kontrollene som en løsning.</translation>
+<translation id="3356003366173774486">Automatisk pålogging</translation>
+<translation id="6218459410891191693">La den gjeldende kontoen logge på skrivebordet automatisk når enheten startes på nytt</translation>
+<translation id="6620839363422062843">Kan ikke aktiveres for denne kontoen; automatisk pålogging er allerede aktiv for andre kontoer på denne enheten</translation>
+<translation id="6734500226490446035">Kan ikke aktiveres for denne kontoen; det oppstod en ukjent feil under initialisering av filsystemene for denne kontoen. Prøv å starte på nytt eller opprette en ny konto</translation>
+<translation id="5464880042146818691">Kan ikke aktiveres for denne kontoen; alternativet for automatisk pålogging er bare tilgjengelig for kontotypen «Lokal konto».</translation>
+<translation id="3335654854106476749">Legg til et påloggingspassord under <ph name="BEGIN_LINK" />Personvern og sikkerhet<ph name="END_LINK" />-innstillingene før du aktiverer automatisk pålogging.</translation>
+<translation id="5586831602198585601">En nyere versjon av JemaOS er tilgjengelig for oppdatering nå. Men JemaOS for deg-abonnementet ditt har utløpt; du trenger et aktivt abonnement for å oppdatere JemaOS.</translation>
+<translation id="3869860597719956574">En ny hovedversjon av JemaOS er tilgjengelig for oppdatering nå. Du må betale et engangsgebyr for å fortsette med denne oppdateringen.</translation>
+<translation id="6523879681771260760">Angi banen der sikkerhetskopifilen skal lagres</translation>
+<translation id="2036152819788683293">Opprett en sikkerhetskopifil for denne kontoen (beta). <ph name="BEGIN_LINK_LEARN_MORE" />Finn ut mer<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Sikkerhetskopier</translation>
+<translation id="4267347174163690295">Opprett en sikkerhetskopifil for denne kontoen (beta).</translation>
+<translation id="8112950994208888917">Denne operasjonen oppretter en fullstendig sikkerhetskopi av disken for denne kontoen, slik at det blir enkelt å gjenopprette JemaOS til tilstanden den var i da sikkerhetskopien ble opprettet, inkludert innstillinger, installerte nettleserutvidelser og delsystemapper. Avhengig av appene dine og innholdet i hjemmemappen din kan sikkerhetskopifilen bli stor; det anbefales å lagre sikkerhetskopifilen på en ekstern lagringsenhet. Hvis du har en bærbar USB-enhet, kobler du den til nå. <ph name="BEGIN_LINK_LEARN_MORE" />Finn ut mer<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Skriv inn påloggingspassordet for denne kontoen</translation>
+<translation id="8663988871299316062">Husk dette passordet, da det kreves når du gjenoppretter denne sikkerhetskopifilen</translation>
+<translation id="6408904153044317846">Velg sikkerhetskopifilen som skal gjenopprettes</translation>
+<translation id="8062988348127771021">Gjenopprett JemaOS-dataene dine fra en sikkerhetskopifil</translation>
+<translation id="7309192418866543730">Skriv inn passordet for sikkerhetskopien</translation>
+<translation id="3642408376366598984">Skriv inn passordet som ble brukt til å kryptere denne sikkerhetskopifilen</translation>
+<translation id="7783974937157985523">Passord for sikkerhetskopi</translation>
+<translation id="6583780301401541007">Gjenopprettingen var vellykket</translation>
+<translation id="3514011352559420398">Gjenopprettingen mislyktes</translation>
+<translation id="7535980903266533458">Lagre sikkerhetskopien på enheten din eller på ekstern lagring</translation>
+<translation id="604001903249547235">Skysikkerhetskopiering</translation>
+<translation id="8885702701336541611">Last opp sikkerhetskopien til JemaOS-skylagringen</translation>
+<translation id="3939744430096549862">Sikkerhetskopier til skyen</translation>
+<translation id="619129431573254316">Gjenopprett fra en lokal sikkerhetskopifil</translation>
+<translation id="1859592711955106569">Skygjenoppretting</translation>
+<translation id="38222223336741457">Last ned og gjenopprett fra JemaOS-skyen</translation>
+<translation id="1241089811244416179">Gjenopprett fra skyen</translation>
+<translation id="652479689372703360">Sikkerhetskopiering pågår</translation>
+<translation id="3655220146274872918">Sikkerhetskopieringen er fullført</translation>
+<translation id="4243579853635792694">Sikkerhetskopien din ble opprettet</translation>
+<translation id="6337433855796857931">Sikkerhetskopieringen mislyktes</translation>
+<translation id="4854179463174744546">Det oppstod en feil under sikkerhetskopieringen</translation>
+<translation id="2410668771600309999">Connect API-brukerinformasjon</translation>
+<translation id="2223892939866251845">Bruker-ID</translation>
+<translation id="3850846286480935456">Analyse av sikkerhetskopieringslagring</translation>
+<translation id="6244494465581273970">Bruker-ID kreves</translation>
+<translation id="9204006549413740506">Sist oppdatert</translation>
+<translation id="476642412165431515">Maskinvareenheter</translation>
+<translation id="3386337985825120901">Ingen sikkerhetskopieringsdata tilgjengelig</translation>
+<translation id="8490990067870590760">Laster inn sikkerhetskopifiler...</translation>
+<translation id="2955409026764742995">Velg sikkerhetskopifilen som skal gjenopprettes:</translation>
+<translation id="7414629348005657242">-- Velg en sikkerhetskopifil --</translation>
+<translation id="918246516374174381">Ingen sikkerhetskopifiler ble funnet. Opprett en sikkerhetskopi først.</translation>
+<translation id="77997252117517973">Kommer snart</translation>
+<translation id="1930692852800776096">Legg til en ordbok</translation>
+<translation id="8793060353848771694">Bilde av venstre ørepropp</translation>
+<translation id="6257440204887306255">Bilde av ladeetuiet</translation>
+<translation id="2754700616124958693">Bilde av høyre ørepropp</translation>
+<translation id="1068676292264983586">Standard enhetsbilde</translation>
+<translation id="6364075396486660405">Deaktiver automatisk skanning av mediefiler for alle partisjoner for å optimalisere batterilevetiden. <ph name="BEGIN_LINK_LEARN_MORE" />Finn ut mer<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Sikkerhetsalternativer</translation>
+<translation id="5618366106086725045">Aktiver «Utviklermodus» for denne <ph name="IDS_SHORT_PRODUCT_OS_NAME" />-installasjonen med flere utviklerfunksjoner. <ph name="BEGIN_LINK_LEARN_MORE" />Finn ut mer<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Du er allerede i «Utviklermodus»</translation>
+<translation id="6074549317340202195">Aktiver «Utviklermodus»</translation>
+<translation id="418781258674176053">Advarsel! Å aktivere «Utviklermodus» er en irreversibel handling. Hvis du vil deaktivere «Utviklermodus», må du installere JemaOS på nytt, noe som sletter alle data. Ta sikkerhetskopi av dataene dine og fortsett på egen risiko.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Plattform <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Frakoblet for øyeblikket</translation>
+<translation id="2590678769628709242">Sjekk JemaOS-abonnementet ditt på nettet</translation>
+<translation id="4701836089682883918">JemaOS-abonnementsinformasjon</translation>
+<translation id="5891566673089952188">Det oppstod en feil under henting av enhets-ID-en din</translation>
+<translation id="4685086787606104322">Abonnementsslutt</translation>
+<translation id="3354919960795782984">Enhets-ID</translation>
+<translation id="5758632069869992306">Sjekk abonnementet ditt på nettet</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Plattform <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Prøveabonnement</translation>
+<translation id="4362781408813685579">Aktivt abonnement</translation>
+<translation id="1141274201089997510">Utløpt abonnement</translation>
+<translation id="2553683254139782404">Ikke-kommersiell utgave</translation>
+<translation id="8466048683756385518">Enterprise-lisensversjon (prøveversjon)</translation>
+<translation id="2853871047705932424">Enterprise-lisensversjon</translation>
+<translation id="5239675900317881945">Enterprise-lisensversjon (utløpt)</translation>
+<translation id="189101945990408398">Eldre Intel</translation>
+<translation id="6816405236809604904">Moderne Intel</translation>
+<translation id="6169452478137972655">AMD-grafikk</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="2747689477259164256">JemaOS AI</translation>
+<translation id="1270291881045478104">Aktiver JemaOS AI</translation>
+<translation id="2013780539677437932">Aktiver eller deaktiver alle funksjoner knyttet til JemaOS AI</translation>
+<translation id="3398637633218757480">Aktiver JemaOS AI-hurtigoppring</translation>
+<translation id="8986197796475507452">Få raskt opp JemaOS AI-alternativer for uthevet innhold ved å trykke Ctrl + C + C</translation>
+<translation id="6407628130593274137">Andre innstillinger og alternativer for JemaOS AI</translation>
+<translation id="4005574560653331142">Hvis du vil endre PIN-koden eller påloggingspassordet for denne lokale kontoen, går du til <ph name="BEGIN_LINK" />Personvern og sikkerhet<ph name="END_LINK" />-innstillingene.</translation>
+
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">Du kan <ph name="LINK_START" />logge inn med en lokal JemaOS-konto<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">E-postadressen <ph name="EMAIL_ADDRESS" /> finnes allerede. Prøv på nytt med en annen e-postadresse.</translation>
+<translation id="4519800823932975782">JemaOS Hjelpesenter</translation>
+<translation id="4737474693231655139">Finn hjelpeartikler og svar på vanlige spørsmål om JemaOS</translation>
+</translationbundle>

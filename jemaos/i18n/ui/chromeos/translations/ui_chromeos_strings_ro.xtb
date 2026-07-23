@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="ro">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">Înregistrează-te pe Nutstore pentru a-ți sincroniza fișierele în cloud în JemaOS.</translation>
+<translation id="8672291834743661083">Înregistrează-te pe Nutstore</translation>
+<translation id="5103639294476249880">Apasă pe butonul „Adaugă aplicație“ din setările de securitate</translation>
+<translation id="8371020157576651120">Generează și copiază parola aplicației</translation>
+<translation id="3855250998276979579">Deschide aplicația Nutstore</translation>
+<translation id="6565655783894300125">și conectează contul Nutstore la JemaOS cu adresa ta de e-mail și parola aplicației</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">În curând</translation>
+<translation id="4928968570611226525">Pentru a continua cu această acțiune, va trebui să <ph name="BEGIN_LINK_ARC_APP" />&gt;activezi subsistemul Android<ph name="END_LINK_ARC_APP" /> pe dispozitivul tău JemaOS; de asemenea, dispozitivul tău JemaOS trebuie <ph name="BEGIN_LINK_HELP" />comutat în modul pentru dezvoltatori<ph name="END_LINK_HELP" />.</translation>
+<translation id="7395250550107972941">Nu se pot instala prin sideload fișiere .apk. Asigură-te că subsistemul Android a fost activat și că dispozitivul tău JemaOS este în modul pentru dezvoltatori.</translation>
+<translation id="5690820326685091783">Deschide cu JemaOS AI</translation>
+</translationbundle>

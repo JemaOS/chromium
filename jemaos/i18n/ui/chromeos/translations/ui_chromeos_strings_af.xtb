@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="af">
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">Registreer by Nutstore om jou lêers in JemaOS in die wolk te sinchroniseer.</translation>
+<translation id="8672291834743661083">Registreer by Nutstore</translation>
+<translation id="5103639294476249880">Klik op die "Voeg toepassing by"-knoppie in die sekuriteitinstellings</translation>
+<translation id="8371020157576651120">Genereer en kopieer jou toepassingswagwoord</translation>
+<translation id="3855250998276979579">Maak Nutstore-toepassing oop</translation>
+<translation id="6565655783894300125">en koppel Nutstore-rekening aan JemaOS met jou e-pos en toepassingswagwoord</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Binnekort beskikbaar</translation>
+<translation id="4928968570611226525">Om met hierdie aksie voort te gaan, moet jy <ph name="BEGIN_LINK_ARC_APP" />&gt;die Android-subsisteem aktiveer<ph name="END_LINK_ARC_APP" /> op jou JemaOS-toestel; jou JemaOS-toestel moet ook <ph name="BEGIN_LINK_HELP" />na Ontwikkelaarsmodus oorgeskakel word<ph name="END_LINK_HELP" />.</translation>
+<translation id="7395250550107972941">Kan nie .apk-lêers sykant laai nie. Maak seker dat die Android-subsisteem geaktiveer is en dat jy in JemaOS-ontwikkelaarsmodus is.</translation>
+<translation id="5690820326685091783">Maak oop met JemaOS AI</translation>
+</translationbundle>

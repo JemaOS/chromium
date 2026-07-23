@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="nl">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">Meld u aan bij Nutstore om uw bestanden in JemaOS via de cloud te synchroniseren.</translation>
+<translation id="8672291834743661083">Aanmelden bij Nutstore</translation>
+<translation id="5103639294476249880">Klik op de knop "Applicatie toevoegen" in de beveiligingsinstellingen</translation>
+<translation id="8371020157576651120">Genereer en kopieer uw applicatiewachtwoord</translation>
+<translation id="3855250998276979579">Open de Nutstore-app</translation>
+<translation id="6565655783894300125">en verbind uw Nutstore-account met JemaOS met uw e-mailadres en applicatiewachtwoord</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Binnenkort beschikbaar</translation>
+<translation id="4928968570611226525">Om door te gaan met deze actie moet u op uw JemaOS-apparaat <ph name="BEGIN_LINK_ARC_APP" />&gt;het Android-subsysteem activeren<ph name="END_LINK_ARC_APP" />; ook moet uw JemaOS-apparaat <ph name="BEGIN_LINK_HELP" />naar de ontwikkelaarsmodus worden geschakeld<ph name="END_LINK_HELP" />.</translation>
+<translation id="7395250550107972941">.apk-bestanden kunnen niet worden gesideload. Zorg ervoor dat het Android-subsysteem is geactiveerd en dat uw JemaOS-apparaat zich in de ontwikkelaarsmodus bevindt.</translation>
+<translation id="5690820326685091783">Openen met JemaOS AI</translation>
+</translationbundle>

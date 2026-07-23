@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="lo">
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">ລົງທະບຽນ Nutstore ເພື່ອຊິງຄ໌ຄລາວໄຟລ໌ຂອງທ່ານໃນ JemaOS.</translation>
+<translation id="8672291834743661083">ລົງທະບຽນ Nutstore</translation>
+<translation id="5103639294476249880">ຄລິກປຸ່ມ "Add Application" ໃນການຕັ້ງຄ່າຄວາມປອດໄພ</translation>
+<translation id="8371020157576651120">ສ້າງ ແລະ ສຳເນົາລະຫັດຜ່ານແອັບພລິເຄຊັນຂອງທ່ານ</translation>
+<translation id="3855250998276979579">ເປີດແອັບ Nutstore</translation>
+<translation id="6565655783894300125">ແລະ ເຊື່ອມຕໍ່ບັນຊີ Nutstore ກັບ JemaOS ດ້ວຍອີເມວ ແລະ ລະຫັດຜ່ານແອັບພລິເຄຊັນຂອງທ່ານ</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">ກຳລັງຈະມາເຖິງ</translation>
+<translation id="4928968570611226525">ເພື່ອດຳເນີນການນີ້ຕໍ່ ທ່ານຈະຕ້ອງ<ph name="BEGIN_LINK_ARC_APP" />&gt;ເປີດໃຊ້ງານລະບົບຍ່ອຍ Android<ph name="END_LINK_ARC_APP" />ໃນອຸປະກອນ JemaOS ຂອງທ່ານ; ນອກຈາກນີ້ອຸປະກອນ JemaOS ຂອງທ່ານຕ້ອງຖືກ<ph name="BEGIN_LINK_HELP" />ສະຫຼັບເປັນໂໝດນັກພັດທະນາ<ph name="END_LINK_HELP" />ດ້ວຍ.</translation>
+<translation id="7395250550107972941">ບໍ່ສາມາດໂຫຼດໄຟລ໌ .apk ຈາກພາຍນອກໄດ້. ກະລຸນາໃຫ້ແນ່ໃຈວ່າລະບົບຍ່ອຍ Android ໄດ້ຖືກເປີດໃຊ້ງານແລ້ວ ແລະ ທ່ານຢູ່ໃນໂໝດນັກພັດທະນາ JemaOS.</translation>
+<translation id="5690820326685091783">ເປີດດ້ວຍ JemaOS AI</translation>
+</translationbundle>

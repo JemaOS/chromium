@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="lo">
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">JemaOS ຍັງບໍ່ທັນສຳເລັດການຕັ້ງຄ່າເບື້ອງຕົ້ນ.</translation>
+<translation id="4257170804800372451">JemaOS ແລະ Thot ເປັນໄປໄດ້ໂດຍໂຄງການໂອເພນຊອສ <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> ແລະ <ph name="BEGIN_LINK_OSS" />ຊອບແວໂອເພນຊອສອື່ນໆ<ph name="END_LINK_OSS" />.</translation>
+</translationbundle>

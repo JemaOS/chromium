@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="my">
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">JemaOS သည် ၎င်း၏ ကနဦး setup ကို မပြီးမြောက်သေးပါ။</translation>
+<translation id="4257170804800372451">JemaOS နှင့် Thot တို့သည် <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> open source ပရောဂျက်နှင့် အခြား <ph name="BEGIN_LINK_OSS" />open source ဆော့ဖ်ဝဲလ်<ph name="END_LINK_OSS" /> များကြောင့် ဖြစ်နိုင်ခဲ့ခြင်း ဖြစ်ပါသည်။</translation>
+</translationbundle>

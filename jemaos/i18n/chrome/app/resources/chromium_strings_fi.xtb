@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="fi">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Tietoa Thotista</translation>
+<translation id="5639860668557220477">Ohjeita Thot-selaimen käyttöön</translation>
+<translation id="1692689520561928457">Tietoja JemaOS:stä</translation>
+<translation id="8692765844418174375">JemaOS-versio</translation>
+<translation id="2943260250558374955">Ohjeita JemaOS:n käyttöön</translation>
+<translation id="713321354492170993">Selain vapauttaa muistia ei-aktiivisilta välilehdiltä. Tämä antaa aktiivisille välilehdille ja muille sovelluksille enemmän laskentaresursseja ja pitää selaimen nopeana. Ei-aktiiviset välilehtesi aktivoituvat automaattisesti uudelleen, kun palaat niihin.</translation>
+<translation id="1774190491044887444">Selain säästää akkua rajoittamalla taustatoimintaa ja visuaalisia tehosteita, kuten sujuvaa vieritystä ja videoiden kuvanopeuksia.</translation>
+<translation id="180121268008059459">Selain lataa sivuja etukäteen, mikä nopeuttaa selaamista ja hakua.</translation>
+<translation id="7127093527178692287">Palauta varmuuskopio (beta)</translation>
+<translation id="4439042171549201806">Jos haluat palauttaa JemaOS:n varmuuskopiotiedostosta, aseta nyt varmuuskopiotiedoston sisältävä irrotettava asema JemaOS-laitteeseesi ja määritä, mikä varmuuskopiotiedosto haluat palauttaa. Huomaa, että varmuuskopiotiedoston on oltava irrotettavan aseman päähakemistossa, jotta tämä ohjattu toiminto tunnistaa sen.</translation>
+<translation id="2955409026764742995">Valitse palautettava varmuuskopiotiedosto:</translation>
+<translation id="7040434808685140085">Valittua varmuuskopiotiedostoa ei valitettavasti tunnisteta. Valitse uusi tiedosto.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />Jotta JemaOS voidaan palauttaa valitusta varmuuskopiotiedostosta, on oltava tarkat tiedot varmuuskopion luomishetkestä. Muuten palautus epäonnistuu.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"Tilin nimi" on sen tilin ensisijainen kirjautumistunnus, jonka alla varmuuskopiotiedosto luotiin. Se on yleensä sähköpostiosoite, jolla rekisteröidyit JemaOS-/Google-tiliisi. Jos kyseessä oli paikallinen tili, se on käyttäjänimi, jonka lopussa on "@jemaos.local".<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Salasana on tunnuslause, jota sinulta pyydettiin varmuuskopiota luotaessa. Se on yleensä sama salasana, jolla kirjauduit tällä tilillä JemaOS-työpöydälle.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Tilin nimi</translation>
+<translation id="5490570429039308155">Anna oikea tilin nimi</translation>
+<translation id="6657585470893396449">Salasana</translation>
+<translation id="8200189938001188563">Salasana ei voi olla tyhjä</translation>
+<translation id="3157931365184549694">Palauta</translation>
+<translation id="8556278756526311953">Varmuuskopiota palautetaan</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Varmuuskopiotiedostoasi palautetaan parhaillaan. Tämä voi kestää hetken, joten odota rauhassa.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Huomaa, että käyttöliittymä käynnistyy automaattisesti uudelleen, kun palautus on valmis.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Varmuuskopion palautus epäonnistui</translation>
+<translation id="5003531399442003695">Katso lisätietoja napsauttamalla alla olevaa linkkiä, josta näet lokit. Jos tämä virhe toistuu, ota yhteyttä JemaOS:n tekniseen tukeen ja toimita virhelokit.</translation>
+<translation id="6363786367719063276">Näytä lokit</translation>
+<translation id="8730621377337864115">Valmis</translation>
+<translation id="975238173507911396">Tietojen palautus onnistui</translation>
+<translation id="6276879052695618521">Varmuuskopion palautuksen lokit</translation>
+<translation id="4901207598072637766">JemaOS, tarjoajana <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS ja sen palvelut noudattavat GDPR:ää ja eurooppalaisen tietosuojalainsäädännön säännöksiä. Lisätietoja on <ph name="BEGIN_LINK_PRIVACY" />tietosuojakäytännössämme<ph name="END_LINK_PRIVACY" /> ja <ph name="BEGIN_LINK_TOS" />käyttöehdoissamme.<ph name="END_LINK_TOS" /></translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, kaikki oikeudet pidätetään.</translation>
+<translation id="370679569376308836">JemaOS on kaupallinen tarjous, joka perustuu Jema-laitteeseen ja sen SaaS-palveluun.</translation>
+<translation id="2773644194450163486">JemaOS:n mahdollistaa avoimen lähdekoodin <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" />-projekti.</translation>
+<translation id="2330680727776977160">Chromiumin mahdollistavat myös muu <ph name="BEGIN_LINK_1" />avoimen lähdekoodin ohjelmisto<ph name="END_LINK_1" /> ja <ph name="BEGIN_LINK_2" />muut avoimen lähdekoodin ohjelmistot<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Suunnitellut ja valmistanut Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, kaikki oikeudet pidätetään.</translation>
+<translation id="6168072053306020326">Jema Technology on Jema Technology LTD:n ja Jema Technology (Beijing) Limitedin kauppanimi.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD on Englantiin ja Walesiin rekisteröity yritys, jonka rekisterinumero on 12273803.</translation>
+<translation id="1251589813188467292">Tärkeät laitteen takuu- ja huoltotiedot</translation>
+<translation id="4851115775198886021">Laitteen sarjanumero:</translation>
+</translationbundle>

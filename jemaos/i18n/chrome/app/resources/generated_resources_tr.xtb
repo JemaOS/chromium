@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="tr">
+	<translation id="7386402409475121504">Yerel JemaOS hesabınızı oluşturun</translation>
+	<translation id="3760308806144055927">Yerel JemaOS hesabınızda oturum açın</translation>
+	<translation id="3325117507482096812">Lütfen bir şifre girin</translation>
+	<translation id="1838206877831947154">Şifreleriniz eşleşmiyor</translation>
+	<translation id="2158276988029582286">Yeni bir yerel hesap oluşturun</translation>
+	<translation id="8592849747346274067">Mevcut bir hesapta oturum açın</translation>
+	<translation id="482190417986201746">Girdiğiniz kullanıcı adı veya şifre yanlış</translation>
+	<translation id="6603987686259425085"><ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>JemaOS yerel hesabıyla<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph> oturum açabilirsiniz.</translation>
+	<translation id="3598802966230712759"><ph name="EMAIL_ADDRESS">$1</ph> e-postası zaten mevcut. Lütfen başka bir e-postayla tekrar deneyin.</translation>
+	<translation id="7215016743510876720">Yerel hesabı kullan</translation>
+	<translation id="6657635042185516718">Çevrimiçi hesabı kullanmaya devam et</translation>
+	<translation id="6867476688065565618">Yerel hesaba geçilsin mi?</translation>
+	<translation id="4840454774882557974">Yerel bir hesap kullanmayı tercih ederseniz, verilerinizin ve tercihlerinizin birden fazla cihaz arasında senkronize edilmesi ve JemaOS hesabınızı kullanarak web uygulamalarında otomatik olarak oturum açmanın işe yaramayacağı yararlı özellikler arasında yer alır.</translation>
+	<translation id="8951507920859729424">JemaOS'u sonuna kadar kullanabilmek için çevrimiçi bir hesap kullanmanızı öneririz.</translation>
+	<translation id="479773200536372215">Google API anahtarları eksik olduğundan Google hesaplarını ekleyemeyeceksiniz. Ayrıntılar için <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> adresine bakın.</translation>
+	<translation id="1198491307547164157">JemaOS API anahtarları eksik olduğundan JemaOS hesaplarını ekleyemeyeceksiniz. Ayrıntılar için <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> adresine bakın.</translation>
+	<translation id="5042404702659901995">Gizlilik bildirimi</translation>
+	<translation id="4907736162587268100">Gizlilik beyanı içerikleri</translation>
+	<translation id="5988344732274877691">JemaOS'un (çok nadir, vaat edilen) haber bültenine kaydolun</translation>
+	<translation id="1706203008474708805">JemaOS kullanıcı deneyimi iyileştirme planına katılın</translation>
+	<translation id="1147139514756087229">Yerel bir hesapla oturum açın</translation>
+	<translation id="2054784944085654098">Şimdi yedekleme dosyası oluşturuluyor. Bu biraz zaman alabilir; lütfen bekleyin…</translation>
+	<translation id="3554401467586751874">Yedekleme dosyası başarıyla oluşturuldu</translation>
+	<translation id="2349211327705667074">Yedekleme dosyasını görüntüle</translation>
+	<translation id="3049367131589710124">Hata günlüğünü görüntüle</translation>
+	<translation id="1079017345574916945">Uzak masaüstü</translation>
+	<translation id="3064478898280877715">Uygulama mağazası</translation>
+	<translation id="5890206344045530832">Kurulumcu</translation>
+	<translation id="2173278076276376488">Bu yardımcı program, bu cihazın dahili depolama alanına <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> yüklemenize yardımcı olacaktır.</translation>
+	<translation id="5323182426977498659">Uyarı! Bu prosedür yıkıcıdır ve geri alınamaz. Olası veri kaybınızla ilgili herhangi bir sorumluluk kabul etmeyeceğimizi veya herhangi bir acil teknik destek sağlayamayacağımızı lütfen unutmayın; risk size ait olmak üzere devam edin.</translation>
+	<translation id="8517836015601969896">Tam disk kurulumu</translation>
+	<translation id="7300045760790370189">Sabit diskin tamamını kaplamak için <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>'u kurun, hedef sabit diskteki tüm veriler silinecektir.</translation>
+	<translation id="8762511733918256595">Çoklu önyükleme kurulumu</translation>
+	<translation id="248900698427753678"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>'i sabit diskin mevcut bir bölümüne yükleyin; burada <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> diğer işletim sistemiyle paralel olarak var olabilir. Hedef bölümdeki tüm veriler silinecektir.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> seçtiğiniz sabit diske yüklenecek; Hedef diskteki tüm veriler silinecektir.</translation>
+	<translation id="4039091757234555415">disk</translation>
+	<translation id="7783580523889684697">Kullanılabilir disk yok</translation>
+	<translation id="8217653566575018388">Kurulum tamamlandı</translation>
+	<translation id="8846746259444262774">Kurulum başarısız oldu</translation>
+	<translation id="7263815009235541549">Kurulum başarıyla tamamlandı. Lütfen önce cihazınızı kapatın, ardından kurulum medyasını çıkarın ve <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>'i başlatmak için cihazı tekrar açın.</translation>
+	<translation id="3380151284134965398">Hata! Bir şeyler ters gitti ve yükleme tamamlanamadı. Lütfen işlemi yeniden deneyin. Aynı hata devam ederse lütfen yukarıdaki günlükle JemaOS Desteğine ulaşın.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>, sabit sürücünüzün seçilen bölümüne yüklenecek. Mevcut çoklu önyükleme şemasına göre bu, yalnızca cihazınızın UEFI'yi desteklemesi ve sabit disklerinizin GPT ile biçimlendirilmiş olması durumunda gerçekleşebilir.</translation>
+	<translation id="7831363758161884243">Hedef bölüm silinecek; Yükleyicinin sistem önyükleme yapılandırmalarını değiştirmesi gerektiğinden, aktif EFI bölümünüzü de belirtmeniz gerekir (genellikle otomatik olarak yapılır).</translation>
+	<translation id="5670799238446305550"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> hedef bölümünü seçin</translation>
+	<translation id="3695537760133394753">Bölüm</translation>
+	<translation id="5610519566593708119">EFI bölümünü seçin</translation>
+	<translation id="3367650349940010965">Seçilen disk için kullanılabilir bölüm yok</translation>
+	<translation id="7453223384507098390">Seçilen disk için kullanılabilir EFI bölümü yok</translation>
+	<translation id="1854532683465500847">Seçilen bölümün boyutu 20 GB'tan az, kurulum başarısız olabilir</translation>
+	<translation id="4144613075340468247">Seçilen bölüm <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> çoklu önyüklemesine bağlandı, yeniden yükleme işlemi başarısız olabilir</translation>
+	<translation id="5793361052649920836">Kurulumdan sonra <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>'u nasıl başlatmak istersiniz?</translation>
+	<translation id="4273235330352963866">Benim için rEFInd'i yükleyin ve yapılandırın (önerilir)</translation>
+	<translation id="1858708492548921044">rEFInd, bilgisayarınız başlatıldığında işletim sistemi önyükleme seçenekleri için güzel bir grafik arayüz sunan bir önyükleme yöneticisi programıdır; onunla önyükleme yapmak için istediğiniz işletim sistemini seçebileceksiniz. rEFInd hakkında daha fazla bilgi için lütfen ana sayfasına bakın.</translation>
+	<translation id="3861924051442564602">Benim için bir UEFI önyükleme menüsü seçeneği ekle</translation>
+	<translation id="8622370666798589804">Bilgisayarınız başlatıldığında UEFI önyükleme seçenekleri menüsüne girebilirsiniz (büyük olasılıkla bir kısayol tuşuna basarak), bu seçenek o menüye giriş olarak <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>'u ekler. (Yalnızca bazı BIOS ve UEFI ürün yazılımı modellerini destekler).</translation>
+	<translation id="1569398690544416170">Burada hiçbir şey yapmayın, kendim yapılandıracağım</translation>
+	<translation id="3554866444001249532">Bu kurulum betiği yalnızca <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>'u EFI bölümünüze önyüklemek için gerekli .efi dosyalarını koyacaktır; nasıl önyükleyeceğinizi kendiniz yapılandırmanız gerekecektir.</translation>
+	<translation id="7492832751164189534">Çıkmaya zorla</translation>
+	<translation id="5159534860632584026">Kurulum işlemi sonlandırıldı</translation>
+	<translation id="8686749782014838344">Disk bilgisi alınamadı</translation>
+	<translation id="5688543378771259173">Kurulum sonlandırılıyor...</translation>
+	<translation id="5350452134936384991">USB'ye yükleyin</translation>
+	<translation id="8008470485414925603"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>'i bir USB diske yükleyin; hedef USB diskteki tüm veriler silinecektir.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> seçtiğiniz USB diske yüklenecek; Hedef diskteki tüm veriler silinecektir.</translation>
+	<translation id="5725593226060700263">USB diski mevcut değil</translation>
+	<translation id="4357040841587078287">JemaOS'un bu kopyasını indirilen bir görüntü dosyasından çalıştırdığınızı tespit ettik. JemaOS'un sunabileceği en kapsamlı destek özelliklerinden (Kablosuz güncellemeler dahil) yararlanmak için, JemaOS'un tam disk kurulumunu ayrı bir depolama cihazına gerçekleştirmek üzere "Yükleyici" işlevini başlatmanızı önemle tavsiye ederiz.</translation>
+	<translation id="1246398339704431302"><ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>JemaOS'un bu kopyasını yine de kullanmaya devam edebilirsiniz<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, kurulum işlemi sistemde daha sonraki bir aşamada gerçekleştirilebilir, ancak kurulumdan sonra tüm verileriniz silinecek ve bu sayfadan yeniden başlayacaksınız.</translation>
+	<translation id="3654532222088291133">Oturum açmak için JemaOS hesabınızın şifresini girmek yerine bu cihaz için bir <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> şifresi oluşturabilirsiniz</translation>
+	<translation id="8377684629839541977">JemaOS hesap şifresini kullan</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398"><ph name="DEVICE_OS" /> sistemini otomatik olarak güncel tut</translation>
+<translation id="2347352406101856238"><ph name="DEVICE_OS" /> güncellemesi etkin</translation>
+<translation id="185834232609012804"><ph name="DEVICE_OS" /> güncellemesi devre dışı</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Platform <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Uzak Masaüstü</translation>
+<translation id="6898090158927982244">Linux sisteminiz güncel</translation>
+<translation id="4886703929102211360">Linux (beta) bileşeni için kritik bir güncelleme mevcut. Bu güncellemeyi en kısa sürede yüklemeniz önemle tavsiye edilir, aksi takdirde Linux (beta) çalışmayı durdurabilir.</translation>
+<translation id="6694016202036959050"><ph name="DEVICE_OS" /> ayarları</translation>
+<translation id="8362858344151826493">JemaOS hesabı, yedekleme, çeşitli</translation>
+<translation id="9150429437595727962">Wi-Fi ayarları</translation>
+<translation id="4938972461544498524">Dokunmatik yüzey ayarları</translation>
+<translation id="1210024513248363065">Uzak hizmetler</translation>
+<translation id="2878862288885588535">Uzak tanılama hizmeti</translation>
+<translation id="7409197984340676806">Uzak tanılama hizmeti, resmi JemaOS destek temsilcilerinin sistem sorunlarını belirlemesine olanak tanır. Şu anda uzak tanılama hizmeti yalnızca resmi JemaOS destek temsilcileri tarafından başlatılabilir.</translation>
+<translation id="1791028023086176332">Lütfen bu numarayı resmi JemaOS destek temsilcileriyle paylaşın</translation>
+<translation id="6279304275399437025">Uzak tanılama hizmeti başlatılıyor...</translation>
+<translation id="1501882165699826662">Lütfen uzak tanılama hizmetini durdurun ve tekrar deneyin</translation>
+<translation id="3100283258447375201">Daha fazla bilgi</translation>
+<translation id="4070039109671307724">Çeşitli</translation>
+<translation id="7326893024940073254">"Yeniden başlat" düğmesi</translation>
+<translation id="3002423764319968103">Sistem menüsünde "Yeniden başlat" düğmesini göster</translation>
+<translation id="6243454903512423518">"Ekranı döndür" düğmesi</translation>
+<translation id="6491049336868978729">Şu anda tablet modunda değilsiniz, "Ekranı döndür" düğmesi gizli</translation>
+<translation id="5496012402277579695">Sistem menüsünde "Ekranı döndür" düğmesini göster</translation>
+<translation id="5882838977344999606">Tablet/Dizüstü modu anahtarı</translation>
+<translation id="472164133625585606">Sistem menüsünde tablet/dizüstü modu anahtarını göster</translation>
+<translation id="1851103550468466960">Widevine'ı etkinleştir</translation>
+<translation id="4058176713282795846">Korumalı premium içerikleri yayınlamak için Widevine'ı etkinleştirin. <ph name="BEGIN_LINK_LEARN_MORE" />Daha fazla bilgi<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">"libwidevine.so" dosyasını seçin</translation>
+<translation id="4838463656205005584">Widevine etkinleştirilemedi...</translation>
+<translation id="2164041826798266548">Widevine CDM modülü kurulumu başarısız oldu. Lütfen bağlantınızı kontrol edip tekrar deneyin.</translation>
+<translation id="4106982328079440606">JemaOS hesap ayarları</translation>
+<translation id="6468776556018764845">Deneysel özellikler</translation>
+<translation id="3487615413425326553">Güvenilir Platform Modülü (TPM) kontrollerini atla</translation>
+<translation id="4817176087932811573">Bazı özellikler, cihazınızdaki uyumsuz TPM çipi nedeniyle başarısız olabilir; geçici çözüm olarak TPM kontrollerini atlayabilirsiniz.</translation>
+<translation id="3356003366173774486">Otomatik oturum açma</translation>
+<translation id="6218459410891191693">Cihaz yeniden başlatıldığında mevcut hesabın masaüstünde otomatik olarak oturum açmasına izin ver</translation>
+<translation id="6620839363422062843">Bu hesap için etkinleştirilemez; otomatik oturum açma bu cihazdaki diğer hesaplar için zaten etkin</translation>
+<translation id="6734500226490446035">Bu hesap için etkinleştirilemez; bu hesabın dosya sistemleri başlatılırken bilinmeyen bir hata oluştu. Lütfen yeniden başlatmayı veya yeni bir hesap oluşturmayı deneyin</translation>
+<translation id="5464880042146818691">Bu hesap için etkinleştirilemez; otomatik oturum açma seçeneği yalnızca "Yerel hesap" türü için kullanılabilir.</translation>
+<translation id="3335654854106476749">Otomatik oturum açmayı etkinleştirmeden önce lütfen <ph name="BEGIN_LINK" />Gizlilik ve güvenlik<ph name="END_LINK" /> ayarlarına bir oturum açma şifresi ekleyin.</translation>
+<translation id="5586831602198585601">JemaOS'un daha yeni bir sürümü şimdi güncellenebilir. Ancak JemaOS for You aboneliğinizin süresi doldu; JemaOS'unuzu güncellemek için etkin bir aboneliğe ihtiyacınız var.</translation>
+<translation id="3869860597719956574">JemaOS'un yeni bir ana sürümü şimdi güncellenebilir. Bu güncellemeye devam etmek için tek seferlik bir ücret ödemeniz gerekir.</translation>
+<translation id="6523879681771260760">Lütfen yedek dosyasının kaydedileceği yolu belirtin</translation>
+<translation id="2036152819788683293">Bu hesap için bir yedek dosyası oluşturun (beta). <ph name="BEGIN_LINK_LEARN_MORE" />Daha fazla bilgi<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Yedekle</translation>
+<translation id="4267347174163690295">Bu hesap için bir yedek dosyası oluşturun (beta).</translation>
+<translation id="8112950994208888917">Bu işlem, bu hesap için tam bir disk yedeği oluşturur ve ayarlar, yüklü tarayıcı uzantıları ve alt sistem uygulamaları dahil olmak üzere JemaOS'unuzu yedeğin oluşturulduğu andaki durumuna geri yüklemeyi kolaylaştırır. Uygulamalarınıza ve giriş klasörünüzün içeriğine bağlı olarak yedek dosyası büyük olabilir; yedek dosyasını harici bir depolama cihazında saklamanız önerilir. Taşınabilir bir USB sürücünüz varsa lütfen şimdi bağlayın. <ph name="BEGIN_LINK_LEARN_MORE" />Daha fazla bilgi<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Lütfen bu hesabın oturum açma şifresini girin</translation>
+<translation id="8663988871299316062">Bu yedek dosyası geri yüklenirken gerekeceğinden lütfen bu şifreyi unutmayın</translation>
+<translation id="6408904153044317846">Geri yüklenecek yedek dosyasını seçin</translation>
+<translation id="8062988348127771021">JemaOS verilerinizi bir yedek dosyasından geri yükleyin</translation>
+<translation id="7309192418866543730">Yedek şifresini girin</translation>
+<translation id="3642408376366598984">Bu yedek dosyasını şifrelemek için kullanılan şifreyi girin</translation>
+<translation id="7783974937157985523">Yedek şifresi</translation>
+<translation id="6583780301401541007">Geri yükleme başarılı</translation>
+<translation id="3514011352559420398">Geri yükleme başarısız</translation>
+<translation id="7535980903266533458">Yedeği cihazınıza veya harici depolamaya kaydedin</translation>
+<translation id="604001903249547235">Bulut yedekleme</translation>
+<translation id="8885702701336541611">Yedeği JemaOS bulut depolamasına yükleyin</translation>
+<translation id="3939744430096549862">Buluta yedekle</translation>
+<translation id="619129431573254316">Yerel bir yedek dosyasından geri yükle</translation>
+<translation id="1859592711955106569">Bulut geri yükleme</translation>
+<translation id="38222223336741457">JemaOS bulutundan indirin ve geri yükleyin</translation>
+<translation id="1241089811244416179">Buluttan geri yükle</translation>
+<translation id="652479689372703360">Yedekleme devam ediyor</translation>
+<translation id="3655220146274872918">Yedekleme tamamlandı</translation>
+<translation id="4243579853635792694">Yedeğiniz başarıyla oluşturuldu</translation>
+<translation id="6337433855796857931">Yedekleme başarısız</translation>
+<translation id="4854179463174744546">Yedekleme işlemi sırasında bir hata oluştu</translation>
+<translation id="2410668771600309999">Connect API kullanıcı bilgileri</translation>
+<translation id="2223892939866251845">Kullanıcı kimliği</translation>
+<translation id="3850846286480935456">Yedek depolama analizi</translation>
+<translation id="6244494465581273970">Kullanıcı kimliği gerekli</translation>
+<translation id="9204006549413740506">Son güncelleme</translation>
+<translation id="476642412165431515">Donanım cihazları</translation>
+<translation id="3386337985825120901">Yedek verisi yok</translation>
+<translation id="8490990067870590760">Yedek dosyaları yükleniyor...</translation>
+<translation id="2955409026764742995">Geri yüklenecek yedek dosyasını seçin:</translation>
+<translation id="7414629348005657242">-- Bir yedek dosyası seçin --</translation>
+<translation id="918246516374174381">Yedek dosyası bulunamadı. Lütfen önce bir yedek oluşturun.</translation>
+<translation id="77997252117517973">Yakında</translation>
+<translation id="1930692852800776096">Sözlük ekle</translation>
+<translation id="8793060353848771694">Sol kulaklık görseli</translation>
+<translation id="6257440204887306255">Şarj kutusu görseli</translation>
+<translation id="2754700616124958693">Sağ kulaklık görseli</translation>
+<translation id="1068676292264983586">Varsayılan cihaz görseli</translation>
+<translation id="6364075396486660405">Pil ömrünü optimize etmek için tüm bölümlerdeki medya dosyalarının otomatik taramasını devre dışı bırakın. <ph name="BEGIN_LINK_LEARN_MORE" />Daha fazla bilgi<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Güvenlik seçenekleri</translation>
+<translation id="5618366106086725045">Daha fazla geliştirici özelliğiyle bu <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> kurulumu için "Geliştirici Modu"nu etkinleştirin. <ph name="BEGIN_LINK_LEARN_MORE" />Daha fazla bilgi<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Zaten "Geliştirici Modu"ndasınız</translation>
+<translation id="6074549317340202195">"Geliştirici Modu"nu etkinleştir</translation>
+<translation id="418781258674176053">Uyarı! "Geliştirici Modu"nu etkinleştirmek geri alınamaz bir işlemdir. "Geliştirici Modu"nu devre dışı bırakmak isterseniz JemaOS'u yeniden kurmanız gerekir; bu işlem tüm verileri siler. Lütfen verilerinizi yedekleyin ve riski göze alarak devam edin.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Platform <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Şu anda çevrimdışı</translation>
+<translation id="2590678769628709242">JemaOS aboneliğinizi çevrimiçi kontrol edin</translation>
+<translation id="4701836089682883918">JemaOS abonelik bilgileri</translation>
+<translation id="5891566673089952188">Cihaz kimliğiniz alınırken bir hata oluştu</translation>
+<translation id="4685086787606104322">Abonelik bitişi</translation>
+<translation id="3354919960795782984">Cihaz kimliği</translation>
+<translation id="5758632069869992306">Aboneliğinizi çevrimiçi kontrol edin</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Platform <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Deneme aboneliği</translation>
+<translation id="4362781408813685579">Etkin abonelik</translation>
+<translation id="1141274201089997510">Süresi dolmuş abonelik</translation>
+<translation id="2553683254139782404">Ticari olmayan sürüm</translation>
+<translation id="8466048683756385518">Kurumsal lisanslı sürüm (deneme)</translation>
+<translation id="2853871047705932424">Kurumsal lisanslı sürüm</translation>
+<translation id="5239675900317881945">Kurumsal lisanslı sürüm (süresi dolmuş)</translation>
+<translation id="189101945990408398">Eski Intel</translation>
+<translation id="6816405236809604904">Modern Intel</translation>
+<translation id="6169452478137972655">AMD Grafikleri</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="2747689477259164256">JemaOS AI</translation>
+<translation id="1270291881045478104">JemaOS AI'ı etkinleştir</translation>
+<translation id="2013780539677437932">JemaOS AI ile ilgili tüm özellikleri etkinleştirin veya devre dışı bırakın</translation>
+<translation id="3398637633218757480">JemaOS AI Hızlı Çağrı'yı etkinleştir</translation>
+<translation id="8986197796475507452">Ctrl + C + C tuşlarına basarak vurgulanan içerik için JemaOS AI seçeneklerini hızlıca açın</translation>
+<translation id="6407628130593274137">JemaOS AI için diğer ayarlar ve seçenekler</translation>
+<translation id="4005574560653331142">Bu yerel hesabın PIN'ini veya oturum açma şifresini değiştirmek için <ph name="BEGIN_LINK" />Gizlilik ve güvenlik<ph name="END_LINK" /> ayarlarına gidin.</translation>
+
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425"><ph name="LINK_START" />JemaOS yerel hesabıyla oturum açabilirsiniz<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391"><ph name="EMAIL_ADDRESS" /> e-postası zaten mevcut. Lütfen başka bir e-postayla tekrar deneyin.</translation>
+<translation id="4519800823932975782">JemaOS Yardım Merkezi</translation>
+<translation id="4737474693231655139">Yaygın JemaOS sorularının yanıtlarını ve yardım makalelerini bulun</translation>
+</translationbundle>

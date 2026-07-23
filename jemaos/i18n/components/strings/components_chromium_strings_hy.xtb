@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="hy">
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">JemaOS-ը դեռ չի ավարտել իր նախնական կարգավորումը։</translation>
+<translation id="4257170804800372451">JemaOS-ը և Thot-ը հնարավոր են դարձել <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> բաց կոդով նախագծի և այլ <ph name="BEGIN_LINK_OSS" />բաց կոդով ծրագրային ապահովման<ph name="END_LINK_OSS" /> շնորհիվ։</translation>
+</translationbundle>

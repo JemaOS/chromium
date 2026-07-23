@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="hu">
+	<translation id="7386402409475121504">Hozzon létre helyi JemaOS-fiókot</translation>
+	<translation id="3760308806144055927">Jelentkezzen be helyi JemaOS-fiókjába</translation>
+	<translation id="3325117507482096812">Kérjük, adjon meg egy jelszót</translation>
+	<translation id="1838206877831947154">A jelszavaid nem egyeznek</translation>
+	<translation id="2158276988029582286">Hozzon létre egy új helyi fiókot</translation>
+	<translation id="8592849747346274067">Jelentkezzen be egy meglévő fiókba</translation>
+	<translation id="482190417986201746">A megadott felhasználónév vagy jelszó helytelen</translation>
+	<translation id="6603987686259425085"><ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>bejelentkezhet JemaOS helyi fiókjával<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">A(z) <ph name="EMAIL_ADDRESS">$1</ph> e-mail már létezik. Kérjük, próbálja újra egy másik e-mail címmel.</translation>
+	<translation id="7215016743510876720">Helyi fiók használata</translation>
+	<translation id="6657635042185516718">Továbbra is használja az online fiókot</translation>
+	<translation id="6867476688065565618">Váltson helyi fiókra?</translation>
+	<translation id="4840454774882557974">Ha úgy dönt, hogy helyi fiókot használ, a hasznos funkciók közé tartozik az adatok és beállítások több eszköz között történő szinkronizálása, valamint a webalkalmazások automatikus bejelentkezése a JemaOS-fiókkal nem fog működni.</translation>
+	<translation id="8951507920859729424">Javasoljuk, hogy használjon online fiókot a JemaOS maximális kihasználásához.</translation>
+	<translation id="479773200536372215">Nem tud majd hozzáadni Google-fiókokat, mert hiányoznak a Google API-kulcsok. A részletekért lásd: <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph>.</translation>
+	<translation id="1198491307547164157">Nem tud majd hozzáadni JemaOS-fiókokat, mert hiányoznak a JemaOS API-kulcsok. A részletekért lásd: <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph>.</translation>
+	<translation id="5042404702659901995">Adatvédelmi nyilatkozat</translation>
+	<translation id="4907736162587268100">Az adatvédelmi nyilatkozat tartalma</translation>
+	<translation id="5988344732274877691">Iratkozzon fel a (nagyon ritkán, ígért) JemaOS hírlevélre</translation>
+	<translation id="1706203008474708805">Csatlakozzon a JemaOS felhasználói élményt javító tervéhez</translation>
+	<translation id="1147139514756087229">Jelentkezzen be helyi fiókkal</translation>
+	<translation id="2054784944085654098">Biztonsági mentés fájl létrehozása most. Ez eltarthat egy ideig; kérlek várj…</translation>
+	<translation id="3554401467586751874">A biztonsági másolatfájl sikeresen létrejött</translation>
+	<translation id="2349211327705667074">Biztonsági másolat fájl megtekintése</translation>
+	<translation id="3049367131589710124">Hibanapló megtekintése</translation>
+	<translation id="1079017345574916945">Távoli asztal</translation>
+	<translation id="3064478898280877715">App Store</translation>
+	<translation id="5890206344045530832">Telepítő</translation>
+	<translation id="2173278076276376488">Ez a segédprogram segít a <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> értékű telepítésében az eszköz belső tárhelyére.</translation>
+	<translation id="5323182426977498659">Figyelmeztetés! Ez az eljárás destruktív, és nem vonható vissza. Felhívjuk figyelmét, hogy nem vállalunk felelősséget az esetleges adatvesztésért, és nem nyújtunk sürgős technikai támogatást, saját felelősségére járjon el.</translation>
+	<translation id="8517836015601969896">Teljes lemez telepítés</translation>
+	<translation id="7300045760790370189">Telepítse a <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> szoftvert egy teljes merevlemez lefoglalásához, a cél merevlemez összes adata törlődik.</translation>
+	<translation id="8762511733918256595">Multi-boot telepítés</translation>
+	<translation id="248900698427753678">Telepítse a <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> alkalmazást a merevlemez egy meglévő partíciójára, ahol a <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> más operációs rendszerekkel párhuzamosan létezhet. A célpartíción lévő összes adat törlődik.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> lesz telepítve a kiválasztott merevlemezre; a céllemezen lévő összes adat törlődik.</translation>
+	<translation id="4039091757234555415">Lemez</translation>
+	<translation id="7783580523889684697">Nincs elérhető lemez</translation>
+	<translation id="8217653566575018388">A telepítés befejeződött</translation>
+	<translation id="8846746259444262774">A telepítés nem sikerült</translation>
+	<translation id="7263815009235541549">A telepítés sikeresen befejeződött. Először kapcsolja ki az eszközt, majd távolítsa el a telepítési adathordozókat, majd kapcsolja be újra a <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> indításához.</translation>
+	<translation id="3380151284134965398">Hoppá, valami hiba történt, és a telepítés nem fejeződött be. Kérjük, próbálja újra a folyamatot. Ha ugyanaz a hiba továbbra is fennáll, forduljon a JemaOS ügyfélszolgálatához a fenti naplóval.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> lesz telepítve a merevlemez kiválasztott partíciójára. A jelenlegi többszörös rendszerindítási séma szerint ez csak akkor történhet meg, ha az eszköze támogatja az UEFI-t, és a merevlemezek GPT-vel vannak formázva.</translation>
+	<translation id="7831363758161884243">A célpartíció törlésre kerül; meg kell adni az aktív EFI-partíciót is (általában automatikusan), mivel a telepítőnek módosítania kell a rendszerindítási konfigurációkat.</translation>
+	<translation id="5670799238446305550">Válassza ki a <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> célpartíciót</translation>
+	<translation id="3695537760133394753">Partíció</translation>
+	<translation id="5610519566593708119">Válassza az EFI partíciót</translation>
+	<translation id="3367650349940010965">A kiválasztott lemezhez nem érhetők el partíciók</translation>
+	<translation id="7453223384507098390">A kiválasztott lemezhez nem érhetők el EFI-partíciók</translation>
+	<translation id="1854532683465500847">A kiválasztott partíció mérete kisebb, mint 20 GB, a telepítés sikertelen lehet</translation>
+	<translation id="4144613075340468247">A kiválasztott partíció fel lett csatolva a <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> többszörös rendszerindításra, az újbóli telepítés sikertelen lehet</translation>
+	<translation id="5793361052649920836">A telepítés után hogyan szeretné elindítani a(z) <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> rendszert?</translation>
+	<translation id="4273235330352963866">Az rEFInd telepítése és konfigurálása nekem (ajánlott)</translation>
+	<translation id="1858708492548921044">Az rEFInd egy rendszerindítás-kezelő program, amely szép grafikus felületet kínál az operációs rendszer indítási opcióihoz, amikor a számítógép elindul, így kiválaszthatja a kívánt operációs rendszert, amellyel elindul. Az rEFInd-vel kapcsolatos további információkért látogasson el a honlapjára.</translation>
+	<translation id="3861924051442564602">Adjon hozzá egy UEFI rendszerindító menü opciót számomra</translation>
+	<translation id="8622370666798589804">Amikor a számítógép elindul, be tud lépni az UEFI rendszerindítási beállítások menüjébe (valószínűleg egy gyorsbillentyű megnyomásával), ez az opció hozzáadja a <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> elemet a menühöz. (Csak a BIOS és az UEFI firmware egyes modelljeit támogatja).</translation>
+	<translation id="1569398690544416170">Itt ne csinálj semmit, én magam fogom beállítani</translation>
+	<translation id="3554866444001249532">Ez a telepítőszkript csak a <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> EFI-partícióra való indításához szükséges .efi fájlokat helyezi el, Önnek kell konfigurálnia, hogyan indítsa el egyedül.</translation>
+	<translation id="7492832751164189534">Kényszer kilépés</translation>
+	<translation id="5159534860632584026">A telepítési folyamat leállt</translation>
+	<translation id="8686749782014838344">Nem sikerült lekérni a lemezadatokat</translation>
+	<translation id="5688543378771259173">A telepítés leáll...</translation>
+	<translation id="5350452134936384991">Telepítés USB-n</translation>
+	<translation id="8008470485414925603">Telepítse a <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> elemet egy USB-lemezre; a cél USB-lemezen lévő összes adat törlődik.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> lesz telepítve a kiválasztott USB-lemezre; a céllemezen lévő összes adat törlődik.</translation>
+	<translation id="5725593226060700263">Nincs elérhető USB-lemez</translation>
+	<translation id="4357040841587078287">Azt észleltük, hogy a JemaOS ezen példányát egy letöltött képfájlból futtatja. A JemaOS által kínált legátfogóbb támogatási szolgáltatások (beleértve az Over-The-Air frissítéseket) kihasználásához nyomatékosan javasoljuk, hogy indítsa el a „Telepítő” funkciót a JemaOS teljes lemezes telepítéséhez egy külön tárolóeszközre.</translation>
+	<translation id="1246398339704431302"><ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>továbbra is használhatja a JemaOS ezen példányát<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, a telepítési folyamat a rendszer későbbi szakaszában is végrehajtható, azonban a telepítés után az összes adatot újra töröljük erről az oldalról.</translation>
+	<translation id="3654532222088291133">Ahelyett, hogy beírná JemaOS-fiókja jelszavát a bejelentkezéshez, létrehozhat egy <ph name="DEVICE_TYPE">$1$<ex>Chromebook</ex></ph> jelszót ehhez az eszközhöz</translation>
+	<translation id="8377684629839541977">Használja a JemaOS fiók jelszavát</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">A(z) <ph name="DEVICE_OS" /> automatikus naprakészen tartása</translation>
+<translation id="2347352406101856238">A(z) <ph name="DEVICE_OS" /> frissítés engedélyezve</translation>
+<translation id="185834232609012804">A(z) <ph name="DEVICE_OS" /> frissítés letiltva</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Platform <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Távoli asztal</translation>
+<translation id="6898090158927982244">A Linux rendszere naprakész</translation>
+<translation id="4886703929102211360">Kritikus frissítés érhető el a Linux (béta) összetevőhöz. Erősen ajánlott a frissítést mielőbb telepíteni, ellenkező esetben a Linux (béta) működése leállhat.</translation>
+<translation id="6694016202036959050"><ph name="DEVICE_OS" /> beállításai</translation>
+<translation id="8362858344151826493">JemaOS-fiók, biztonsági mentés, egyebek</translation>
+<translation id="9150429437595727962">Wi-Fi-beállítások</translation>
+<translation id="4938972461544498524">Érintőpad-beállítások</translation>
+<translation id="1210024513248363065">Távoli szolgáltatások</translation>
+<translation id="2878862288885588535">Távoli diagnosztikai szolgáltatás</translation>
+<translation id="7409197984340676806">A távoli diagnosztikai szolgáltatás lehetővé teszi a hivatalos JemaOS-támogatási munkatársak számára a rendszerproblémák azonosítását. Jelenleg a távoli diagnosztikai szolgáltatást csak a hivatalos JemaOS-támogatási munkatársak indíthatják el.</translation>
+<translation id="1791028023086176332">Ossza meg ezt a számot a hivatalos JemaOS-támogatási munkatársakkal</translation>
+<translation id="6279304275399437025">A távoli diagnosztikai szolgáltatás indítása...</translation>
+<translation id="1501882165699826662">Állítsa le a távoli diagnosztikai szolgáltatást, és próbálja újra</translation>
+<translation id="3100283258447375201">További információ</translation>
+<translation id="4070039109671307724">Egyebek</translation>
+<translation id="7326893024940073254">„Újraindítás” gomb</translation>
+<translation id="3002423764319968103">„Újraindítás” gomb megjelenítése a rendszermenüben</translation>
+<translation id="6243454903512423518">„Képernyő elforgatása” gomb</translation>
+<translation id="6491049336868978729">Jelenleg nem tabletes módban van, a „Képernyő elforgatása” gomb rejtve</translation>
+<translation id="5496012402277579695">„Képernyő elforgatása” gomb megjelenítése a rendszermenüben</translation>
+<translation id="5882838977344999606">Tablet-/laptopmód-váltó</translation>
+<translation id="472164133625585606">Tablet-/laptopmód-váltó megjelenítése a rendszermenüben</translation>
+<translation id="1851103550468466960">Widevine engedélyezése</translation>
+<translation id="4058176713282795846">Engedélyezze a Widevine-t a védett prémium tartalmak streameléséhez. <ph name="BEGIN_LINK_LEARN_MORE" />További információ<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">Válassza ki a „libwidevine.so” fájlt</translation>
+<translation id="4838463656205005584">A Widevine engedélyezése nem sikerült...</translation>
+<translation id="2164041826798266548">A Widevine CDM-modul telepítése nem sikerült. Ellenőrizze a kapcsolatot, és próbálja újra.</translation>
+<translation id="4106982328079440606">JemaOS-fiók beállításai</translation>
+<translation id="6468776556018764845">Kísérleti funkciók</translation>
+<translation id="3487615413425326553">A Trusted Platform Module (TPM) ellenőrzéseinek megkerülése</translation>
+<translation id="4817176087932811573">Egyes funkciók meghibásodhatnak az eszközben lévő inkompatibilis TPM-chip miatt; megkerülheti a TPM-ellenőrzéseket kerülő megoldásként.</translation>
+<translation id="3356003366173774486">Automatikus bejelentkezés</translation>
+<translation id="6218459410891191693">A jelenlegi fiók automatikus bejelentkezésének engedélyezése az asztalra az eszköz újraindításakor</translation>
+<translation id="6620839363422062843">Nem engedélyezhető ennél a fióknál; az automatikus bejelentkezés már aktív más fiókoknál ezen az eszközön</translation>
+<translation id="6734500226490446035">Nem engedélyezhető ennél a fióknál; ismeretlen hiba történt a fiók fájlrendszereinek inicializálása közben. Próbálja újraindítani az eszközt, vagy hozzon létre új fiókot</translation>
+<translation id="5464880042146818691">Nem engedélyezhető ennél a fióknál; az automatikus bejelentkezés csak a „Helyi fiók” típusnál érhető el.</translation>
+<translation id="3335654854106476749">Az automatikus bejelentkezés engedélyezése előtt adjon hozzá bejelentkezési jelszót az <ph name="BEGIN_LINK" />Adatvédelem és biztonság<ph name="END_LINK" /> beállításaiban.</translation>
+<translation id="5586831602198585601">A JemaOS újabb verziója most frissíthető. Azonban a JemaOS for You-előfizetése lejárt; a JemaOS frissítéséhez aktív előfizetésre van szükség.</translation>
+<translation id="3869860597719956574">A JemaOS új főverziója most frissíthető. A frissítés folytatásához egyszeri díjat kell fizetnie.</translation>
+<translation id="6523879681771260760">Adja meg a biztonsági mentési fájl tárolási útvonalát</translation>
+<translation id="2036152819788683293">Biztonsági mentési fájl létrehozása ehhez a fiókhoz (béta). <ph name="BEGIN_LINK_LEARN_MORE" />További információ<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Biztonsági mentés</translation>
+<translation id="4267347174163690295">Biztonsági mentési fájl létrehozása ehhez a fiókhoz (béta).</translation>
+<translation id="8112950994208888917">Ez a művelet teljes lemezről készít biztonsági mentést ehhez a fiókhoz, így könnyedén visszaállíthatja a JemaOS-t a biztonsági mentés létrehozásakor érvényes állapotra, beleértve a beállításokat, a telepített böngészőbővítményeket és az alrendszer-alkalmazásokat. Az alkalmazásaitól és a saját mappa tartalmától függően a biztonsági mentési fájl nagy lehet; ajánlott külső tárolóeszközön tárolni. Ha van hordozható USB-meghajtója, csatlakoztassa most. <ph name="BEGIN_LINK_LEARN_MORE" />További információ<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Adja meg a fiók bejelentkezési jelszavát</translation>
+<translation id="8663988871299316062">Jegyezze meg ezt a jelszót, mert a biztonsági mentési fájl visszaállításakor szükség lesz rá</translation>
+<translation id="6408904153044317846">Válassza ki a visszaállítandó biztonsági mentési fájlt</translation>
+<translation id="8062988348127771021">JemaOS-adatai visszaállítása biztonsági mentési fájlból</translation>
+<translation id="7309192418866543730">Adja meg a biztonsági mentés jelszavát</translation>
+<translation id="3642408376366598984">Adja meg a biztonsági mentési fájl titkosításához használt jelszót</translation>
+<translation id="7783974937157985523">Biztonsági mentés jelszava</translation>
+<translation id="6583780301401541007">A visszaállítás sikeres</translation>
+<translation id="3514011352559420398">A visszaállítás nem sikerült</translation>
+<translation id="7535980903266533458">Biztonsági mentés mentése az eszközre vagy külső tárhelyre</translation>
+<translation id="604001903249547235">Felhőalapú biztonsági mentés</translation>
+<translation id="8885702701336541611">A biztonsági mentés feltöltése a JemaOS felhőtárhelyére</translation>
+<translation id="3939744430096549862">Biztonsági mentés a felhőbe</translation>
+<translation id="619129431573254316">Visszaállítás helyi biztonsági mentési fájlból</translation>
+<translation id="1859592711955106569">Felhőalapú visszaállítás</translation>
+<translation id="38222223336741457">Letöltés és visszaállítás a JemaOS felhőjéből</translation>
+<translation id="1241089811244416179">Visszaállítás a felhőből</translation>
+<translation id="652479689372703360">Biztonsági mentés folyamatban</translation>
+<translation id="3655220146274872918">A biztonsági mentés befejeződött</translation>
+<translation id="4243579853635792694">A biztonsági mentés sikeresen létrejött</translation>
+<translation id="6337433855796857931">A biztonsági mentés nem sikerült</translation>
+<translation id="4854179463174744546">Hiba történt a biztonsági mentés során</translation>
+<translation id="2410668771600309999">Connect API-felhasználói adatok</translation>
+<translation id="2223892939866251845">Felhasználói azonosító</translation>
+<translation id="3850846286480935456">Biztonsági mentés tárhelyének elemzése</translation>
+<translation id="6244494465581273970">Felhasználói azonosító szükséges</translation>
+<translation id="9204006549413740506">Utolsó frissítés</translation>
+<translation id="476642412165431515">Hardvereszközök</translation>
+<translation id="3386337985825120901">Nincsenek biztonsági mentési adatok</translation>
+<translation id="8490990067870590760">Biztonsági mentési fájlok betöltése...</translation>
+<translation id="2955409026764742995">Válassza ki a visszaállítandó biztonsági mentési fájlt:</translation>
+<translation id="7414629348005657242">-- Válasszon biztonsági mentési fájlt --</translation>
+<translation id="918246516374174381">Nem találhatók biztonsági mentési fájlok. Először hozzon létre egy biztonsági mentést.</translation>
+<translation id="77997252117517973">Hamarosan</translation>
+<translation id="1930692852800776096">Szótár hozzáadása</translation>
+<translation id="8793060353848771694">Bal oldali fülhallgató képe</translation>
+<translation id="6257440204887306255">Töltőtok képe</translation>
+<translation id="2754700616124958693">Jobb oldali fülhallgató képe</translation>
+<translation id="1068676292264983586">Alapértelmezett eszközkép</translation>
+<translation id="6364075396486660405">A médiafájlok automatikus vizsgálatának letiltása az összes partíción az akkumulátor-üzemidő optimalizálása érdekében. <ph name="BEGIN_LINK_LEARN_MORE" />További információ<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Biztonsági beállítások</translation>
+<translation id="5618366106086725045">A „Fejlesztői mód” engedélyezése ehhez a(z) <ph name="IDS_SHORT_PRODUCT_OS_NAME" />-telepítéshez további fejlesztői funkciókkal. <ph name="BEGIN_LINK_LEARN_MORE" />További információ<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Már „Fejlesztői módban” van</translation>
+<translation id="6074549317340202195">„Fejlesztői mód” engedélyezése</translation>
+<translation id="418781258674176053">Figyelmeztetés! A „Fejlesztői mód” engedélyezése visszafordíthatatlan művelet. Ha le szeretné tiltani a „Fejlesztői módot”, újra kell telepítenie a JemaOS-t, ami minden adatot töröl. Készítsen biztonsági mentést az adatairól, és csak saját felelősségére folytassa.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Platform <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Jelenleg offline</translation>
+<translation id="2590678769628709242">JemaOS-előfizetésének ellenőrzése online</translation>
+<translation id="4701836089682883918">JemaOS-előfizetési adatok</translation>
+<translation id="5891566673089952188">Hiba történt az eszközazonosító lekérésekor</translation>
+<translation id="4685086787606104322">Előfizetés vége</translation>
+<translation id="3354919960795782984">Eszközazonosító</translation>
+<translation id="5758632069869992306">Előfizetésének ellenőrzése online</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Platform <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Próbaidőszakos előfizetés</translation>
+<translation id="4362781408813685579">Aktív előfizetés</translation>
+<translation id="1141274201089997510">Lejárt előfizetés</translation>
+<translation id="2553683254139782404">Nem kereskedelmi kiadás</translation>
+<translation id="8466048683756385518">Vállalati licencelt verzió (próbaidőszakos)</translation>
+<translation id="2853871047705932424">Vállalati licencelt verzió</translation>
+<translation id="5239675900317881945">Vállalati licencelt verzió (lejárt)</translation>
+<translation id="189101945990408398">Régebbi Intel</translation>
+<translation id="6816405236809604904">Modern Intel</translation>
+<translation id="6169452478137972655">AMD grafika</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="2747689477259164256">JemaOS MI</translation>
+<translation id="1270291881045478104">JemaOS MI engedélyezése</translation>
+<translation id="2013780539677437932">Az összes JemaOS MI-vel kapcsolatos funkció engedélyezése vagy letiltása</translation>
+<translation id="3398637633218757480">JemaOS MI gyorshívás engedélyezése</translation>
+<translation id="8986197796475507452">A JemaOS MI beállításainak gyors megjelenítése a kijelölt tartalomhoz a Ctrl + C + C billentyűk megnyomásával</translation>
+<translation id="6407628130593274137">Egyéb beállítások és lehetőségek a JemaOS MI-hez</translation>
+<translation id="4005574560653331142">A helyi fiók PIN-kódjának vagy bejelentkezési jelszavának módosításához lépjen az <ph name="BEGIN_LINK" />Adatvédelem és biztonság<ph name="END_LINK" /> beállításaiba.</translation>
+
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425"><ph name="LINK_START" />Bejelentkezhet JemaOS helyi fiókkal<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">A(z) <ph name="EMAIL_ADDRESS" /> e-mail-cím már létezik. Próbálja újra egy másik e-mail-címmel.</translation>
+<translation id="4519800823932975782">JemaOS Súgóközpont</translation>
+<translation id="4737474693231655139">Keressen súgócikkeket és válaszokat a JemaOS-szal kapcsolatos gyakori kérdésekre</translation>
+</translationbundle>

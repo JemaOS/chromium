@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="vi">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Giới thiệu về Thot</translation>
+<translation id="5639860668557220477">Nhận trợ giúp với trình duyệt Thot</translation>
+<translation id="1692689520561928457">Giới thiệu về JemaOS</translation>
+<translation id="8692765844418174375">Phiên bản JemaOS</translation>
+<translation id="2943260250558374955">Nhận trợ giúp với JemaOS</translation>
+<translation id="713321354492170993">Trình duyệt giải phóng bộ nhớ từ các thẻ không hoạt động. Điều này cung cấp thêm tài nguyên điện toán cho các thẻ đang hoạt động và các ứng dụng khác, đồng thời giữ cho trình duyệt luôn nhanh. Các thẻ không hoạt động sẽ tự động hoạt động trở lại khi bạn quay lại chúng.</translation>
+<translation id="1774190491044887444">Trình duyệt tiết kiệm pin bằng cách hạn chế hoạt động nền và hiệu ứng hình ảnh, chẳng hạn như cuộn mượt và tốc độ khung hình video.</translation>
+<translation id="180121268008059459">Trình duyệt tải trước các trang, giúp duyệt web và tìm kiếm nhanh hơn.</translation>
+<translation id="7127093527178692287">Khôi phục bản sao lưu (beta)</translation>
+<translation id="4439042171549201806">Để khôi phục JemaOS từ tệp sao lưu, vui lòng lắp ổ đĩa di động chứa tệp sao lưu vào thiết bị JemaOS của bạn ngay bây giờ và chỉ định tệp sao lưu bạn muốn khôi phục. Xin lưu ý rằng tệp sao lưu của bạn cần nằm trong thư mục gốc của ổ đĩa di động để trình hướng dẫn này phát hiện được.</translation>
+<translation id="2955409026764742995">Chọn tệp sao lưu cần khôi phục:</translation>
+<translation id="7040434808685140085">Rất tiếc, không thể nhận dạng tệp sao lưu đã chọn; vui lòng chọn tệp mới.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />Để khôi phục JemaOS từ tệp sao lưu đã chọn, điều cần thiết là phải có thông tin chính xác về bản sao lưu khi được tạo. Nếu không, quá trình khôi phục sẽ không thành công.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"Tên tài khoản" là thông tin đăng nhập chính của tài khoản mà tệp sao lưu của bạn được tạo. Thông thường đó là địa chỉ email bạn đã dùng để đăng ký tài khoản JemaOS/Google. Nếu là tài khoản cục bộ, đó sẽ là tên người dùng kèm theo "@jemaos.local".<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Mật khẩu là cụm mật khẩu bạn được yêu cầu nhập khi tạo bản sao lưu. Thông thường đó là mật khẩu bạn đã dùng để đăng nhập vào màn hình nền JemaOS cho tài khoản này.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Tên tài khoản</translation>
+<translation id="5490570429039308155">Rất tiếc, vui lòng nhập đúng tên tài khoản</translation>
+<translation id="6657585470893396449">Mật khẩu</translation>
+<translation id="8200189938001188563">Rất tiếc, mật khẩu không được để trống</translation>
+<translation id="3157931365184549694">Khôi phục</translation>
+<translation id="8556278756526311953">Đang khôi phục bản sao lưu</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Chúng tôi đang khôi phục tệp sao lưu của bạn; việc này có thể mất một chút thời gian, vì vậy vui lòng kiên nhẫn chờ.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Xin lưu ý rằng giao diện người dùng sẽ tự động khởi động lại khi quá trình khôi phục hoàn tất thành công.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Khôi phục bản sao lưu không thành công</translation>
+<translation id="5003531399442003695">Để biết thêm chi tiết, vui lòng nhấp vào liên kết bên dưới để xem nhật ký. Nếu lỗi này vẫn tiếp diễn, vui lòng liên hệ với các kênh hỗ trợ kỹ thuật của JemaOS và cung cấp nhật ký lỗi.</translation>
+<translation id="6363786367719063276">Xem nhật ký</translation>
+<translation id="8730621377337864115">Xong</translation>
+<translation id="975238173507911396">Khôi phục dữ liệu thành công</translation>
+<translation id="6276879052695618521">Nhật ký khôi phục bản sao lưu</translation>
+<translation id="4901207598072637766">JemaOS, do <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /> cung cấp</translation>
+<translation id="7894910504474624324">JemaOS và các dịch vụ của nó tuân thủ GDPR và các quy định của luật bảo vệ dữ liệu châu Âu. Để biết thêm thông tin, vui lòng xem <ph name="BEGIN_LINK_PRIVACY" />Chính sách quyền riêng tư<ph name="END_LINK_PRIVACY" /> và <ph name="BEGIN_LINK_TOS" />Điều khoản dịch vụ<ph name="END_LINK_TOS" /> của chúng tôi.</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, đã đăng ký bản quyền.</translation>
+<translation id="370679569376308836">JemaOS là một sản phẩm thương mại dựa trên thiết bị Jema và SaaS của thiết bị này.</translation>
+<translation id="2773644194450163486">JemaOS được hiện thực hóa nhờ dự án nguồn mở <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" />.</translation>
+<translation id="2330680727776977160">Chromium cũng được hiện thực hóa nhờ các <ph name="BEGIN_LINK_1" />phần mềm nguồn mở<ph name="END_LINK_1" /> khác và <ph name="BEGIN_LINK_2" />phần mềm nguồn mở bổ sung<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Được thiết kế và sản xuất bởi Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, đã đăng ký bản quyền.</translation>
+<translation id="6168072053306020326">Jema Technology là tên thương mại của Jema Technology LTD và Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD là một công ty đăng ký tại Anh và xứ Wales với số công ty 12273803.</translation>
+<translation id="1251589813188467292">Thông tin quan trọng về bảo hành và dịch vụ thiết bị</translation>
+<translation id="4851115775198886021">SN thiết bị:</translation>
+</translationbundle>

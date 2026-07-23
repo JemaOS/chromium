@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="mk">
+	<translation id="7386402409475121504">Направете ја вашата локална сметка на JemaOS</translation>
+	<translation id="3760308806144055927">Пријавете се во вашата локална сметка на JemaOS</translation>
+	<translation id="3325117507482096812">Ве молиме внесете лозинка</translation>
+	<translation id="1838206877831947154">Вашите лозинки не се совпаѓаат</translation>
+	<translation id="2158276988029582286">Креирајте нова локална сметка</translation>
+	<translation id="8592849747346274067">Најавете се на постоечка сметка</translation>
+	<translation id="482190417986201746">Корисничкото име или лозинката што ги внесовте се неточни</translation>
+	<translation id="6603987686259425085">Можете да <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>да се најавите со локална сметка на JemaOS<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">Е-пошта <ph name="EMAIL_ADDRESS">$1</ph> веќе постои. Обидете се повторно со друга е-пошта.</translation>
+	<translation id="7215016743510876720">Користете локална сметка</translation>
+	<translation id="6657635042185516718">Продолжете да користите онлајн сметка</translation>
+	<translation id="6867476688065565618">Да се префрли на локална сметка?</translation>
+	<translation id="4840454774882557974">Ако се одлучите да користите локална сметка, корисни функции вклучуваат синхронизирање на вашите податоци и поставки на повеќе уреди и автоматското најавување на веб-апликации со помош на вашата сметка на JemaOS нема да работи.</translation>
+	<translation id="8951507920859729424">Препорачуваме да користите онлајн сметка за максимално да го користите JemaOS.</translation>
+	<translation id="479773200536372215">Нема да можете да додавате сметки на Google бидејќи недостасуваат клучеви на Google API. Видете <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> за детали.</translation>
+	<translation id="1198491307547164157">Нема да можете да додавате сметки на JemaOS бидејќи недостасуваат клучеви на JemaOS API. Видете <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> за детали.</translation>
+	<translation id="5042404702659901995">Изјава за приватност</translation>
+	<translation id="4907736162587268100">Содржина на изјавата за приватност</translation>
+	<translation id="5988344732274877691">Пријавете се за (многу ретко, ветено) билтен за JemaOS</translation>
+	<translation id="1706203008474708805">Придружете се на планот за подобрување на корисничкото искуство на JemaOS</translation>
+	<translation id="1147139514756087229">Пријавете се со локална сметка</translation>
+	<translation id="2054784944085654098">Сега се создава резервна датотека. Ова може да потрае некое време; ве молиме почекајте…</translation>
+	<translation id="3554401467586751874">Резервната датотека беше успешно креирана</translation>
+	<translation id="2349211327705667074">Прикажи резервна датотека</translation>
+	<translation id="6337433855796857931">Резервната копија не успеа</translation>
+	<translation id="3049367131589710124">Погледнете го дневникот за грешки</translation>
+	<translation id="1079017345574916945">Далечинска работна површина</translation>
+	<translation id="3064478898280877715">Продавница за апликации</translation>
+	<translation id="2747689477259164256">JemaOS AI</translation>
+	<translation id="5890206344045530832">Инсталатор</translation>
+	<translation id="2173278076276376488">Оваа алатка ќе ви помогне да инсталирате <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> на внатрешната меморија на овој уред.</translation>
+	<translation id="5323182426977498659">Предупредување! Оваа постапка е деструктивна и не може да се врати. Ве молиме имајте предвид дека ние нема да носиме никаква одговорност за вашата потенцијална загуба на податоци, ниту да обезбедиме итна техничка поддршка, постапете на ваш сопствен ризик.</translation>
+	<translation id="8517836015601969896">Целосна инсталација на дискот</translation>
+	<translation id="7300045760790370189">Инсталирајте <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> за да зафатите цел хард диск, сите податоци од целниот хард диск ќе бидат избришани.</translation>
+	<translation id="8762511733918256595">Инсталација со повеќе подигање</translation>
+	<translation id="248900698427753678">Инсталирајте <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> на постоечка партиција на хард диск, каде што <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> може да постои паралелно со другиот ОС. Сите податоци на целната партиција ќе бидат избришани.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ќе се инсталира на избраниот хард диск; сите податоци на целниот диск ќе бидат избришани.</translation>
+	<translation id="4039091757234555415">Диск</translation>
+	<translation id="7783580523889684697">Нема достапен диск</translation>
+	<translation id="8217653566575018388">Инсталирањето е завршено</translation>
+	<translation id="8846746259444262774">Инсталирањето не успеа</translation>
+	<translation id="7263815009235541549">Инсталирањето е успешно завршено. Прво исклучете го уредот, потоа отстранете го медиумот за инсталација и повторно вклучете го за да се подигне <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>.</translation>
+	<translation id="3380151284134965398">Упс, нешто тргна наопаку и инсталацијата не заврши. Ве молиме обидете се повторно со процесот. Ако истата грешка опстојува, ве молиме контактирајте ја поддршката за JemaOS со горенаведениот дневник.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ќе се инсталира на избраната партиција на вашиот хард диск. Според тековната шема за повеќекратно подигање, ова може да продолжи само ако вашиот уред поддржува UEFI и вашите хард дискови се форматирани со GPT.</translation>
+	<translation id="7831363758161884243">Целната партиција ќе биде избришана; исто така треба да ја наведете вашата активна EFI партиција (обично се прави автоматски) бидејќи Инсталаторот треба да ги измени конфигурациите за подигање на системот.</translation>
+	<translation id="5670799238446305550">Изберете целна партиција <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph></translation>
+	<translation id="3695537760133394753">Поделба</translation>
+	<translation id="5610519566593708119">Изберете EFI партиција</translation>
+	<translation id="3367650349940010965">Нема достапни партиции за избраниот диск</translation>
+	<translation id="7453223384507098390">Нема достапни EFI партиции за избраниот диск</translation>
+	<translation id="1854532683465500847">Големината на избраната партиција е помала од 20 GB, инсталацијата може да не успее</translation>
+	<translation id="4144613075340468247">Избраната партиција е монтирана на повеќекратно подигање на <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>, инсталирањето на него повторно може да не успее</translation>
+	<translation id="5793361052649920836">По инсталацијата, како би сакале да го подигнете <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>?</translation>
+	<translation id="4273235330352963866">Инсталирајте и конфигурирајте го rEFInd за мене (препорачано)</translation>
+	<translation id="1858708492548921044">rEFInd е програма за управување со подигање која нуди убав графички интерфејс за опциите за подигање на ОС кога вашиот компјутер ќе се стартува, ќе можете да го изберете саканиот оперативен систем за подигање со него. За повеќе информации во врска со REFInd, ве молиме погледнете ја неговата почетна страница.</translation>
+	<translation id="3861924051442564602">Додајте опција за мени за подигање UEFI за мене</translation>
+	<translation id="8622370666798589804">Кога вашиот компјутер ќе се стартува, можеби ќе можете да влезете во менито со опции за подигање UEFI (најверојатно со притискање на копче), оваа опција додава <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> како запис во тоа мени. (Поддржува само некои модели на фирмверот BIOS и UEFI).</translation>
+	<translation id="1569398690544416170">Не прави ништо овде, сам ќе го конфигурирам</translation>
+	<translation id="3554866444001249532">Оваа инсталациска скрипта ќе ги стави само потребните .efi датотеки за подигнување на <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> на вашата EFI партиција, ќе треба сами да конфигурирате како да ја подигнете.</translation>
+	<translation id="7492832751164189534">Присилно отказ</translation>
+	<translation id="5159534860632584026">Процесот на инсталација е прекинат</translation>
+	<translation id="8686749782014838344">Не успеа да се добијат информации за дискот</translation>
+	<translation id="5688543378771259173">Инсталирањето се прекинува...</translation>
+	<translation id="5350452134936384991">Инсталирајте во USB</translation>
+	<translation id="8008470485414925603">Инсталирајте <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> на USB-диск; сите податоци на целниот USB-диск ќе бидат избришани.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ќе се инсталира на избраниот USB-диск; сите податоци на целниот диск ќе бидат избришани.</translation>
+	<translation id="5725593226060700263">Нема достапен USB-диск</translation>
+	<translation id="4357040841587078287">Откривме дека ја извршувате оваа копија на JemaOS од преземена датотека со слики. За да ги искористите најсеопфатните функции за поддршка (вклучувајќи ги надградбите преку воздух) што може да ги понуди JemaOS, силно препорачуваме да ја активирате функцијата „Инсталатор“ за да извршите инсталација на JemaOS на целосен диск на посебен уред за складирање.</translation>
+	<translation id="1246398339704431302">Можете да <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>во секој случај да продолжите да ја користите оваа копија на JemaOS<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, процесот на инсталација може да се изврши во подоцнежна фаза во системот, но сите ваши податоци повторно ќе започнат по инсталацијата, а вие ќе започнете повторно од оваа страница.</translation>
+	<translation id="3654532222088291133">Наместо да ја внесувате лозинката за вашата сметка на JemaOS за да се најавите, може да креирате лозинка за <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> за овој уред</translation>
+	<translation id="8377684629839541977">Користете лозинка за сметката JemaOS</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">Автоматски одржувајте го <ph name="DEVICE_OS" /> ажуриран</translation>
+<translation id="2347352406101856238">Ажурирањето на <ph name="DEVICE_OS" /> е овозможено</translation>
+<translation id="185834232609012804">Ажурирањето на <ph name="DEVICE_OS" /> е оневозможено</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Платформа <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Далечинска работна површина</translation>
+<translation id="6898090158927982244">Вашиот Linux е ажуриран</translation>
+<translation id="4886703929102211360">Достапно е критично ажурирање за компонентата Linux (бета). Силно се препорачува да го инсталирате што поскоро, во спротивно вашиот Linux (бета) може да престане да работи.</translation>
+<translation id="6694016202036959050">Поставки за <ph name="DEVICE_OS" /></translation>
+<translation id="8362858344151826493">JemaOS сметка, резервна копија, разно</translation>
+<translation id="9150429437595727962">Wi-Fi поставки</translation>
+<translation id="4938972461544498524">Поставки за допирна површина</translation>
+<translation id="1210024513248363065">Далечински услуги</translation>
+<translation id="2878862288885588535">Услуга за далечинска дијагностика</translation>
+<translation id="7409197984340676806">Услугата за далечинска дијагностика им овозможува на официјалните претставници за поддршка на JemaOS да идентификуваат системски проблеми. Во моментов, услугата за далечинска дијагностика може да ја започнат само официјалните претставници за поддршка на JemaOS.</translation>
+<translation id="1791028023086176332">Споделете го овој број со официјалните претставници за поддршка на JemaOS</translation>
+<translation id="6279304275399437025">Се стартува услугата за далечинска дијагностика...</translation>
+<translation id="1501882165699826662">Запрете ја услугата за далечинска дијагностика и обидете се повторно</translation>
+<translation id="3100283258447375201">Повеќе информации</translation>
+<translation id="4070039109671307724">Разно</translation>
+<translation id="7326893024940073254">Копче "Рестартирај"</translation>
+<translation id="3002423764319968103">Прикажи копче "Рестартирај" во системското мени</translation>
+<translation id="6243454903512423518">Копче "Ротирај екран"</translation>
+<translation id="6491049336868978729">Во моментов не сте во таблет режим, копчето "Ротирај екран" е скриено</translation>
+<translation id="5496012402277579695">Прикажи копче "Ротирај екран" во системското мени</translation>
+<translation id="5882838977344999606">Префрлач за таблет/лаптоп режим</translation>
+<translation id="472164133625585606">Прикажи префрлач за таблет/лаптоп режим во системското мени</translation>
+<translation id="1851103550468466960">Овозможи Widevine</translation>
+<translation id="4058176713282795846">Овозможете Widevine за да стримувате заштитена премиум содржина. <ph name="BEGIN_LINK_LEARN_MORE" />Дознајте повеќе<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">Изберете "libwidevine.so"</translation>
+<translation id="4838463656205005584">Не успеа овозможувањето на Widevine...</translation>
+<translation id="2164041826798266548">Инсталацијата на модулот Widevine CDM не успеа. Проверете ја врската и обидете се повторно.</translation>
+<translation id="4106982328079440606">Поставки за JemaOS сметка</translation>
+<translation id="6468776556018764845">Експериментални функции</translation>
+<translation id="3487615413425326553">Заобиколи проверки на Trusted Platform Module (TPM)</translation>
+<translation id="4817176087932811573">Некои функции може да не работат поради некомпатибилен TPM чип во вашиот уред; како заобиколно решение можете да ги заобиколите TPM проверките.</translation>
+<translation id="3356003366173774486">Автоматска најава</translation>
+<translation id="6218459410891191693">Дозволете тековната сметка автоматски да се најавува на работната површина при рестартирање на уредот</translation>
+<translation id="6620839363422062843">Не може да се овозможи за оваа сметка; автоматската најава веќе е активна за други сметки на овој уред</translation>
+<translation id="6734500226490446035">Не може да се овозможи за оваа сметка; се појави непозната грешка при иницијализирање на датотечните системи за оваа сметка. Обидете се да рестартирате или да создадете нова сметка</translation>
+<translation id="5464880042146818691">Не може да се овозможи за оваа сметка; опцијата за автоматска најава е достапна само за типот "Локална сметка".</translation>
+<translation id="3335654854106476749">Пред да овозможите автоматска најава, додадете лозинка за најава во поставките <ph name="BEGIN_LINK" />Приватност и безбедност<ph name="END_LINK" />.</translation>
+<translation id="5586831602198585601">Достапна е понова верзија на JemaOS за ажурирање. Меѓутоа, вашата претплата JemaOS for You истече; потребна ви е активна претплата за да го ажурирате JemaOS.</translation>
+<translation id="3869860597719956574">Достапна е нова главна верзија на JemaOS за ажурирање. Морате да платите еднократен надоместок за да продолжите со ова ажурирање.</translation>
+<translation id="6523879681771260760">Наведете ја патеката за зачувување на резервната датотека</translation>
+<translation id="2036152819788683293">Создајте резервна датотека за оваа сметка (бета). <ph name="BEGIN_LINK_LEARN_MORE" />Дознајте повеќе<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Направи резервна копија</translation>
+<translation id="4267347174163690295">Создајте резервна датотека за оваа сметка (бета).</translation>
+<translation id="8112950994208888917">Оваа операција создава целосна резервна копија на дискот за оваа сметка, што олеснува враќање на JemaOS во состојбата во која била кога е создадена резервната копија, вклучувајќи поставки, инсталирани проширувања на прелистувачот и апликации на подсистемот. Во зависност од вашите апликации и содржината на домашната папка, резервната датотека може да биде голема; се препорачува да ја чувате на надворешен уред за складирање. Ако имате пренослив USB диск, приклучете го сега. <ph name="BEGIN_LINK_LEARN_MORE" />Дознајте повеќе<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Внесете ја лозинката за најава за оваа сметка</translation>
+<translation id="8663988871299316062">Запомнете ја оваа лозинка, бидејќи ќе биде потребна при враќање на оваа резервна датотека</translation>
+<translation id="6408904153044317846">Изберете ја резервната датотека за враќање</translation>
+<translation id="8062988348127771021">Вратете ги вашите JemaOS податоци од резервна датотека</translation>
+<translation id="7309192418866543730">Внесете ја лозинката за резервната копија</translation>
+<translation id="3642408376366598984">Внесете ја лозинката со која е шифрирана оваа резервна датотека</translation>
+<translation id="7783974937157985523">Лозинка за резервна копија</translation>
+<translation id="6583780301401541007">Враќањето е успешно</translation>
+<translation id="3514011352559420398">Враќањето не успеа</translation>
+<translation id="7535980903266533458">Зачувајте ја резервната копија на вашиот уред или надворешно складиште</translation>
+<translation id="604001903249547235">Резервна копија во облак</translation>
+<translation id="8885702701336541611">Прикачете ја резервната копија во JemaOS облак складиштето</translation>
+<translation id="3939744430096549862">Направи резервна копија во облак</translation>
+<translation id="619129431573254316">Врати од локална резервна датотека</translation>
+<translation id="1859592711955106569">Враќање од облак</translation>
+<translation id="38222223336741457">Преземете и вратете од JemaOS облакот</translation>
+<translation id="1241089811244416179">Врати од облак</translation>
+<translation id="652479689372703360">Се прави резервна копија</translation>
+<translation id="3655220146274872918">Резервната копија заврши</translation>
+<translation id="4243579853635792694">Вашата резервна копија е успешно создадена</translation>
+<translation id="4854179463174744546">Се појави грешка за време на процесот на правење резервна копија</translation>
+<translation id="2410668771600309999">Информации за корисникот на Connect API</translation>
+<translation id="2223892939866251845">Кориснички ID</translation>
+<translation id="3850846286480935456">Анализа на складиштето за резервни копии</translation>
+<translation id="6244494465581273970">Потребен е кориснички ID</translation>
+<translation id="9204006549413740506">Последно ажурирано</translation>
+<translation id="476642412165431515">Хардверски уреди</translation>
+<translation id="3386337985825120901">Нема достапни податоци за резервни копии</translation>
+<translation id="8490990067870590760">Се вчитуваат резервните датотеки...</translation>
+<translation id="2955409026764742995">Изберете ја резервната датотека за враќање:</translation>
+<translation id="7414629348005657242">-- Изберете резервна датотека --</translation>
+<translation id="918246516374174381">Не се пронајдени резервни датотеки. Прво создајте резервна копија.</translation>
+<translation id="77997252117517973">Наскоро</translation>
+<translation id="1930692852800776096">Додај речник</translation>
+<translation id="8793060353848771694">Слика на лева слушалка</translation>
+<translation id="6257440204887306255">Слика на кутија за полнење</translation>
+<translation id="2754700616124958693">Слика на десна слушалка</translation>
+<translation id="1068676292264983586">Стандардна слика на уред</translation>
+<translation id="6364075396486660405">Оневозможете автоматско скенирање на мултимедијални датотеки на сите партиции за да се оптимизира траењето на батеријата. <ph name="BEGIN_LINK_LEARN_MORE" />Дознајте повеќе<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Безбедносни опции</translation>
+<translation id="5618366106086725045">Овозможете "Режим за програмери" за оваа инсталација на <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> со повеќе функции за програмери. <ph name="BEGIN_LINK_LEARN_MORE" />Дознајте повеќе<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Веќе сте во "Режим за програмери"</translation>
+<translation id="6074549317340202195">Овозможи "Режим за програмери"</translation>
+<translation id="418781258674176053">Предупредување! Овозможувањето на "Режим за програмери" е неповратна операција. Ако сакате да го оневозможите "Режимот за програмери", мора да го преинсталирате JemaOS, што ќе ги избрише сите податоци. Направете резервна копија на вашите податоци и продолжете на сопствен ризик.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Платформа <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Во моментов офлајн</translation>
+<translation id="2590678769628709242">Проверете ја вашата JemaOS претплата онлајн</translation>
+<translation id="4701836089682883918">Информации за JemaOS претплата</translation>
+<translation id="5891566673089952188">Се појави грешка при добивање на ID-то на уредот</translation>
+<translation id="4685086787606104322">Крај на претплатата</translation>
+<translation id="3354919960795782984">ID на уредот</translation>
+<translation id="5758632069869992306">Проверете ја претплатата онлајн</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Платформа <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Пробна претплата</translation>
+<translation id="4362781408813685579">Активна претплата</translation>
+<translation id="1141274201089997510">Истечена претплата</translation>
+<translation id="2553683254139782404">Некомерцијално издание</translation>
+<translation id="8466048683756385518">Enterprise лиценцирана верзија (пробна)</translation>
+<translation id="2853871047705932424">Enterprise лиценцирана верзија</translation>
+<translation id="5239675900317881945">Enterprise лиценцирана верзија (истечена)</translation>
+<translation id="189101945990408398">Постар Intel</translation>
+<translation id="6816405236809604904">Понов Intel</translation>
+<translation id="6169452478137972655">AMD графика</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="1270291881045478104">Овозможи JemaOS AI</translation>
+<translation id="2013780539677437932">Овозможи или оневозможи ги сите функции поврзани со JemaOS AI</translation>
+<translation id="3398637633218757480">Овозможи брз повик на JemaOS AI</translation>
+<translation id="8986197796475507452">Брзо прикажете ги опциите на JemaOS AI за означената содржина со притискање на Ctrl + C + C</translation>
+<translation id="6407628130593274137">Други поставки и опции за JemaOS AI</translation>
+<translation id="4005574560653331142">За да го промените ПИН-от или лозинката за најава на оваа локална сметка, одете во поставките <ph name="BEGIN_LINK" />Приватност и безбедност<ph name="END_LINK" />.</translation>
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">Можете да <ph name="LINK_START" />се најавите со локална JemaOS сметка<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">Е-поштата <ph name="EMAIL_ADDRESS" /> веќе постои. Обидете се повторно со друга е-пошта.</translation>
+<translation id="4519800823932975782">JemaOS центар за помош</translation>
+<translation id="4737474693231655139">Најдете статии за помош и одговори на вообичаени прашања за JemaOS</translation>
+</translationbundle>

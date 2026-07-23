@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="fil">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Tungkol sa Thot</translation>
+<translation id="5639860668557220477">Humingi ng tulong sa browser na Thot</translation>
+<translation id="1692689520561928457">Tungkol sa JemaOS</translation>
+<translation id="8692765844418174375">Bersyon ng JemaOS</translation>
+<translation id="2943260250558374955">Humingi ng tulong sa JemaOS</translation>
+<translation id="713321354492170993">Nagpapalaya ang browser ng memory mula sa mga hindi aktibong tab. Nagbibigay ito sa mga aktibong tab at iba pang app ng higit pang computing resource at pinapanatiling mabilis ang browser. Awtomatikong magiging aktibo muli ang iyong mga hindi aktibong tab kapag bumalik ka sa mga ito.</translation>
+<translation id="1774190491044887444">Nakakatipid ng battery ang browser sa pamamagitan ng paglilimita sa background activity at mga visual effect, tulad ng smooth scrolling at mga frame rate ng video.</translation>
+<translation id="180121268008059459">Nagpre-preload ang browser ng mga page, kaya mas mabilis ang pag-browse at paghahanap.</translation>
+<translation id="7127093527178692287">I-restore ang backup (beta)</translation>
+<translation id="4439042171549201806">Upang ma-restore ang JemaOS mula sa isang backup file, ipasok ngayon ang removable drive na naglalaman ng backup file sa iyong JemaOS device at tukuyin kung aling backup file ang gusto mong i-restore. Pakitandaan na ang iyong backup file ay kailangang nasa root directory ng iyong removable drive upang matukoy ng wizard na ito.</translation>
+<translation id="2955409026764742995">Piliin ang backup file na ire-restore:</translation>
+<translation id="7040434808685140085">Paumanhin, hindi makilala ang napiling backup file; mangyaring pumili ng bago.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />Upang ma-restore ang JemaOS mula sa napiling backup file, mahalagang may tumpak na impormasyon tungkol sa backup noong ginawa ito. Kung hindi, mabibigo ang proseso ng pag-restore.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Ang "account name" ay ang pangunahing login credential ng account kung saan ginawa ang iyong backup file. Karaniwan itong email address na ginamit mo para mag-sign up sa iyong JemaOS/Google account. Kung lokal na account ito, ito ang username na may kaakibat na "@jemaos.local".<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Ang password ay ang passphrase na hiniling sa iyong ilagay noong ginawa ang backup. Karaniwan itong kaparehong password na ginamit mo para mag-sign in sa JemaOS desktop para sa account na ito.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Pangalan ng account</translation>
+<translation id="5490570429039308155">Paumanhin, pakilagay ang tamang account name</translation>
+<translation id="6657585470893396449">Password</translation>
+<translation id="8200189938001188563">Paumanhin, hindi maaaring walang laman ang password</translation>
+<translation id="3157931365184549694">I-restore</translation>
+<translation id="8556278756526311953">Ini-restore ang backup</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Ginagawa na namin ang pag-restore ng iyong backup file; maaaring tumagal ito nang sandali, kaya mangyaring magtiis.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Pakitandaan na awtomatikong magre-restart ang UI kapag matagumpay na nakumpleto ang proseso ng pag-restore.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Nabigo ang pag-restore ng backup</translation>
+<translation id="5003531399442003695">Para sa higit pang detalye, pakiclick ang link sa ibaba upang tingnan ang mga log. Kung magpapatuloy ang error na ito, makipag-ugnayan sa mga channel ng teknikal na suporta ng JemaOS at ibigay ang mga error log.</translation>
+<translation id="6363786367719063276">Tingnan ang mga log</translation>
+<translation id="8730621377337864115">Tapos na</translation>
+<translation id="975238173507911396">Matagumpay na na-restore ang data</translation>
+<translation id="6276879052695618521">Mga log ng pag-restore ng backup</translation>
+<translation id="4901207598072637766">JemaOS, ibinibigay ng <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">Ang JemaOS at ang mga serbisyo nito ay sumusunod sa GDPR at sa mga probisyon ng European data protection law. Para sa higit pang impormasyon, pakitingnan ang aming <ph name="BEGIN_LINK_PRIVACY" />Patakaran sa Privacy<ph name="END_LINK_PRIVACY" /> at ang aming <ph name="BEGIN_LINK_TOS" />Mga Tuntunin ng Serbisyo<ph name="END_LINK_TOS" />.</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, nakalaan ang lahat ng karapatan.</translation>
+<translation id="370679569376308836">Ang JemaOS ay isang komersyal na alok na batay sa Jema device at SaaS nito.</translation>
+<translation id="2773644194450163486">Ang JemaOS ay naging posible dahil sa <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> open source project.</translation>
+<translation id="2330680727776977160">Ang Chromium ay naging posible rin dahil sa iba pang <ph name="BEGIN_LINK_1" />open source software<ph name="END_LINK_1" /> at <ph name="BEGIN_LINK_2" />karagdagang open source software<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Dinisenyo at ginawa ng Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, nakalaan ang lahat ng karapatan.</translation>
+<translation id="6168072053306020326">Ang Jema Technology ay ang pangalang pangkalakalan ng Jema Technology LTD at Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        Ang Jema Technology LTD ay isang kumpanyang nakarehistro sa England at Wales na may numero ng kumpanyang 12273803.</translation>
+<translation id="1251589813188467292">Mahahalagang impormasyon sa warranty at serbisyo ng device</translation>
+<translation id="4851115775198886021">SN ng device:</translation>
+</translationbundle>

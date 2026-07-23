@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="sq">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Rreth Thot</translation>
+<translation id="5639860668557220477">Merrni ndihmë me shfletuesin Thot</translation>
+<translation id="1692689520561928457">Rreth JemaOS</translation>
+<translation id="8692765844418174375">Versioni i JemaOS</translation>
+<translation id="2943260250558374955">Merrni ndihmë me JemaOS</translation>
+<translation id="713321354492170993">Shfletuesi liron kujtesën nga skedat joaktive. Kjo u jep skedave aktive dhe aplikacioneve të tjera më shumë burime informatike dhe e mban shfletuesin të shpejtë. Skedat tuaja joaktive bëhen automatikisht përsëri aktive kur të ktheheni te to.</translation>
+<translation id="1774190491044887444">Shfletuesi kursen baterinë duke kufizuar aktivitetin në sfond dhe efektet vizuale, si lëvizja e butë dhe shpejtësia e kuadrove të videos.</translation>
+<translation id="180121268008059459">Shfletuesi i ngarkon paraprakisht faqet, duke e bërë shfletimin dhe kërkimin më të shpejtë.</translation>
+<translation id="7127093527178692287">Rikthe kopjen rezervë (beta)</translation>
+<translation id="4439042171549201806">Për të rikthyer JemaOS nga një skedar kopjimi rezervë, ju lutemi futni tani diskun e lëvizshëm që përmban skedarin e kopjimit rezervë në pajisjen tuaj JemaOS dhe specifikoni cilin skedar kopjimi rezervë dëshironi të rikthehet. Ju lutemi vini re se skedari juaj i kopjimit rezervë duhet të jetë në direktoriumin rrënjë të diskut tuaj të lëvizshëm për t'u zbuluar nga ky magjistar.</translation>
+<translation id="2955409026764742995">Zgjidhni skedarin e kopjimit rezervë për t'u rikthyer:</translation>
+<translation id="7040434808685140085">Na vjen keq, skedari i zgjedhur i kopjimit rezervë nuk mund të njohët; ju lutemi zgjidhni një të ri.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />Për të rikthyer JemaOS nga skedari i zgjedhur i kopjimit rezervë, është thelbësore të keni informacion të saktë për kopjen kur u krijua. Përndryshe, procesi i rikthimit do të dështojë.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"Emri i llogarisë" është kredenciali kryesor i identifikimit të llogarisë nën të cilën u krijua skedari juaj i kopjimit rezervë. Zakonisht është adresa e email-it që përdorët për t'u regjistruar për llogarinë tuaj JemaOS/Google. Nëse do të ishte një llogari lokale, do të ishte emri i përdoruesit me "@jemaos.local" të shtuar në fund.<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Fjalëkalimi është fraza e kalimit që ju kërkohej të futni kur u krijua kopja rezervë. Zakonisht është i njëjti fjalëkalim që përdorët për t'u identifikuar në desktopin JemaOS për këtë llogari.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Emri i llogarisë</translation>
+<translation id="5490570429039308155">Na vjen keq, ju lutemi futni emrin e saktë të llogarisë</translation>
+<translation id="6657585470893396449">Fjalëkalimi</translation>
+<translation id="8200189938001188563">Na vjen keq, fjalëkalimi nuk mund të jetë bosh</translation>
+<translation id="3157931365184549694">Rikthe</translation>
+<translation id="8556278756526311953">Duke rikthyer kopjen rezervë</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Po punojmë tani për rikthimin e skedarit tuaj të kopjimit rezervë; kjo mund të zgjasë pak, kështu që ju lutemi jini të durueshëm.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Ju lutemi vini re se ndërfaqja e përdoruesit do të rifillojë automatikisht kur procesi i rikthimit të përfundojë me sukses.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Rikthimi i kopjimit rezervë dështoi</translation>
+<translation id="5003531399442003695">Për më shumë detaje, ju lutemi klikoni lidhjen më poshtë për të parë regjistrat. Nëse ky gabim vazhdon, ju lutemi kontaktoni kanalet e mbështetjes teknike të JemaOS dhe jepni regjistrat e gabimeve.</translation>
+<translation id="6363786367719063276">Shiko regjistrat</translation>
+<translation id="8730621377337864115">U krye</translation>
+<translation id="975238173507911396">Rikthimi i të dhënave me sukses</translation>
+<translation id="6276879052695618521">Regjistrat e rikthimit të kopjimit rezervë</translation>
+<translation id="4901207598072637766">JemaOS, ofruar nga <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS dhe shërbimet e tij janë në përputhje me GDPR dhe dispozitat e ligjit evropian për mbrojtjen e të dhënave. Për më shumë informacion, ju lutemi shihni <ph name="BEGIN_LINK_PRIVACY" />Politikën tonë të Privatësisë<ph name="END_LINK_PRIVACY" /> dhe <ph name="BEGIN_LINK_TOS" />Kushtet tona të Shërbimit.<ph name="END_LINK_TOS" /></translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, të gjitha të drejtat e rezervuara.</translation>
+<translation id="370679569376308836">JemaOS është një ofertë komerciale e bazuar në pajisjen Jema dhe SaaS-in e saj.</translation>
+<translation id="2773644194450163486">JemaOS bëhet i mundur nga projekti me burim të hapur <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" />.</translation>
+<translation id="2330680727776977160">Chromium bëhet gjithashtu i mundur nga <ph name="BEGIN_LINK_1" />softuer tjetër me burim të hapur<ph name="END_LINK_1" /> dhe <ph name="BEGIN_LINK_2" />softuer shtesë me burim të hapur<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Projektuar dhe prodhuar nga Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, të gjitha të drejtat e rezervuara.</translation>
+<translation id="6168072053306020326">Jema Technology është emri tregtar i Jema Technology LTD dhe Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD është një kompani e regjistruar në Angli dhe Uells me numër kompanie 12273803.</translation>
+<translation id="1251589813188467292">Informacion i rëndësishëm për garancinë dhe shërbimin e pajisjes</translation>
+<translation id="4851115775198886021">SN i pajisjes:</translation>
+</translationbundle>

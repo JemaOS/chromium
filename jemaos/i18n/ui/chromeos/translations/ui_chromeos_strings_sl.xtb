@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="sl">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">Registrirajte se v Nutstore za sinhronizacijo svojih datotek v oblaku v sistemu JemaOS.</translation>
+<translation id="8672291834743661083">Registrirajte se v Nutstore</translation>
+<translation id="5103639294476249880">Kliknite gumb »Dodaj aplikacijo« v varnostnih nastavitvah</translation>
+<translation id="8371020157576651120">Ustvarite in kopirajte geslo aplikacije</translation>
+<translation id="3855250998276979579">Odprite aplikacijo Nutstore</translation>
+<translation id="6565655783894300125">in povežite račun Nutstore s sistemom JemaOS s svojim e-poštnim naslovom in geslom aplikacije</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Kmalu</translation>
+<translation id="4928968570611226525">Za nadaljevanje tega dejanja boste morali <ph name="BEGIN_LINK_ARC_APP" />&gt;aktivirati podsistem Android<ph name="END_LINK_ARC_APP" /> na svoji napravi JemaOS; prav tako mora biti vaša naprava JemaOS <ph name="BEGIN_LINK_HELP" />preklopljena v način za razvijalce<ph name="END_LINK_HELP" />.</translation>
+<translation id="7395250550107972941">Datotek .apk ni mogoče namestiti stransko. Preverite, ali je podsistem Android aktiviran in ali ste v načinu za razvijalce JemaOS.</translation>
+<translation id="5690820326685091783">Odpri z JemaOS AI</translation>
+</translationbundle>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="km">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">អំពី Thot</translation>
+<translation id="5639860668557220477">ទទួលជំនួយជាមួយកម្មវិធីរុករក Thot</translation>
+<translation id="1692689520561928457">អំពី JemaOS</translation>
+<translation id="8692765844418174375">កំណែ JemaOS</translation>
+<translation id="2943260250558374955">ទទួលជំនួយជាមួយ JemaOS</translation>
+<translation id="713321354492170993">កម្មវិធីរុករកដោះលែងអង្គចងចាំពីផ្ទាំងដែលមិនសកម្ម។ នេះផ្តល់ឱ្យផ្ទាំងសកម្ម និងកម្មវិធីផ្សេងទៀតនូវធនធានកុំព្យូទ័របន្ថែម និងរក្សាកម្មវិធីរុករកឱ្យលឿន។ ផ្ទាំងដែលមិនសកម្មរបស់អ្នកនឹងក្លាយជាសកម្មម្តងទៀតដោយស្វ័យប្រវត្តិនៅពេលអ្នកត្រឡប់ទៅរកវា។</translation>
+<translation id="1774190491044887444">កម្មវិធីរុករកសន្សំសំចៃថ្មដោយកម្រិតសកម្មភាពផ្ទៃខាងក្រោយ និងបែបផ្ទុយដែលមើលឃើញ ដូចជា ការរមូររលូន និងអត្រាហ្វ្រេមវីដេអូ។</translation>
+<translation id="180121268008059459">កម្មវិធីរុករកផ្ទុកទំព័រជាមុន ធ្វើឱ្យការរុករក និងការស្វែងរកលឿនជាង។</translation>
+<translation id="7127093527178692287">ស្តារការបម្រុងទុក (បេតា)</translation>
+<translation id="4439042171549201806">ដើម្បីស្តារ JemaOS ពីឯកសារបម្រុងទុក សូមបញ្ចូលដ្រាយដែលអាចដោះចេញបានដែលមានឯកសារបម្រុងទុកទៅក្នុងឧបករណ៍ JemaOS របស់អ្នកឥឡូវនេះ ហើយបញ្ជាក់ពីឯកសារបម្រុងទុកដែលអ្នកចង់ស្តារ។ សូមកត់សម្គាល់ថា ឯកសារបម្រុងទុករបស់អ្នកត្រូវស្ថិតនៅក្នុងថត root នៃដ្រាយដែលអាចដោះចេញបានរបស់អ្នក ដើម្បីឱ្យវិជ្ជាការនេះរកឃើញ។</translation>
+<translation id="2955409026764742995">ជ្រើសរើសឯកសារបម្រុងទុកដែលត្រូវស្តារ៖</translation>
+<translation id="7040434808685140085">សូមទោស មិនអាចស្គាល់ឯកសារបម្រុងទុកដែលបានជ្រើសរើសបានទេ; សូមជ្រើសរើសឯកសារថ្មី។</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />ដើម្បីស្តារ JemaOS ពីឯកសារបម្រុងទុកដែលបានជ្រើសរើស វាចាំបាច់ត្រូវមានព័ត៌មានត្រឹមត្រូវអំពីការបម្រុងទុកនៅពេលវាត្រូវបានបង្កើត។ បើមិនដូច្នោះទេ ដំណើរការស្តារនឹងបរាជ័យ។<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"ឈ្មោះគណនី" គឺជាព័ត៌មានសម្គាល់ចូលដំបូងបង្អស់នៃគណនីដែលឯកសារបម្រុងទុករបស់អ្នកត្រូវបានបង្កើតឡើង។ ជាធម្មតាវាគឺជាអាសយដ្ឋានអ៊ីមែលដែលអ្នកបានប្រើដើម្បីចុះឈ្មោះសម្រាប់គណនី JemaOS/Google របស់អ្នក។ ប្រសិនបើវាជាគណនីក្នុងស្រុក វានឹងជាឈ្មោះអ្នកប្រើប្រាស់ដែលបានបន្ថែមជាមួយ "@jemaos.local"។<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />ពាក្យសម្ងាត់គឺជាឃ្លាសម្ងាត់ដែលអ្នកត្រូវបានស្នើឱ្យបញ្ចូលនៅពេលការបម្រុងទុកត្រូវបានបង្កើត។ ជាធម្មតាវាគឺជាពាក្យសម្ងាត់ដូចគ្នាដែលអ្នកបានប្រើដើម្បីចូលទៅកាន់ផ្ទៃតុ JemaOS សម្រាប់គណនីនេះ។<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">ឈ្មោះគណនី</translation>
+<translation id="5490570429039308155">សូមទោស សូមបញ្ចូលឈ្មោះគណនីឱ្យបានត្រឹមត្រូវ</translation>
+<translation id="6657585470893396449">ពាក្យសម្ងាត់</translation>
+<translation id="8200189938001188563">សូមទោស ពាក្យសម្ងាត់មិនអាចទទេបានទេ</translation>
+<translation id="3157931365184549694">ស្តារ</translation>
+<translation id="8556278756526311953">កំពុងស្តារការបម្រុងទុក</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />យើងខ្ញុំកំពុងធ្វើការស្តារឯកសារបម្រុងទុករបស់អ្នក; វាអាចចំណាយពេលមួយរយៈ ដូច្នេះសូមអត់ធ្មត់រង់ចាំ។<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />សូមកត់សម្គាល់ថា UI នឹងចាប់ផ្តើមឡើងវិញដោយស្វ័យប្រវត្តិនៅពេលដំណើរការស្តារបានបញ្ចប់ដោយជោគជ័យ។<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">ការស្តារការបម្រុងទុកបានបរាជ័យ</translation>
+<translation id="5003531399442003695">សម្រាប់ព័ត៌មានលម្អិតបន្ថែម សូមចុចតំណខាងក្រោមដើម្បីមើលកំណត់ហេតុ។ ប្រសិនបើកំហុសនេះនៅតែបន្ត សូមទាក់ទងឆានែលគាំទ្របច្ចេកទេស JemaOS ហើយផ្តល់កំណត់ហេតុកំហុស។</translation>
+<translation id="6363786367719063276">មើលកំណត់ហេតុ</translation>
+<translation id="8730621377337864115">រួចរាល់</translation>
+<translation id="975238173507911396">ស្តារទិន្នន័យបានជោគជ័យ</translation>
+<translation id="6276879052695618521">កំណត់ហេតុស្តារការបម្រុងទុក</translation>
+<translation id="4901207598072637766">JemaOS ផ្តល់ដោយ <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS និងសេវាកម្មរបស់វាអនុលោមតាម GDPR និងបទបញ្ជានៃច្បាប់ការពារទិន្នន័យអឺរ៉ុប។ សម្រាប់ព័ត៌មានបន្ថែម សូមមើល<ph name="BEGIN_LINK_PRIVACY" />គោលការណ៍ភាពឯកជន<ph name="END_LINK_PRIVACY" /> និង<ph name="BEGIN_LINK_TOS" />លក្ខខណ្ឌសេវាកម្ម<ph name="END_LINK_TOS" />របស់យើង។</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology រក្សាសិទ្ធិគ្រប់យ៉ាង។</translation>
+<translation id="370679569376308836">JemaOS គឺជាការផ្តល់ជូនពាណិជ្ជកម្មដោយផ្អែកលើឧបករណ៍ Jema និង SaaS របស់វា។</translation>
+<translation id="2773644194450163486">JemaOS អាចធ្វើទៅបានដោយគម្រោងចំណុះបើកចំហ <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" />។</translation>
+<translation id="2330680727776977160">Chromium ក៏អាចធ្វើទៅបានដោយ<ph name="BEGIN_LINK_1" />កម្មវិធីចំណុះបើកចំហផ្សេងទៀត<ph name="END_LINK_1" /> និង<ph name="BEGIN_LINK_2" />កម្មវិធីចំណុះបើកចំហបន្ថែម<ph name="END_LINK_2" />ដែរ។</translation>
+<translation id="1419954813084261088">រចនា និងផលិតដោយ Jema Technology។</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD រក្សាសិទ្ធិគ្រប់យ៉ាង។</translation>
+<translation id="6168072053306020326">Jema Technology គឺជាឈ្មោះពាណិជ្ជកម្មនៃ Jema Technology LTD និង Jema Technology (Beijing) Limited។
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD គឺជាក្រុមហ៊ុនដែលបានចុះបញ្ជីនៅអង់គ្លេស និងវែល ដោយមានលេខក្រុមហ៊ុន 12273803។</translation>
+<translation id="1251589813188467292">ព័ត៌មានការធានា និងសេវាកម្មឧបករណ៍សំខាន់</translation>
+<translation id="4851115775198886021">SN ឧបករណ៍៖</translation>
+</translationbundle>

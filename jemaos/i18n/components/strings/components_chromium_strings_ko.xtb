@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="ko">
+
+
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">JemaOS가 초기 설정을 완료하지 않았습니다.</translation>
+<translation id="4257170804800372451">JemaOS와 Thot은 <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> 오픈소스 프로젝트와 기타 <ph name="BEGIN_LINK_OSS" />오픈소스 소프트웨어<ph name="END_LINK_OSS" />를 통해 만들어졌습니다.</translation>
+</translationbundle>

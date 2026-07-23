@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="ja">
+	<translation id="7386402409475121504">ローカル JemaOS アカウントを作成する</translation>
+	<translation id="3760308806144055927">ローカル JemaOS アカウントにサインインします</translation>
+	<translation id="3325117507482096812">パスワードを入力してください</translation>
+	<translation id="1838206877831947154">パスワードが一致しません</translation>
+	<translation id="2158276988029582286">新しいローカルアカウントを作成する</translation>
+	<translation id="8592849747346274067">既存のアカウントにサインインする</translation>
+	<translation id="482190417986201746">入力したユーザー名またはパスワードが正しくありません</translation>
+	<translation id="6603987686259425085">JemaOS ローカル アカウント<ph name="LINK_END">$1<ex>&amp;gt;a&amp;lt;</ex></ph>でログインできます<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>。</translation>
+	<translation id="3598802966230712759">メール <ph name="EMAIL_ADDRESS">$1</ph> はすでに存在します。別のメールで再試行してください。</translation>
+	<translation id="7215016743510876720">ローカルアカウントを使用する</translation>
+	<translation id="6657635042185516718">オンラインアカウントを引き続き使用する</translation>
+	<translation id="6867476688065565618">ローカルアカウントに切り替えますか?</translation>
+	<translation id="4840454774882557974">ローカル アカウントの使用を選択した場合、複数のデバイス間でのデータや設定の同期などの便利な機能や、JemaOS アカウントを使用した Web アプリへの自動サインインは機能しません。</translation>
+	<translation id="8951507920859729424">JemaOS を最大限に活用するには、オンライン アカウントを使用することをお勧めします。</translation>
+	<translation id="479773200536372215">Google API キーが不足しているため、Google アカウントを追加できません。詳細については、<ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> をご覧ください。</translation>
+	<translation id="1198491307547164157">JemaOS API キーが欠落しているため、JemaOS アカウントを追加できません。詳細については、<ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> をご覧ください。</translation>
+	<translation id="5042404702659901995">プライバシーに関する声明</translation>
+	<translation id="4907736162587268100">プライバシーステートメントの内容</translation>
+	<translation id="5988344732274877691">JemaOS の (非常に頻度が低い、約束された) ニュースレターにサインアップする</translation>
+	<translation id="1706203008474708805">JemaOS ユーザー エクスペリエンス向上計画に参加する</translation>
+	<translation id="1147139514756087229">ローカルアカウントでサインインする</translation>
+	<translation id="2054784944085654098">バックアップファイルを作成中です。これには時間がかかる場合があります。お待ちください…</translation>
+	<translation id="3554401467586751874">バックアップファイルが正常に作成されました</translation>
+	<translation id="2349211327705667074">バックアップファイルを表示する</translation>
+	<translation id="3049367131589710124">エラーログを表示する</translation>
+	<translation id="1079017345574916945">リモートデスクトップ</translation>
+	<translation id="3064478898280877715">アプリストア</translation>
+	<translation id="5890206344045530832">インストーラ</translation>
+	<translation id="2173278076276376488">このユーティリティは、このデバイスの内部ストレージに <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> をインストールするのに役立ちます。</translation>
+	<translation id="5323182426977498659">警告！この手順は破壊的であり、元に戻すことはできません。当社はお客様の潜在的なデータ損失に対して一切の責任を負わず、緊急の技術サポートも提供しないことにご注意ください。ご自身の責任で進めてください。</translation>
+	<translation id="8517836015601969896">フルディスクインストール</translation>
+	<translation id="7300045760790370189"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> をインストールしてハードディスク全体を占有すると、ターゲット ハードディスクのすべてのデータが消去されます。</translation>
+	<translation id="8762511733918256595">マルチブートインストール</translation>
+	<translation id="248900698427753678"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> をハードディスクの既存のパーティションにインストールします。ここには、<ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> が他の OS と並行して存在できます。ターゲット パーティション上のすべてのデータが消去されます。</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> が選択したハード ドライブにインストールされます。ターゲット ディスク上のすべてのデータが消去されます。</translation>
+	<translation id="4039091757234555415">ディスク</translation>
+	<translation id="7783580523889684697">使用可能なディスクがありません</translation>
+	<translation id="8217653566575018388">インストール完了</translation>
+	<translation id="8846746259444262774">インストールに失敗しました</translation>
+	<translation id="7263815009235541549">インストールは正常に終了しました。まずデバイスの電源をオフにしてから、インストール メディアを取り出し、再度電源をオンにして <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> を起動してください。</translation>
+	<translation id="3380151284134965398">問題が発生したため、インストールが完了しませんでした。プロセスを再試行してください。同じエラーが解決しない場合は、上記のログを使用して JemaOS サポートにお問い合わせください。</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> がハード ドライブの選択したパーティションにインストールされます。現在のマルチブート スキームでは、デバイスが UEFI をサポートし、ハードディスクが GPT でフォーマットされている場合にのみこれを続行できます。</translation>
+	<translation id="7831363758161884243">ターゲット パーティションは消去されます。インストーラーはシステムのブート構成を変更する必要があるため、アクティブな EFI パーティションを指定する必要もあります (通常は自動的に行われます)。</translation>
+	<translation id="5670799238446305550"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ターゲット パーティションを選択します</translation>
+	<translation id="3695537760133394753">パーティション</translation>
+	<translation id="5610519566593708119">EFI パーティションの選択</translation>
+	<translation id="3367650349940010965">選択したディスクには使用可能なパーティションがありません</translation>
+	<translation id="7453223384507098390">選択したディスクには使用可能な EFI パーティションがありません</translation>
+	<translation id="1854532683465500847">選択したパーティションのサイズが 20GB 未満であるため、インストールが失敗する可能性があります</translation>
+	<translation id="4144613075340468247">選択したパーティションは <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> マルチブートにマウントされています。再度インストールすると失敗する可能性があります</translation>
+	<translation id="5793361052649920836">インストール後、<ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> をどのように起動しますか?</translation>
+	<translation id="4273235330352963866">rEFInd をインストールして構成します (推奨)</translation>
+	<translation id="1858708492548921044">rEFInd は、PC の起動時に OS ブート オプション用の優れたグラフィカル インターフェイスを提供するブート マネージャー プログラムです。これにより、希望する OS を選択してブートすることができます。 rEFInd の詳細については、rEFInd のホームページを参照してください。</translation>
+	<translation id="3861924051442564602">UEFI ブート メニュー オプションを追加する</translation>
+	<translation id="8622370666798589804">PC の起動時に、UEFI ブート オプション メニューに入ることができる場合があります (おそらくホットキーを押すことによって)。このオプションにより、<ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> がそのメニューのエントリとして追加されます。 (BIOS および UEFI ファームウェアの一部のモデルのみをサポートします)。</translation>
+	<translation id="1569398690544416170">ここでは何もしないでください。自分で設定します</translation>
+	<translation id="3554866444001249532">このインストール スクリプトは、<ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> の起動に必要な .efi ファイルのみを EFI パーティションに配置します。起動方法を自分で設定する必要があります。</translation>
+	<translation id="7492832751164189534">強制終了</translation>
+	<translation id="5159534860632584026">インストールプロセスが終了しました</translation>
+	<translation id="8686749782014838344">ディスク情報の取得に失敗しました</translation>
+	<translation id="5688543378771259173">インストールが終了しています...</translation>
+	<translation id="5350452134936384991">USBにインストール</translation>
+	<translation id="8008470485414925603"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> を USB ディスクにインストールします。ターゲット USB ディスク上のすべてのデータが消去されます。</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> が選択した USB ディスクにインストールされます。ターゲット ディスク上のすべてのデータが消去されます。</translation>
+	<translation id="5725593226060700263">使用可能な USB ディスクがありません</translation>
+	<translation id="4357040841587078287">ダウンロードしたイメージ ファイルから JemaOS のこのコピーを実行していることが検出されました。 JemaOS が提供できる最も包括的なサポート機能 (無線アップデートを含む) を利用するには、「インストーラー」機能を起動して、別のストレージ デバイスへの JemaOS のフルディスク インストールを実行することを強くお勧めします。</translation>
+	<translation id="1246398339704431302"><ph name="LINK_BEGIN">&amp;lt;span id="Continue-anyway"&amp;gt;</ph>この JemaOS のコピーを引き続き使用できます<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>。インストール プロセスはシステムの後の段階で実行できますが、インストール後にすべてのデータが消去され、このページからやり直すことになります。</translation>
+	<translation id="3654532222088291133">JemaOS アカウントのパスワードを入力してログインする代わりに、このデバイス用の <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> のパスワードを作成できます。</translation>
+	<translation id="8377684629839541977">JemaOS アカウントのパスワードを使用する</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398"><ph name="DEVICE_OS" /> を自動的に最新の状態に保つ</translation>
+<translation id="2347352406101856238"><ph name="DEVICE_OS" /> のアップデートが有効です</translation>
+<translation id="185834232609012804"><ph name="DEVICE_OS" /> のアップデートが無効です</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" />（<ph name="PRODUCT_CHANNEL" />）プラットフォーム <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">リモート デスクトップ</translation>
+<translation id="6898090158927982244">Linux は最新の状態です</translation>
+<translation id="4886703929102211360">Linux（ベータ版）コンポーネントの重要なアップデートが利用可能です。できるだけ早くこのアップデートをインストールすることを強くおすすめします。インストールしないと、Linux（ベータ版）が動作しなくなる可能性があります。</translation>
+<translation id="6694016202036959050"><ph name="DEVICE_OS" /> の設定</translation>
+<translation id="8362858344151826493">JemaOS アカウント、バックアップ、その他</translation>
+<translation id="9150429437595727962">Wi-Fi 設定</translation>
+<translation id="4938972461544498524">タッチパッドの設定</translation>
+<translation id="1210024513248363065">リモート サービス</translation>
+<translation id="2878862288885588535">リモート診断サービス</translation>
+<translation id="7409197984340676806">リモート診断サービスでは、JemaOS 公式サポート担当者がシステムの問題を特定できます。現在、リモート診断サービスは JemaOS 公式サポート担当者のみが開始できます。</translation>
+<translation id="1791028023086176332">この番号を JemaOS 公式サポート担当者にお伝えください</translation>
+<translation id="6279304275399437025">リモート診断サービスを開始しています...</translation>
+<translation id="1501882165699826662">リモート診断サービスを停止してから、もう一度お試しください</translation>
+<translation id="3100283258447375201">詳細情報</translation>
+<translation id="4070039109671307724">その他</translation>
+<translation id="7326893024940073254">「再起動」ボタン</translation>
+<translation id="3002423764319968103">システム メニューに「再起動」ボタンを表示する</translation>
+<translation id="6243454903512423518">「画面を回転」ボタン</translation>
+<translation id="6491049336868978729">現在タブレット モードではないため、「画面を回転」ボタンは非表示になっています</translation>
+<translation id="5496012402277579695">システム メニューに「画面を回転」ボタンを表示する</translation>
+<translation id="5882838977344999606">タブレット/ノートパソコン モード切り替え</translation>
+<translation id="472164133625585606">システム メニューにタブレット/ノートパソコン モードの切り替えを表示する</translation>
+<translation id="1851103550468466960">Widevine を有効にする</translation>
+<translation id="4058176713282795846">Widevine を有効にすると、保護されたプレミアム コンテンツをストリーミングできます。<ph name="BEGIN_LINK_LEARN_MORE" />詳細<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">「libwidevine.so」を選択</translation>
+<translation id="4838463656205005584">Widevine を有効にできませんでした...</translation>
+<translation id="2164041826798266548">Widevine CDM モジュールのインストールに失敗しました。接続を確認して、もう一度お試しください。</translation>
+<translation id="4106982328079440606">JemaOS アカウントの設定</translation>
+<translation id="6468776556018764845">試験運用版の機能</translation>
+<translation id="3487615413425326553">トラステッド プラットフォーム モジュール（TPM）チェックをバイパスする</translation>
+<translation id="4817176087932811573">デバイスの TPM チップに互換性がないため、一部の機能が動作しない場合があります。回避策として TPM チェックをバイパスできます。</translation>
+<translation id="3356003366173774486">自動ログイン</translation>
+<translation id="6218459410891191693">デバイスの再起動時に現在のアカウントでデスクトップに自動的にログインできるようにする</translation>
+<translation id="6620839363422062843">このアカウントでは有効にできません。このデバイスの他のアカウントで自動ログインがすでに有効になっています</translation>
+<translation id="6734500226490446035">このアカウントでは有効にできません。このアカウントのファイル システムの初期化中に不明なエラーが発生しました。再起動するか、新しいアカウントを作成してみてください</translation>
+<translation id="5464880042146818691">このアカウントでは有効にできません。自動ログイン オプションは「ローカル アカウント」タイプでのみ利用できます。</translation>
+<translation id="3335654854106476749">自動ログインを有効にする前に、<ph name="BEGIN_LINK" />プライバシーとセキュリティ<ph name="END_LINK" />の設定でログイン パスワードを追加してください。</translation>
+<translation id="5586831602198585601">新しいバージョンの JemaOS に今すぐアップデートできます。ただし、JemaOS for You サブスクリプションの有効期限が切れています。JemaOS をアップデートするには、有効なサブスクリプションが必要です。</translation>
+<translation id="3869860597719956574">新しいメジャー バージョンの JemaOS に今すぐアップデートできます。このアップデートを続行するには、1 回限りの料金をお支払いいただく必要があります。</translation>
+<translation id="6523879681771260760">バックアップ ファイルを保存するパスを指定してください</translation>
+<translation id="2036152819788683293">このアカウントのバックアップ ファイルを作成します（ベータ版）。<ph name="BEGIN_LINK_LEARN_MORE" />詳細<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">バックアップ</translation>
+<translation id="4267347174163690295">このアカウントのバックアップ ファイルを作成します（ベータ版）。</translation>
+<translation id="8112950994208888917">この操作では、このアカウントのディスク全体のバックアップを作成します。これにより、設定、インストール済みのブラウザ拡張機能、サブシステム アプリなど、バックアップ作成時の状態に JemaOS を簡単に復元できます。アプリやホーム フォルダの内容によっては、バックアップ ファイルが大きくなる場合があるため、バックアップ ファイルは外部ストレージ デバイスに保存することをおすすめします。ポータブル USB ドライブをお持ちの場合は、今すぐ接続してください。<ph name="BEGIN_LINK_LEARN_MORE" />詳細<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">このアカウントのログイン パスワードを入力してください</translation>
+<translation id="8663988871299316062">このパスワードは、このバックアップ ファイルを復元する際に必要になるため、必ず覚えておいてください</translation>
+<translation id="6408904153044317846">復元するバックアップ ファイルを選択してください</translation>
+<translation id="8062988348127771021">バックアップ ファイルから JemaOS データを復元する</translation>
+<translation id="7309192418866543730">バックアップ パスワードを入力してください</translation>
+<translation id="3642408376366598984">このバックアップ ファイルの暗号化に使用したパスワードを入力してください</translation>
+<translation id="7783974937157985523">バックアップ パスワード</translation>
+<translation id="6583780301401541007">復元に成功しました</translation>
+<translation id="3514011352559420398">復元に失敗しました</translation>
+<translation id="7535980903266533458">バックアップをデバイスまたは外部ストレージに保存する</translation>
+<translation id="604001903249547235">クラウド バックアップ</translation>
+<translation id="8885702701336541611">バックアップを JemaOS クラウド ストレージにアップロードする</translation>
+<translation id="3939744430096549862">クラウドにバックアップ</translation>
+<translation id="619129431573254316">ローカル バックアップ ファイルから復元する</translation>
+<translation id="1859592711955106569">クラウドからの復元</translation>
+<translation id="38222223336741457">JemaOS クラウドからダウンロードして復元する</translation>
+<translation id="1241089811244416179">クラウドから復元</translation>
+<translation id="652479689372703360">バックアップを実行中</translation>
+<translation id="3655220146274872918">バックアップが完了しました</translation>
+<translation id="4243579853635792694">バックアップが正常に作成されました</translation>
+<translation id="6337433855796857931">バックアップに失敗しました</translation>
+<translation id="4854179463174744546">バックアップ処理中にエラーが発生しました</translation>
+<translation id="2410668771600309999">Connect API ユーザー情報</translation>
+<translation id="2223892939866251845">ユーザー ID</translation>
+<translation id="3850846286480935456">バックアップ ストレージの分析</translation>
+<translation id="6244494465581273970">ユーザー ID が必要です</translation>
+<translation id="9204006549413740506">最終更新日</translation>
+<translation id="476642412165431515">ハードウェア デバイス</translation>
+<translation id="3386337985825120901">利用可能なバックアップ データがありません</translation>
+<translation id="8490990067870590760">バックアップ ファイルを読み込んでいます...</translation>
+<translation id="2955409026764742995">復元するバックアップ ファイルを選択してください:</translation>
+<translation id="7414629348005657242">-- バックアップ ファイルを選択 --</translation>
+<translation id="918246516374174381">バックアップ ファイルが見つかりません。先にバックアップを作成してください。</translation>
+<translation id="77997252117517973">近日提供予定</translation>
+<translation id="1930692852800776096">辞書を追加</translation>
+<translation id="8793060353848771694">左イヤホンの画像</translation>
+<translation id="6257440204887306255">充電ケースの画像</translation>
+<translation id="2754700616124958693">右イヤホンの画像</translation>
+<translation id="1068676292264983586">デフォルトのデバイス画像</translation>
+<translation id="6364075396486660405">すべてのパーティションでメディア ファイルの自動スキャンを無効にして、バッテリー駆動時間を最適化します。<ph name="BEGIN_LINK_LEARN_MORE" />詳細<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">セキュリティ オプション</translation>
+<translation id="5618366106086725045">この <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> インストールで「デベロッパー モード」を有効にすると、より多くのデベロッパー機能が利用できるようになります。<ph name="BEGIN_LINK_LEARN_MORE" />詳細<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">すでに「デベロッパー モード」になっています</translation>
+<translation id="6074549317340202195">「デベロッパー モード」を有効にする</translation>
+<translation id="418781258674176053">警告！「デベロッパー モード」を有効にすると元に戻すことはできません。「デベロッパー モード」を無効にするには、JemaOS を再インストールする必要があり、すべてのデータが消去されます。データをバックアップし、自己責任で実行してください。</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />、<ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    プラットフォーム <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">現在オフラインです</translation>
+<translation id="2590678769628709242">JemaOS サブスクリプションをオンラインで確認する</translation>
+<translation id="4701836089682883918">JemaOS サブスクリプション情報</translation>
+<translation id="5891566673089952188">デバイス ID の取得中にエラーが発生しました</translation>
+<translation id="4685086787606104322">サブスクリプション終了日</translation>
+<translation id="3354919960795782984">デバイス ID</translation>
+<translation id="5758632069869992306">サブスクリプションをオンラインで確認する</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />、<ph name="JEMAOS_MAJOR_VERSION" />、<ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     プラットフォーム <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">トライアル サブスクリプション</translation>
+<translation id="4362781408813685579">有効なサブスクリプション</translation>
+<translation id="1141274201089997510">期限切れのサブスクリプション</translation>
+<translation id="2553683254139782404">非商用版</translation>
+<translation id="8466048683756385518">エンタープライズ ライセンス版（トライアル）</translation>
+<translation id="2853871047705932424">エンタープライズ ライセンス版</translation>
+<translation id="5239675900317881945">エンタープライズ ライセンス版（期限切れ）</translation>
+<translation id="189101945990408398">レガシー Intel</translation>
+<translation id="6816405236809604904">最新の Intel</translation>
+<translation id="6169452478137972655">AMD グラフィックス</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="2747689477259164256">JemaOS AI</translation>
+<translation id="1270291881045478104">JemaOS AI を有効にする</translation>
+<translation id="2013780539677437932">すべての JemaOS AI 関連機能を有効または無効にする</translation>
+<translation id="3398637633218757480">JemaOS AI クイック呼び出しを有効にする</translation>
+<translation id="8986197796475507452">Ctrl + C + C を押すと、選択したコンテンツに対する JemaOS AI オプションをすばやく表示できます</translation>
+<translation id="6407628130593274137">JemaOS AI のその他の設定とオプション</translation>
+<translation id="4005574560653331142">このローカル アカウントの PIN またはログイン パスワードを変更するには、<ph name="BEGIN_LINK" />プライバシーとセキュリティ<ph name="END_LINK" />の設定に移動してください。</translation>
+
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425"><ph name="LINK_START" />JemaOS ローカル アカウントでログイン<ph name="LINK_END" />できます。</translation>
+<translation id="5291842596976929391">メールアドレス <ph name="EMAIL_ADDRESS" /> はすでに存在します。別のメールアドレスで再試行してください。</translation>
+<translation id="4519800823932975782">JemaOS ヘルプセンター</translation>
+<translation id="4737474693231655139">JemaOS に関するよくある質問のヘルプ記事や回答を見つける</translation>
+</translationbundle>

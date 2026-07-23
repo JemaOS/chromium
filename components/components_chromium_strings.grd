@@ -190,6 +190,43 @@
     <file path="strings/components_chromium_strings_zh-TW.xtb" lang="zh-TW" />
     <file path="strings/components_chromium_strings_zu.xtb" lang="zu" />
     <file path="../jemaos/i18n/components/strings/components_chromium_strings_zh-CN.xtb" lang="zh-CN" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_he.xtb" lang="he" />
+      <file path="../jemaos/i18n/components/strings/components_chromium_strings_af.xtb" lang="af" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_am.xtb" lang="am" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_as.xtb" lang="as" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_az.xtb" lang="az" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_be.xtb" lang="be" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_bn.xtb" lang="bn" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_cy.xtb" lang="cy" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_et.xtb" lang="et" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_eu.xtb" lang="eu" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_fa.xtb" lang="fa" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_gu.xtb" lang="gu" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_hy.xtb" lang="hy" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_ka.xtb" lang="ka" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_kk.xtb" lang="kk" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_km.xtb" lang="km" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_kn.xtb" lang="kn" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_ky.xtb" lang="ky" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_lo.xtb" lang="lo" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_lt.xtb" lang="lt" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_lv.xtb" lang="lv" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_mk.xtb" lang="mk" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_ml.xtb" lang="ml" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_mn.xtb" lang="mn" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_mr.xtb" lang="mr" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_my.xtb" lang="my" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_ne.xtb" lang="ne" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_or.xtb" lang="or" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_pa.xtb" lang="pa" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_si.xtb" lang="si" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_sq.xtb" lang="sq" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_sr-Latn.xtb" lang="sr-Latn" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_ta.xtb" lang="ta" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_te.xtb" lang="te" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_ur.xtb" lang="ur" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_uz.xtb" lang="uz" />
+    <file path="../jemaos/i18n/components/strings/components_chromium_strings_zu.xtb" lang="zu" />
   </translations>
   <release seq="1">
     <messages fallback_to_english="true">

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="mk">
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">JemaOS не ја заврши почетната поставка.</translation>
+<translation id="4257170804800372451">JemaOS и Thot се овозможени од <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> проектот со отворен код и друг <ph name="BEGIN_LINK_OSS" />софтвер со отворен код<ph name="END_LINK_OSS" />.</translation>
+</translationbundle>

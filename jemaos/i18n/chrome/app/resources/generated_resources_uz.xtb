@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="uz">
+	<translation id="7386402409475121504">Mahalliy JemaOS hisob qaydnomangizni yarating</translation>
+	<translation id="3760308806144055927">Mahalliy JemaOS hisobingizga kiring</translation>
+	<translation id="3325117507482096812">Iltimos, parol kiriting</translation>
+	<translation id="1838206877831947154">Parollaringiz mos emas</translation>
+	<translation id="2158276988029582286">Yangi mahalliy hisob yarating</translation>
+	<translation id="8592849747346274067">Mavjud hisobga kiring</translation>
+	<translation id="482190417986201746">Siz kiritgan foydalanuvchi nomi yoki parol noto'g'ri</translation>
+	<translation id="6603987686259425085">Siz <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>JemaOS mahalliy hisobiga<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph> bilan kirishingiz mumkin.</translation>
+	<translation id="3598802966230712759"><ph name="EMAIL_ADDRESS">$1</ph> elektron pochta allaqachon mavjud. Iltimos, boshqa elektron pochta orqali qayta urinib ko'ring.</translation>
+	<translation id="7215016743510876720">Mahalliy hisobdan foydalaning</translation>
+	<translation id="6657635042185516718">Onlayn hisobdan foydalanishda davom eting</translation>
+	<translation id="6867476688065565618">Mahalliy hisobga oʻtilsinmi?</translation>
+	<translation id="4840454774882557974">Agar siz mahalliy hisob qaydnomasidan foydalanishni tanlasangiz, foydali funksiyalarga maʼlumotlaringiz va afzalliklaringizni bir nechta qurilmalarda sinxronlashtirish kiradi va JemaOS hisob qaydnomangiz yordamida veb-ilovalarga avtomatik kirish ishlamaydi.</translation>
+	<translation id="8951507920859729424">JemaOS'dan to'liq foydalanish uchun onlayn hisob qaydnomasidan foydalanishni tavsiya etamiz.</translation>
+	<translation id="479773200536372215">Siz Google hisoblarini qo'sha olmaysiz, chunki Google API kalitlari yo'q. Tafsilotlar uchun <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> ga qarang.</translation>
+	<translation id="1198491307547164157">Siz JemaOS hisoblarini qo‘sha olmaysiz, chunki JemaOS API kalitlari yo‘q. Tafsilotlar uchun <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> ga qarang.</translation>
+	<translation id="5042404702659901995">Maxfiylik bayonoti</translation>
+	<translation id="4907736162587268100">Maxfiylik bayonnomasi mazmuni</translation>
+	<translation id="5988344732274877691">JemaOS uchun (juda kam uchraydigan, va'da qilingan) axborot byulleteniga ro'yxatdan o'ting</translation>
+	<translation id="1706203008474708805">JemaOS foydalanuvchi tajribasini yaxshilash rejasiga qo'shiling</translation>
+	<translation id="1147139514756087229">Mahalliy hisob bilan kiring</translation>
+	<translation id="2054784944085654098">Zaxira fayl yaratilmoqda. Bu biroz vaqt olishi mumkin; iltimos kuting...</translation>
+	<translation id="3554401467586751874">Zaxira fayli muvaffaqiyatli yaratildi</translation>
+	<translation id="2349211327705667074">Zaxira faylini ko'rish</translation>
+	<translation id="6337433855796857931">Zaxiralash amalga oshmadi</translation>
+	<translation id="3049367131589710124">Xatolar jurnalini ko'rish</translation>
+	<translation id="1079017345574916945">Masofaviy ish stoli</translation>
+	<translation id="3064478898280877715">Ilovalar do'koni</translation>
+	<translation id="2747689477259164256">JemaOS AI</translation>
+	<translation id="5890206344045530832">O'rnatuvchi</translation>
+	<translation id="2173278076276376488">Ushbu yordamchi dastur sizga <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ni ushbu qurilmaning ichki xotirasiga o‘rnatishda yordam beradi.</translation>
+	<translation id="5323182426977498659">Ogohlantirish! Ushbu protsedura halokatli va uni qaytarib bo'lmaydi. E'tibor bering, biz sizning potentsial ma'lumotlaringiz yo'qolishi uchun hech qanday javobgarlikni o'z zimmamizga olmaymiz yoki shoshilinch texnik yordam ko'rsatmaymiz, o'zingizning xavf-xataringiz bilan davom eting.</translation>
+	<translation id="8517836015601969896">To'liq diskni o'rnatish</translation>
+	<translation id="7300045760790370189">Butun qattiq diskni egallash uchun <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ni o'rnating, maqsadli qattiq diskdagi barcha ma'lumotlar o'chib ketadi.</translation>
+	<translation id="8762511733918256595">Ko'p yuklashni o'rnatish</translation>
+	<translation id="248900698427753678"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>-ni qattiq diskning mavjud bo'limiga o'rnating, u erda <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> boshqa OT bilan parallel ravishda mavjud bo'lishi mumkin. Maqsadli bo'limdagi barcha ma'lumotlar o'chib ketadi.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> tanlangan qattiq diskingizga o'rnatiladi; maqsadli diskdagi barcha ma'lumotlar o'chiriladi.</translation>
+	<translation id="4039091757234555415">Disk</translation>
+	<translation id="7783580523889684697">Hech qanday disk mavjud emas</translation>
+	<translation id="8217653566575018388">Oʻrnatish tugallandi</translation>
+	<translation id="8846746259444262774">O‘rnatish amalga oshmadi</translation>
+	<translation id="7263815009235541549">O'rnatish muvaffaqiyatli yakunlandi. Iltimos, avval qurilmangizni oʻchiring, soʻngra barcha oʻrnatish vositalarini olib tashlang va <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>ni ishga tushirish uchun uni qayta yoqing.</translation>
+	<translation id="3380151284134965398">Nimadir xato ketdi va o‘rnatish tugallanmadi. Jarayonni qaytadan urining. Agar bir xil xatolik davom etsa, yuqoridagi jurnal bilan JemaOS yordamiga murojaat qiling.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> qattiq diskingizning tanlangan qismiga o'rnatiladi. Joriy ko'p yuklash sxemasiga ko'ra, bu faqat qurilmangiz UEFI-ni qo'llab-quvvatlasa va qattiq disklaringiz GPT bilan formatlangan bo'lsa davom etishi mumkin.</translation>
+	<translation id="7831363758161884243">Maqsadli bo'lim o'chiriladi; shuningdek, faol EFI bo'limingizni ko'rsatishingiz kerak (odatda avtomatik ravishda amalga oshiriladi), chunki O'rnatuvchi tizimni yuklash konfiguratsiyasini o'zgartirishi kerak.</translation>
+	<translation id="5670799238446305550"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> maqsadli qismini tanlang</translation>
+	<translation id="3695537760133394753">Bo'lim</translation>
+	<translation id="5610519566593708119">EFI bo'limini tanlang</translation>
+	<translation id="3367650349940010965">Tanlangan disk uchun bo'limlar mavjud emas</translation>
+	<translation id="7453223384507098390">Tanlangan disk uchun EFI bo'limlari mavjud emas</translation>
+	<translation id="1854532683465500847">Tanlangan bo'limning hajmi 20 Gb dan kam, o'rnatish muvaffaqiyatsiz bo'lishi mumkin</translation>
+	<translation id="4144613075340468247">Tanlangan boʻlim <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> koʻp yuklash tizimiga oʻrnatildi, uni qayta oʻrnatib boʻlmaydi.</translation>
+	<translation id="5793361052649920836">Oʻrnatishdan soʻng, <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>-ni qanday yuklashni xohlaysiz?</translation>
+	<translation id="4273235330352963866">Men uchun rEFInd-ni o'rnating va sozlang (tavsiya etiladi)</translation>
+	<translation id="1858708492548921044">rEFInd - bu yuklash menejeri dasturi bo'lib, u kompyuteringiz ishga tushganda OTni yuklash opsiyalari uchun chiroyli grafik interfeysni taklif qiladi, siz u bilan yuklash uchun kerakli OTni tanlashingiz mumkin bo'ladi. rEFInd haqida qo'shimcha ma'lumot olish uchun uning bosh sahifasiga qarang.</translation>
+	<translation id="3861924051442564602">Men uchun UEFI yuklash menyusi variantini qo'shing</translation>
+	<translation id="8622370666798589804">Kompyuteringiz ishga tushganda, siz UEFI yuklash opsiyalari menyusiga kirishingiz mumkin (ehtimol, tezkor tugmani bosish orqali), ushbu parametr ushbu menyuga kirish sifatida <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> qo'shadi. (Faqat BIOS va UEFI proshivkalarining ba'zi modellarini qo'llab-quvvatlaydi).</translation>
+	<translation id="1569398690544416170">Bu erda hech narsa qilmang, men uni o'zim sozlayman</translation>
+	<translation id="3554866444001249532">Ushbu o'rnatish skripti faqat <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>-ni yuklash uchun kerakli .efi fayllarini EFI bo'limiga joylashtiradi, uni o'zingiz yuklashni sozlashingiz kerak bo'ladi.</translation>
+	<translation id="7492832751164189534">Chiqishga majburlash</translation>
+	<translation id="5159534860632584026">O'rnatish jarayoni tugatildi</translation>
+	<translation id="8686749782014838344">Disk ma'lumotlarini olib bo'lmadi</translation>
+	<translation id="5688543378771259173">O‘rnatish tugatilmoqda...</translation>
+	<translation id="5350452134936384991">USB-ga o'rnating</translation>
+	<translation id="8008470485414925603"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ni USB diskiga o'rnating; maqsadli USB diskdagi barcha ma'lumotlar o'chib ketadi.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> tanlangan USB diskingizga o'rnatiladi; maqsadli diskdagi barcha ma'lumotlar o'chiriladi.</translation>
+	<translation id="5725593226060700263">Hech qanday USB disk mavjud emas</translation>
+	<translation id="4357040841587078287">Siz JemaOS’ning ushbu nusxasini yuklab olingan rasm faylidan ishga tushirayotganingizni aniqladik. JemaOS taklif qilishi mumkin bo'lgan eng keng qamrovli qo'llab-quvvatlash xususiyatlaridan (jumladan, havo orqali yangilanishlardan) foydalanish uchun JemaOS-ni alohida saqlash qurilmasiga to'liq diskda o'rnatish uchun "O'rnatish" funksiyasini ishga tushirishingizni qat'iy tavsiya qilamiz.</translation>
+	<translation id="1246398339704431302">Siz <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>baribir JemaOS-ning ushbu nusxasidan foydalanishda davom etishingiz mumkin<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, oʻrnatish jarayoni tizimning keyingi bosqichida amalga oshirilishi mumkin, ammo oʻrnatishdan soʻng barcha maʼlumotlaringiz oʻchib ketadi.</translation>
+	<translation id="3654532222088291133">Kirish uchun JemaOS hisobi parolini kiritish oʻrniga ushbu qurilma uchun <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> parolini yaratishingiz mumkin.</translation>
+	<translation id="8377684629839541977">JemaOS hisob qaydnomasi parolidan foydalaning</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398"><ph name="DEVICE_OS" /> tizimini avtomatik yangilab borish</translation>
+<translation id="2347352406101856238"><ph name="DEVICE_OS" /> yangilanishi yoqilgan</translation>
+<translation id="185834232609012804"><ph name="DEVICE_OS" /> yangilanishi o'chirilgan</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Platforma <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Masofaviy ish stoli</translation>
+<translation id="6898090158927982244">Linux tizimingiz yangilangan</translation>
+<translation id="4886703929102211360">Linux (beta) komponenti uchun muhim yangilanish mavjud. Ushbu yangilanishni imkon qadar tezroq o'rnatish tavsiya etiladi, aks holda Linux (beta) ishlamay qolishi mumkin.</translation>
+<translation id="6694016202036959050"><ph name="DEVICE_OS" /> sozlamalari</translation>
+<translation id="8362858344151826493">JemaOS hisobi, zaxira nusxasi, boshqalar</translation>
+<translation id="9150429437595727962">Wi-Fi sozlamalari</translation>
+<translation id="4938972461544498524">Sensor panel sozlamalari</translation>
+<translation id="1210024513248363065">Masofaviy xizmatlar</translation>
+<translation id="2878862288885588535">Masofaviy diagnostika xizmati</translation>
+<translation id="7409197984340676806">Masofaviy diagnostika xizmati JemaOS rasmiy qo'llab-quvvatlash vakillariga tizim muammolarini aniqlash imkonini beradi. Hozircha masofaviy diagnostika xizmatini faqat JemaOS rasmiy qo'llab-quvvatlash vakillari ishga tushirishi mumkin.</translation>
+<translation id="1791028023086176332">Ushbu raqamni JemaOS rasmiy qo'llab-quvvatlash vakillari bilan ulashing</translation>
+<translation id="6279304275399437025">Masofaviy diagnostika xizmati ishga tushirilmoqda...</translation>
+<translation id="1501882165699826662">Masofaviy diagnostika xizmatini to'xtatib, qaytadan urinib ko'ring</translation>
+<translation id="3100283258447375201">Qo'shimcha ma'lumot</translation>
+<translation id="4070039109671307724">Boshqalar</translation>
+<translation id="7326893024940073254">"Qayta ishga tushirish" tugmasi</translation>
+<translation id="3002423764319968103">Tizim menyusida "Qayta ishga tushirish" tugmasini ko'rsatish</translation>
+<translation id="6243454903512423518">"Ekranni aylantirish" tugmasi</translation>
+<translation id="6491049336868978729">Hozir planshet rejimida emassiz, "Ekranni aylantirish" tugmasi yashiringan</translation>
+<translation id="5496012402277579695">Tizim menyusida "Ekranni aylantirish" tugmasini ko'rsatish</translation>
+<translation id="5882838977344999606">Planshet/Noutbuk rejimini almashtirish</translation>
+<translation id="472164133625585606">Tizim menyusida planshet/noutbuk rejimini almashtirish tugmasini ko'rsatish</translation>
+<translation id="1851103550468466960">Widevine'ni yoqish</translation>
+<translation id="4058176713282795846">Himoyalangan premium kontentni uzatish uchun Widevine'ni yoqing. <ph name="BEGIN_LINK_LEARN_MORE" />Batafsil<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">"libwidevine.so" tanlang</translation>
+<translation id="4838463656205005584">Widevine'ni yoqib bo'lmadi...</translation>
+<translation id="2164041826798266548">Widevine CDM moduli o'rnatilmadi. Ulanishingizni tekshirib, qaytadan urinib ko'ring.</translation>
+<translation id="4106982328079440606">JemaOS hisob sozlamalari</translation>
+<translation id="6468776556018764845">Tajriba funksiyalari</translation>
+<translation id="3487615413425326553">Trusted Platform Module (TPM) tekshiruvlarini chetlab o'tish</translation>
+<translation id="4817176087932811573">Ba'zi funksiyalar qurilmangizdagi mos kelmaydigan TPM chipi tufayli ishlamasligi mumkin; yechim sifatida TPM tekshiruvlarini chetlab o'tishingiz mumkin.</translation>
+<translation id="3356003366173774486">Avtomatik kirish</translation>
+<translation id="6218459410891191693">Qurilma qayta ishga tushirilganda joriy hisobning ish stoliga avtomatik kirishiga ruxsat berish</translation>
+<translation id="6620839363422062843">Bu hisob uchun yoqib bo'lmaydi; avtomatik kirish bu qurilmadagi boshqa hisoblar uchun allaqachon faol</translation>
+<translation id="6734500226490446035">Bu hisob uchun yoqib bo'lmaydi; ushbu hisob fayl tizimlarini ishga tushirishda noma'lum xatolik yuz berdi. Qayta ishga tushirib ko'ring yoki yangi hisob yarating</translation>
+<translation id="5464880042146818691">Bu hisob uchun yoqib bo'lmaydi; avtomatik kirish parametri faqat "Mahalliy hisob" turi uchun mavjud.</translation>
+<translation id="3335654854106476749">Avtomatik kirishni yoqishdan oldin <ph name="BEGIN_LINK" />Maxfiylik va xavfsizlik<ph name="END_LINK" /> sozlamalarida kirish parolini qo'shing.</translation>
+<translation id="5586831602198585601">JemaOS tizimining yangi versiyasi hozir yangilash uchun mavjud. Biroq, JemaOS for You obunangiz muddati tugagan; JemaOS tizimingizni yangilash uchun faol obuna kerak.</translation>
+<translation id="3869860597719956574">JemaOS tizimining yangi asosiy versiyasi hozir yangilash uchun mavjud. Ushbu yangilanishni davom ettirish uchun bir martalik to'lovni amalga oshirishingiz kerak.</translation>
+<translation id="6523879681771260760">Zaxira nusxa faylini saqlash yo'lini ko'rsating</translation>
+<translation id="2036152819788683293">Ushbu hisob uchun zaxira nusxa fayli yaratish (beta). <ph name="BEGIN_LINK_LEARN_MORE" />Batafsil<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Zaxira nusxalash</translation>
+<translation id="4267347174163690295">Ushbu hisob uchun zaxira nusxa fayli yaratish (beta).</translation>
+<translation id="8112950994208888917">Ushbu amal bu hisob uchun to'liq disk zaxira nusxasini yaratadi, bu sozlamalar, o'rnatilgan brauzer kengaytmalari va podsistema ilovalarini o'z ichiga olgan holda, JemaOS tizimingizni zaxira nusxasi yaratilgan paytdagi holatiga oson tiklash imkonini beradi. Ilovalaringiz va asosiy papkangiz tarkibiga qarab zaxira nusxa fayli katta bo'lishi mumkin; zaxira nusxa faylini tashqi xotira qurilmasida saqlash tavsiya etiladi. Portativ USB diskingiz bo'lsa, uni hozir ulang. <ph name="BEGIN_LINK_LEARN_MORE" />Batafsil<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Ushbu hisob uchun kirish parolini kiriting</translation>
+<translation id="8663988871299316062">Ushbu parolni eslab qoling, chunki u bu zaxira nusxa faylini tiklashda kerak bo'ladi</translation>
+<translation id="6408904153044317846">Tiklash uchun zaxira nusxa faylini tanlang</translation>
+<translation id="8062988348127771021">JemaOS ma'lumotlaringizni zaxira nusxa faylidan tiklash</translation>
+<translation id="7309192418866543730">Zaxira nusxa parolini kiriting</translation>
+<translation id="3642408376366598984">Ushbu zaxira nusxa faylini shifrlash uchun ishlatilgan parolni kiriting</translation>
+<translation id="7783974937157985523">Zaxira nusxa paroli</translation>
+<translation id="6583780301401541007">Tiklash muvaffaqiyatli</translation>
+<translation id="3514011352559420398">Tiklash muvaffaqiyatsiz</translation>
+<translation id="7535980903266533458">Zaxira nusxani qurilmangizga yoki tashqi xotiraga saqlash</translation>
+<translation id="604001903249547235">Bulutli zaxira nusxalash</translation>
+<translation id="8885702701336541611">Zaxira nusxani JemaOS bulutli xotirasiga yuklash</translation>
+<translation id="3939744430096549862">Bulutga zaxira nusxalash</translation>
+<translation id="619129431573254316">Mahalliy zaxira nusxa faylidan tiklash</translation>
+<translation id="1859592711955106569">Bulutdan tiklash</translation>
+<translation id="38222223336741457">JemaOS bulutidan yuklab olish va tiklash</translation>
+<translation id="1241089811244416179">Bulutdan tiklash</translation>
+<translation id="652479689372703360">Zaxira nusxalash jarayonda</translation>
+<translation id="3655220146274872918">Zaxira nusxalash yakunlandi</translation>
+<translation id="4243579853635792694">Zaxira nusxangiz muvaffaqiyatli yaratildi</translation>
+<translation id="4854179463174744546">Zaxira nusxalash jarayonida xatolik yuz berdi</translation>
+<translation id="2410668771600309999">Connect API foydalanuvchi ma'lumotlari</translation>
+<translation id="2223892939866251845">Foydalanuvchi ID</translation>
+<translation id="3850846286480935456">Zaxira nusxa xotirasini tahlil qilish</translation>
+<translation id="6244494465581273970">Foydalanuvchi ID kerak</translation>
+<translation id="9204006549413740506">Oxirgi yangilangan</translation>
+<translation id="476642412165431515">Uskuna qurilmalari</translation>
+<translation id="3386337985825120901">Zaxira nusxa ma'lumotlari mavjud emas</translation>
+<translation id="8490990067870590760">Zaxira nusxa fayllari yuklanmoqda...</translation>
+<translation id="2955409026764742995">Tiklash uchun zaxira nusxa faylini tanlang:</translation>
+<translation id="7414629348005657242">-- Zaxira nusxa faylini tanlang --</translation>
+<translation id="918246516374174381">Zaxira nusxa fayllari topilmadi. Avval zaxira nusxa yarating.</translation>
+<translation id="77997252117517973">Tez orada</translation>
+<translation id="1930692852800776096">Lug'at qo'shish</translation>
+<translation id="8793060353848771694">Chap quloqchin rasmi</translation>
+<translation id="6257440204887306255">Quvvatlash qutisi rasmi</translation>
+<translation id="2754700616124958693">O'ng quloqchin rasmi</translation>
+<translation id="1068676292264983586">Standart qurilma rasmi</translation>
+<translation id="6364075396486660405">Batareya muddatini optimallashtirish uchun barcha bo'limlardagi media fayllarni avtomatik skanerlashni o'chirish. <ph name="BEGIN_LINK_LEARN_MORE" />Batafsil<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Xavfsizlik parametrlari</translation>
+<translation id="5618366106086725045">Ushbu <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> o'rnatilishi uchun ko'proq ishlab chiquvchi funksiyalari bilan "Ishlab chiquvchi rejimini" yoqish. <ph name="BEGIN_LINK_LEARN_MORE" />Batafsil<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Siz allaqachon "Ishlab chiquvchi rejimida"siz</translation>
+<translation id="6074549317340202195">"Ishlab chiquvchi rejimini" yoqish</translation>
+<translation id="418781258674176053">Ogohlantirish! "Ishlab chiquvchi rejimini" yoqish qaytarib bo'lmas amaldir. "Ishlab chiquvchi rejimini" o'chirmoqchi bo'lsangiz, JemaOS tizimini qayta o'rnatishingiz kerak, bu barcha ma'lumotlarni o'chiradi. Ma'lumotlaringizni zaxiralab, o'z xavfingiz ostida davom eting.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Platforma <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Hozir oflayn</translation>
+<translation id="2590678769628709242">JemaOS obunangizni onlayn tekshiring</translation>
+<translation id="4701836089682883918">JemaOS obunasi haqida ma'lumot</translation>
+<translation id="5891566673089952188">Qurilma ID olishda xatolik yuz berdi</translation>
+<translation id="4685086787606104322">Obuna tugashi</translation>
+<translation id="3354919960795782984">Qurilma ID</translation>
+<translation id="5758632069869992306">Obunangizni onlayn tekshiring</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Platforma <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Sinov obunasi</translation>
+<translation id="4362781408813685579">Faol obuna</translation>
+<translation id="1141274201089997510">Muddati tugagan obuna</translation>
+<translation id="2553683254139782404">Notijorat nashri</translation>
+<translation id="8466048683756385518">Korxona litsenziyalangan versiyasi (sinov)</translation>
+<translation id="2853871047705932424">Korxona litsenziyalangan versiyasi</translation>
+<translation id="5239675900317881945">Korxona litsenziyalangan versiyasi (muddati tugagan)</translation>
+<translation id="189101945990408398">Eski Intel</translation>
+<translation id="6816405236809604904">Zamonaviy Intel</translation>
+<translation id="6169452478137972655">AMD grafikasi</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="1270291881045478104">JemaOS AI yoqish</translation>
+<translation id="2013780539677437932">JemaOS AI bilan bog'liq barcha funksiyalarni yoqish yoki o'chirish</translation>
+<translation id="3398637633218757480">JemaOS AI tezkor chaqiruvni yoqish</translation>
+<translation id="8986197796475507452">Ctrl + C + C tugmalarini bosish orqali belgilangan kontent uchun JemaOS AI parametrlarini tezda ochish</translation>
+<translation id="6407628130593274137">JemaOS AI uchun boshqa sozlamalar va parametrlar</translation>
+<translation id="4005574560653331142">Ushbu mahalliy hisobning PIN-kodini yoki kirish parolini o'zgartirish uchun <ph name="BEGIN_LINK" />Maxfiylik va xavfsizlik<ph name="END_LINK" /> sozlamalariga o'ting.</translation>
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425"><ph name="LINK_START" />JemaOS mahalliy hisobi bilan kirishingiz<ph name="LINK_END" /> mumkin.</translation>
+<translation id="5291842596976929391"><ph name="EMAIL_ADDRESS" /> elektron pochtasi allaqachon mavjud. Boshqa elektron pochta bilan qayta urinib ko'ring.</translation>
+<translation id="4519800823932975782">JemaOS Yordam markazi</translation>
+<translation id="4737474693231655139">JemaOS bo'yicha tez-tez so'raladigan savollarga yordam maqolalari va javoblarni toping</translation>
+</translationbundle>

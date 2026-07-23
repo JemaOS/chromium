@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="ja">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">Nutstore に登録して、JemaOS でファイルをクラウド同期しましょう。</translation>
+<translation id="8672291834743661083">Nutstore に登録</translation>
+<translation id="5103639294476249880">セキュリティ設定で「アプリケーションを追加」ボタンをクリック</translation>
+<translation id="8371020157576651120">アプリケーション パスワードを生成してコピー</translation>
+<translation id="3855250998276979579">Nutstore アプリを開く</translation>
+<translation id="6565655783894300125">メールアドレスとアプリケーション パスワードで Nutstore アカウントを JemaOS に接続</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">近日提供</translation>
+<translation id="4928968570611226525">この操作を続行するには、JemaOS デバイスで <ph name="BEGIN_LINK_ARC_APP" />&gt;Android サブシステムを有効にする<ph name="END_LINK_ARC_APP" />必要があります。また、JemaOS デバイスを<ph name="BEGIN_LINK_HELP" />デベロッパー モードに切り替える<ph name="END_LINK_HELP" />必要があります。</translation>
+<translation id="7395250550107972941">.apk ファイルをサイドロードできません。Android サブシステムが有効になっており、JemaOS のデベロッパー モードになっていることを確認してください。</translation>
+<translation id="5690820326685091783">JemaOS AI で開く</translation>
+</translationbundle>

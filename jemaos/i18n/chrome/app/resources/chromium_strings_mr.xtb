@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="mr">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Thot बद्दल</translation>
+<translation id="5639860668557220477">Thot ब्राउझरसाठी मदत मिळवा</translation>
+<translation id="1692689520561928457">JemaOS बद्दल</translation>
+<translation id="8692765844418174375">JemaOS आवृत्ती</translation>
+<translation id="2943260250558374955">JemaOS साठी मदत मिळवा</translation>
+<translation id="713321354492170993">ब्राउझर निष्क्रिय टॅबमधून मेमरी मोकळी करते. यामुळे सक्रिय टॅब आणि इतर अॅप्सना अधिक संगणकीय संसाधने मिळतात आणि ब्राउझर वेगवान राहते. तुम्ही निष्क्रिय टॅबवर परत आल्यावर ते आपोआप पुन्हा सक्रिय होतात.</translation>
+<translation id="1774190491044887444">ब्राउझर पार्श्वभूमी क्रियाकलाप आणि स्मूद स्क्रोलिंग व व्हिडिओ फ्रेम रेट यांसारखे दृश्य परिणाम मर्यादित करून बॅटरी वाचवते.</translation>
+<translation id="180121268008059459">ब्राउझर पृष्ठे आगाऊ लोड करते, जेणेकरून ब्राउझिंग आणि शोध जलद होतात.</translation>
+<translation id="7127093527178692287">बॅकअप पुनर्संचयित करा (बीटा)</translation>
+<translation id="4439042171549201806">बॅकअप फाइलमधून JemaOS पुनर्संचयित करण्यासाठी, कृपया बॅकअप फाइल असलेली रिमूव्हेबल ड्राइव्ह आता तुमच्या JemaOS उपकरणात घाला आणि तुम्हाला कोणती बॅकअप फाइल पुनर्संचयित करायची आहे ते निर्दिष्ट करा. कृपया लक्षात घ्या की हे विझार्ड ती ओळखू शकण्यासाठी तुमची बॅकअप फाइल तुमच्या रिमूव्हेबल ड्राइव्हच्या रूट डिरेक्टरीमध्ये असणे आवश्यक आहे.</translation>
+<translation id="2955409026764742995">पुनर्संचयित करण्यासाठी बॅकअप फाइल निवडा:</translation>
+<translation id="7040434808685140085">क्षमस्व, निवडलेली बॅकअप फाइल ओळखता आली नाही; कृपया नवीन फाइल निवडा.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />निवडलेल्या बॅकअप फाइलमधून JemaOS पुनर्संचयित करण्यासाठी, बॅकअप तयार केल्यावेळी त्याबद्दलची अचूक माहिती असणे आवश्यक आहे. अन्यथा, पुनर्संचयन प्रक्रिया अयशस्वी होईल.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"खाते नाव" म्हणजे तुमची बॅकअप फाइल ज्या खात्याखाली तयार करण्यात आली त्याचे प्राथमिक लॉगिन क्रेडेन्शियल. हे सामान्यतः तुमच्या JemaOS/Google खात्यासाठी साइन अप करण्यासाठी वापरलेला ईमेल पत्ता असतो. ते स्थानिक खाते असल्यास, ते "@jemaos.local" जोडलेले वापरकर्तानाव असेल.<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />पासवर्ड म्हणजे बॅकअप तयार केल्यावेळी तुम्हाला टाकण्यास सांगितलेला पासफ्रेज. हा सामान्यतः या खात्यासाठी JemaOS डेस्कटॉपमध्ये साइन इन करण्यासाठी वापरलेला तोच पासवर्ड असतो.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">खाते नाव</translation>
+<translation id="5490570429039308155">क्षमस्व, कृपया योग्य खाते नाव टाका</translation>
+<translation id="6657585470893396449">पासवर्ड</translation>
+<translation id="8200189938001188563">क्षमस्व, पासवर्ड रिकामा असू शकत नाही</translation>
+<translation id="3157931365184549694">पुनर्संचयित करा</translation>
+<translation id="8556278756526311953">बॅकअप पुनर्संचयित करत आहे</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />आम्ही आता तुमची बॅकअप फाइल पुनर्संचयित करण्याचे काम करत आहोत; यासाठी थोडा वेळ लागू शकतो, म्हणून कृपया धीर धरा.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />कृपया लक्षात घ्या की पुनर्संचयन प्रक्रिया यशस्वीरित्या पूर्ण झाल्यावर UI आपोआप पुन्हा सुरू होईल.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">बॅकअप पुनर्संचयन अयशस्वी झाले</translation>
+<translation id="5003531399442003695">अधिक तपशीलांसाठी, कृपया लॉग पाहण्यासाठी खालील लिंकवर क्लिक करा. ही त्रुटी कायम राहिल्यास, कृपया JemaOS तांत्रिक सहाय्य चॅनेलशी संपर्क साधा आणि त्रुटी लॉग द्या.</translation>
+<translation id="6363786367719063276">लॉग पहा</translation>
+<translation id="8730621377337864115">पूर्ण झाले</translation>
+<translation id="975238173507911396">डेटा पुनर्संचयन यशस्वी</translation>
+<translation id="6276879052695618521">बॅकअप पुनर्संचयन लॉग</translation>
+<translation id="4901207598072637766">JemaOS, <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /> द्वारे प्रदान</translation>
+<translation id="7894910504474624324">JemaOS आणि त्याच्या सेवा GDPR आणि युरोपियन डेटा संरक्षण कायद्याच्या तरतुदींचे पालन करतात. अधिक माहितीसाठी, कृपया आमचे <ph name="BEGIN_LINK_PRIVACY" />गोपनीयता धोरण<ph name="END_LINK_PRIVACY" /> आणि आमच्या <ph name="BEGIN_LINK_TOS" />सेवा अटी<ph name="END_LINK_TOS" /> पहा.</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, सर्व हक्क राखीव.</translation>
+<translation id="370679569376308836">JemaOS ही Jema उपकरण आणि त्याच्या SaaS वर आधारित व्यावसायिक ऑफर आहे.</translation>
+<translation id="2773644194450163486">JemaOS <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> मुक्त स्रोत प्रकल्पामुळे शक्य झाले आहे.</translation>
+<translation id="2330680727776977160">Chromium देखील इतर <ph name="BEGIN_LINK_1" />मुक्त स्रोत सॉफ्टवेअर<ph name="END_LINK_1" /> आणि <ph name="BEGIN_LINK_2" />अतिरिक्त मुक्त स्रोत सॉफ्टवेअर<ph name="END_LINK_2" /> मुळे शक्य झाले आहे.</translation>
+<translation id="1419954813084261088">Jema Technology द्वारे डिझाइन आणि निर्मित.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, सर्व हक्क राखीव.</translation>
+<translation id="6168072053306020326">Jema Technology हे Jema Technology LTD आणि Jema Technology (Beijing) Limited चे व्यापारी नाव आहे.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD ही कंपनी क्रमांक 12273803 सह इंग्लंड आणि वेल्समध्ये नोंदणीकृत कंपनी आहे.</translation>
+<translation id="1251589813188467292">महत्त्वाची उपकरण वॉरंटी आणि सेवा माहिती</translation>
+<translation id="4851115775198886021">उपकरण SN:</translation>
+</translationbundle>

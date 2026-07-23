@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="es-419">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">Regístrate en Nutstore para sincronizar tus archivos en la nube en JemaOS.</translation>
+<translation id="8672291834743661083">Regístrate en Nutstore</translation>
+<translation id="5103639294476249880">Haz clic en el botón "Agregar aplicación" en la configuración de seguridad</translation>
+<translation id="8371020157576651120">Genera y copia la contraseña de la aplicación</translation>
+<translation id="3855250998276979579">Abre la app Nutstore</translation>
+<translation id="6565655783894300125">y conecta tu cuenta de Nutstore a JemaOS con tu correo electrónico y la contraseña de la aplicación</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Próximamente</translation>
+<translation id="4928968570611226525">Para continuar con esta acción, deberás <ph name="BEGIN_LINK_ARC_APP" />&gt;activar el subsistema de Android<ph name="END_LINK_ARC_APP" /> en tu dispositivo JemaOS; además, tu dispositivo JemaOS debe estar <ph name="BEGIN_LINK_HELP" />en modo de desarrollador<ph name="END_LINK_HELP" />.</translation>
+<translation id="7395250550107972941">No se pueden instalar archivos .apk por carga lateral. Asegúrate de que el subsistema de Android esté activado y de que tu dispositivo JemaOS esté en modo de desarrollador.</translation>
+<translation id="5690820326685091783">Abrir con JemaOS AI</translation>
+</translationbundle>

@@ -82,4 +82,34 @@
 <translation id="7770846994000754827">Jema Technology 和燧炻创新是 Jema Technology LTD 和燧炻科技创新（北京）有限责任公司的商业名称。<ph name="LINE_BREAK" />Jema Technology LTD 是一家注册于英格兰和威尔士的公司，注册号为 12273803。</translation>
 <translation id="4851115775198886021">设备 SN：</translation>
 <translation id="1251589813188467292">重要设备维保及服务信息</translation>
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">关于 Thot</translation>
+<translation id="5639860668557220477">获取 Thot 浏览器的帮助</translation>
+<translation id="1692689520561928457">关于 JemaOS</translation>
+<translation id="8692765844418174375">JemaOS 版本</translation>
+<translation id="2943260250558374955">获取 JemaOS 的帮助</translation>
+<translation id="713321354492170993">浏览器会释放不活跃标签页占用的内存，为活跃标签页和其他应用提供更多计算资源，并保持浏览器运行流畅。当您返回不活跃标签页时，它们会自动重新激活。</translation>
+<translation id="1774190491044887444">浏览器通过限制后台活动和视觉效果（如平滑滚动和视频帧率）来节省电量。</translation>
+<translation id="180121268008059459">浏览器会预加载网页，让浏览和搜索更快。</translation>
+<translation id="4439042171549201806">要从备份文件恢复 JemaOS，请立即将存有备份文件的可移动驱动器插入您的 JemaOS 设备，并指定要恢复的备份文件。请注意，备份文件必须位于可移动驱动器的根目录中，才能被此向导检测到。</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />要从所选备份文件恢复 JemaOS，必须提供创建备份时的准确信息，否则恢复过程将会失败。<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />“帐户名”是创建备份文件时所用帐户的主要登录凭据，通常是您注册 JemaOS/Google 帐户时使用的电子邮件地址。如果是本地帐户，则为用户名加上“@jemaos.local”。<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />密码是创建备份时系统要求您输入的密码短语，通常与您登录此帐户的 JemaOS 桌面时使用的密码相同。<ph name="END_PARAGRAPH3" /></translation>
+<translation id="5003531399442003695">有关更多详情，请点击下方链接查看日志。如果此错误仍然存在，请联系 JemaOS 技术支持渠道，并提供错误日志。</translation>
+<translation id="8730621377337864115">完成</translation>
+<translation id="975238173507911396">数据恢复成功</translation>
+<translation id="4901207598072637766">JemaOS，由 <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /> 提供</translation>
+<translation id="7894910504474624324">JemaOS 及其服务符合 GDPR 和欧洲数据保护法的规定。如需了解更多信息，请参阅我们的<ph name="BEGIN_LINK_PRIVACY" />隐私政策<ph name="END_LINK_PRIVACY" />和<ph name="BEGIN_LINK_TOS" />服务条款<ph name="END_LINK_TOS" />。</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, 保留所有权利。</translation>
+<translation id="370679569376308836">JemaOS 是基于 Jema 设备及其 SaaS 的商业产品。</translation>
+<translation id="2773644194450163486">JemaOS 得益于 <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> 开源项目。</translation>
+<translation id="2330680727776977160">Chromium 也得益于其他<ph name="BEGIN_LINK_1" />开源软件<ph name="END_LINK_1" />和<ph name="BEGIN_LINK_2" />更多开源软件<ph name="END_LINK_2" />。</translation>
+<translation id="1419954813084261088">由 Jema Technology 设计和制造。</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, 保留所有权利。</translation>
+<translation id="6168072053306020326">Jema Technology 是 Jema Technology LTD 和 Jema Technology (Beijing) Limited 的商号。
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD 是一家在英格兰和威尔士注册的公司，公司编号为 12273803。</translation>
 </translationbundle>

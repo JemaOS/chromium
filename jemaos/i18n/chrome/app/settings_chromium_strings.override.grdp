@@ -1,43 +1,76 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!-- override chrome/app/settings_chromium_strings.grdp, included from chromium_strings.grd -->
 <grit-part>
-  <message name="IDS_SETTINGS_ABOUT_PROGRAM" desc="Menu title for the About Chromium page.">
-    À propos de Thot
-  </message>
-  <message name="IDS_SETTINGS_GET_HELP_USING_CHROME" desc="Text of the button which takes the user to the Chrome help page.">
-    Obtenir de l’aide pour le navigateur Thot
-  </message>
+  <if expr="lang == 'fr' or lang == 'fr-CA'">
+    <message name="IDS_SETTINGS_ABOUT_PROGRAM" desc="Menu title for the About Chromium page.">À propos de Thot</message>
+    <message name="IDS_SETTINGS_GET_HELP_USING_CHROME" desc="Text of the button which takes the user to the Chrome help page.">Obtenir de l’aide pour le navigateur Thot</message>
+  </if>
+  <if expr="lang == 'es'">
+    <message name="IDS_SETTINGS_ABOUT_PROGRAM" desc="Menu title for the About Chromium page.">Acerca de Thot</message>
+    <message name="IDS_SETTINGS_GET_HELP_USING_CHROME" desc="Text of the button which takes the user to the Chrome help page.">Obtener ayuda con el navegador Thot</message>
+  </if>
+  <if expr="lang == 'it'">
+    <message name="IDS_SETTINGS_ABOUT_PROGRAM" desc="Menu title for the About Chromium page.">Informazioni su Thot</message>
+    <message name="IDS_SETTINGS_GET_HELP_USING_CHROME" desc="Text of the button which takes the user to the Chrome help page.">Ottenere aiuto con il browser Thot</message>
+  </if>
+  <if expr="lang != 'fr' and lang != 'fr-CA' and lang != 'es' and lang != 'it'">
+    <message name="IDS_SETTINGS_ABOUT_PROGRAM" desc="Menu title for the About Chromium page.">About Thot</message>
+    <message name="IDS_SETTINGS_GET_HELP_USING_CHROME" desc="Text of the button which takes the user to the Chrome help page.">Get help with the Thot browser</message>
+  </if>
   <if expr="chromeos_ash">
     <if expr="openjema">
-      <message name="IDS_SETTINGS_ABOUT_OS" desc="Menu title for the About Chromium OS page.">
-        À propos de Jema
-      </message>
-      <message name="IDS_OS_SETTINGS_TAG_OS_VERSION" desc="Text for search result item which, when clicked, navigates the user to about Chrome OS settings, which gives information about the current Chrome OS version.">
-        openJema version
-      </message>
-      <message name="IDS_SETTINGS_GET_HELP_USING_CHROME_OS" desc="Text of the button which takes the user to the Chrome help page.">
-        Get help with openJema
-      </message>
+      <if expr="lang == 'fr' or lang == 'fr-CA'">
+        <message name="IDS_SETTINGS_ABOUT_OS" desc="Menu title for the About Chromium OS page.">À propos de Jema</message>
+        <message name="IDS_OS_SETTINGS_TAG_OS_VERSION" desc="Text for search result item which, when clicked, navigates the user to about Chrome OS settings.">Version openJema</message>
+        <message name="IDS_SETTINGS_GET_HELP_USING_CHROME_OS" desc="Text of the button which takes the user to the Chrome help page.">Obtenir de l’aide pour openJema</message>
+      </if>
+      <if expr="lang != 'fr' and lang != 'fr-CA'">
+        <message name="IDS_SETTINGS_ABOUT_OS" desc="Menu title for the About Chromium OS page.">About Jema</message>
+        <message name="IDS_OS_SETTINGS_TAG_OS_VERSION" desc="Text for search result item which, when clicked, navigates the user to about Chrome OS settings.">openJema version</message>
+        <message name="IDS_SETTINGS_GET_HELP_USING_CHROME_OS" desc="Text of the button which takes the user to the Chrome help page.">Get help with openJema</message>
+      </if>
     </if>
     <if expr="not openjema">
-      <message name="IDS_SETTINGS_ABOUT_OS" desc="Menu title for the About Chromium OS page.">
-        À propos de JemaOS
-      </message>
-      <message name="IDS_OS_SETTINGS_TAG_OS_VERSION" desc="Text for search result item which, when clicked, navigates the user to about Chrome OS settings, which gives information about the current Chrome OS version.">
-        Version de JemaOS
-      </message>
-      <message name="IDS_SETTINGS_GET_HELP_USING_CHROME_OS" desc="Text of the button which takes the user to the Chrome help page.">
-        Obtenir de l’aide pour JemaOS
-      </message>
+      <if expr="lang == 'fr' or lang == 'fr-CA'">
+        <message name="IDS_SETTINGS_ABOUT_OS" desc="Menu title for the About Chromium OS page.">À propos de JemaOS</message>
+        <message name="IDS_OS_SETTINGS_TAG_OS_VERSION" desc="Text for search result item which, when clicked, navigates the user to about Chrome OS settings.">Version de JemaOS</message>
+        <message name="IDS_SETTINGS_GET_HELP_USING_CHROME_OS" desc="Text of the button which takes the user to the Chrome help page.">Obtenir de l’aide pour JemaOS</message>
+      </if>
+      <if expr="lang == 'es'">
+        <message name="IDS_SETTINGS_ABOUT_OS" desc="Menu title for the About Chromium OS page.">Acerca de JemaOS</message>
+        <message name="IDS_OS_SETTINGS_TAG_OS_VERSION" desc="Text for search result item which, when clicked, navigates the user to about Chrome OS settings.">Versión de JemaOS</message>
+        <message name="IDS_SETTINGS_GET_HELP_USING_CHROME_OS" desc="Text of the button which takes the user to the Chrome help page.">Obtener ayuda con JemaOS</message>
+      </if>
+      <if expr="lang == 'it'">
+        <message name="IDS_SETTINGS_ABOUT_OS" desc="Menu title for the About Chromium OS page.">Informazioni su JemaOS</message>
+        <message name="IDS_OS_SETTINGS_TAG_OS_VERSION" desc="Text for search result item which, when clicked, navigates the user to about Chrome OS settings.">Versione JemaOS</message>
+        <message name="IDS_SETTINGS_GET_HELP_USING_CHROME_OS" desc="Text of the button which takes the user to the Chrome help page.">Ottenere aiuto con JemaOS</message>
+      </if>
+      <if expr="lang != 'fr' and lang != 'fr-CA' and lang != 'es' and lang != 'it'">
+        <message name="IDS_SETTINGS_ABOUT_OS" desc="Menu title for the About Chromium OS page.">About JemaOS</message>
+        <message name="IDS_OS_SETTINGS_TAG_OS_VERSION" desc="Text for search result item which, when clicked, navigates the user to about Chrome OS settings.">JemaOS version</message>
+        <message name="IDS_SETTINGS_GET_HELP_USING_CHROME_OS" desc="Text of the button which takes the user to the Chrome help page.">Get help with JemaOS</message>
+      </if>
     </if>
   </if>
-  <message name="IDS_SETTINGS_PERFORMANCE_MEMORY_SAVER_MODE_SETTING_DESCRIPTION" desc="Description for the memory saver mode setting">
-    Le navigateur libère de la mémoire des onglets inactifs. Cela donne aux onglets actifs et aux autres applications plus de ressources informatiques et maintient la rapidité du navigateur. Vos onglets inactifs redeviennent automatiquement actifs lorsque vous y revenez.
-  </message>
-  <message name="IDS_SETTINGS_PERFORMANCE_BATTERY_SAVER_MODE_SETTING_DESCRIPTION" desc="Description for the energy saver mode setting">
-    Le navigateur économise la batterie en limitant l’activité en arrière-plan et les effets visuels, tels que le défilement fluide et les fréquences d’images vidéo.
-  </message>
-  <message name="IDS_SETTINGS_PERFORMANCE_PRELOAD_TOGGLE_SUMMARY" desc="Summary for the preload pages setting">
-    Le navigateur précharge les pages, ce qui rend la navigation et la recherche plus rapides.
-  </message>
+  <if expr="lang == 'fr' or lang == 'fr-CA'">
+    <message name="IDS_SETTINGS_PERFORMANCE_MEMORY_SAVER_MODE_SETTING_DESCRIPTION" desc="Description for the memory saver mode setting">Le navigateur libère de la mémoire des onglets inactifs. Cela donne aux onglets actifs et aux autres applications plus de ressources informatiques et maintient la rapidité du navigateur. Vos onglets inactifs redeviennent automatiquement actifs lorsque vous y revenez.</message>
+    <message name="IDS_SETTINGS_PERFORMANCE_BATTERY_SAVER_MODE_SETTING_DESCRIPTION" desc="Description for the energy saver mode setting">Le navigateur économise la batterie en limitant l’activité en arrière-plan et les effets visuels, tels que le défilement fluide et les fréquences d’images vidéo.</message>
+    <message name="IDS_SETTINGS_PERFORMANCE_PRELOAD_TOGGLE_SUMMARY" desc="Summary for the preload pages setting">Le navigateur précharge les pages, ce qui rend la navigation et la recherche plus rapides.</message>
+  </if>
+  <if expr="lang == 'es'">
+    <message name="IDS_SETTINGS_PERFORMANCE_MEMORY_SAVER_MODE_SETTING_DESCRIPTION" desc="Description for the memory saver mode setting">El navegador libera memoria de las pestañas inactivas. Esto da a las pestañas activas y a otras aplicaciones más recursos informáticos y mantiene el navegador rápido. Tus pestañas inactivas vuelven a estar activas automáticamente cuando regresas a ellas.</message>
+    <message name="IDS_SETTINGS_PERFORMANCE_BATTERY_SAVER_MODE_SETTING_DESCRIPTION" desc="Description for the energy saver mode setting">El navegador ahorra batería limitando la actividad en segundo plano y los efectos visuales, como el desplazamiento suave y las frecuencias de imagen de vídeo.</message>
+    <message name="IDS_SETTINGS_PERFORMANCE_PRELOAD_TOGGLE_SUMMARY" desc="Summary for the preload pages setting">El navegador precarga las páginas, lo que hace que la navegación y la búsqueda sean más rápidas.</message>
+  </if>
+  <if expr="lang == 'it'">
+    <message name="IDS_SETTINGS_PERFORMANCE_MEMORY_SAVER_MODE_SETTING_DESCRIPTION" desc="Description for the memory saver mode setting">Il browser libera memoria dalle schede inattive. Questo dà alle schede attive e alle altre app più risorse di calcolo e mantiene il browser veloce. Le tue schede inattive tornano automaticamente attive quando ci ritorni.</message>
+    <message name="IDS_SETTINGS_PERFORMANCE_BATTERY_SAVER_MODE_SETTING_DESCRIPTION" desc="Description for the energy saver mode setting">Il browser risparmia batteria limitando l'attività in background e gli effetti visivi, come lo scorrimento fluido e i frame rate dei video.</message>
+    <message name="IDS_SETTINGS_PERFORMANCE_PRELOAD_TOGGLE_SUMMARY" desc="Summary for the preload pages setting">Il browser precarica le pagine, rendendo la navigazione e la ricerca più veloci.</message>
+  </if>
+  <if expr="lang != 'fr' and lang != 'fr-CA' and lang != 'es' and lang != 'it'">
+    <message name="IDS_SETTINGS_PERFORMANCE_MEMORY_SAVER_MODE_SETTING_DESCRIPTION" desc="Description for the memory saver mode setting">The browser frees up memory from inactive tabs. This gives active tabs and other apps more computing resources and keeps the browser fast. Your inactive tabs automatically become active again when you return to them.</message>
+    <message name="IDS_SETTINGS_PERFORMANCE_BATTERY_SAVER_MODE_SETTING_DESCRIPTION" desc="Description for the energy saver mode setting">The browser saves battery by limiting background activity and visual effects, such as smooth scrolling and video frame rates.</message>
+    <message name="IDS_SETTINGS_PERFORMANCE_PRELOAD_TOGGLE_SUMMARY" desc="Summary for the preload pages setting">The browser preloads pages, making browsing and searching faster.</message>
+  </if>
 </grit-part>

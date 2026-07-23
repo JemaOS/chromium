@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="am">
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">ፋይሎችዎን በJemaOS ውስጥ በደመና ለማመሳሰል Nutstore ይመዝገቡ።</translation>
+<translation id="8672291834743661083">Nutstore ይመዝገቡ</translation>
+<translation id="5103639294476249880">በደህንነት ቅንብሮች ውስጥ "መተግበሪያ ጨምር" የሚለውን ቁልፍ ይጫኑ</translation>
+<translation id="8371020157576651120">የመተግበሪያ የይለፍ ቃልዎን ይፍጠሩ እና ይቅዱ</translation>
+<translation id="3855250998276979579">የNutstore መተግበሪያን ይክፈቱ</translation>
+<translation id="6565655783894300125">እና Nutstore መለያን ከJemaOS ጋር በኢሜይልዎ እና በመተግበሪያ የይለፍ ቃልዎ ያገናኙ</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">በቅርቡ ይመጣል</translation>
+<translation id="4928968570611226525">በዚህ እርምጃ ለመቀጠል በJemaOS መሣሪያዎ ላይ <ph name="BEGIN_LINK_ARC_APP" />&gt;የAndroid ንዑስ ሥርዓትን ማንቃት<ph name="END_LINK_ARC_APP" /> ያስፈልግዎታል፤ እንዲሁም JemaOS መሣሪያዎ <ph name="BEGIN_LINK_HELP" />ወደ ገንቢ ሁነታ መቀየር<ph name="END_LINK_HELP" /> አለበት።</translation>
+<translation id="7395250550107972941">.apk ፋይሎችን መጫን አልተቻለም። እባክዎ የAndroid ንዑስ ሥርዓቱ እንደተነቃ እና በJemaOS ገንቢ ሁነታ ውስጥ እንደሆኑ ያረጋግጡ።</translation>
+<translation id="5690820326685091783">በJemaOS AI ክፈት</translation>
+</translationbundle>

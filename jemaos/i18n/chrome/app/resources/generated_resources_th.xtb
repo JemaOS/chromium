@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="th">
+	<translation id="7386402409475121504">สร้างบัญชี JemaOS ในพื้นที่ของคุณ</translation>
+	<translation id="3760308806144055927">ลงชื่อเข้าใช้บัญชี JemaOS ในพื้นที่ของคุณ</translation>
+	<translation id="3325117507482096812">กรุณาใส่รหัสผ่าน</translation>
+	<translation id="1838206877831947154">รหัสผ่านของคุณไม่ตรงกัน</translation>
+	<translation id="2158276988029582286">สร้างบัญชีท้องถิ่นใหม่</translation>
+	<translation id="8592849747346274067">ลงชื่อเข้าใช้บัญชีที่มีอยู่</translation>
+	<translation id="482190417986201746">ชื่อผู้ใช้หรือรหัสผ่านที่คุณป้อนไม่ถูกต้อง</translation>
+	<translation id="6603987686259425085">คุณสามารถ <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>ลงชื่อเข้าใช้ด้วยบัญชีภายใน JemaOS<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph></translation>
+	<translation id="3598802966230712759">อีเมล <ph name="EMAIL_ADDRESS">$1</ph> มีอยู่แล้ว โปรดลองอีกครั้งโดยใช้อีเมลอื่น</translation>
+	<translation id="7215016743510876720">ใช้บัญชีท้องถิ่น</translation>
+	<translation id="6657635042185516718">ใช้บัญชีออนไลน์ต่อไป</translation>
+	<translation id="6867476688065565618">เปลี่ยนไปใช้บัญชีท้องถิ่นหรือไม่</translation>
+	<translation id="4840454774882557974">หากคุณเลือกใช้บัญชีท้องถิ่น คุณสมบัติที่เป็นประโยชน์ ได้แก่ การซิงโครไนซ์ข้อมูลและการตั้งค่าของคุณผ่านอุปกรณ์หลายเครื่อง และการลงชื่อเข้าใช้เว็บแอปโดยอัตโนมัติโดยใช้บัญชี JemaOS ของคุณจะไม่ทำงาน</translation>
+	<translation id="8951507920859729424">เราขอแนะนำให้ใช้บัญชีออนไลน์เพื่อใช้งาน JemaOS ได้อย่างเต็มที่</translation>
+	<translation id="479773200536372215">คุณจะไม่สามารถเพิ่มบัญชี Google ได้เนื่องจากคีย์ Google API หายไป ดูรายละเอียดที่ <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph></translation>
+	<translation id="1198491307547164157">คุณจะไม่สามารถเพิ่มบัญชี JemaOS ได้เนื่องจากคีย์ JemaOS API หายไป ดูรายละเอียดที่ <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph></translation>
+	<translation id="5042404702659901995">คำชี้แจงสิทธิส่วนบุคคล</translation>
+	<translation id="4907736162587268100">เนื้อหาคำชี้แจงความเป็นส่วนตัว</translation>
+	<translation id="5988344732274877691">ลงทะเบียนเพื่อรับจดหมายข่าว (ไม่บ่อยนักและตามสัญญา) สำหรับ JemaOS</translation>
+	<translation id="1706203008474708805">เข้าร่วมแผนการปรับปรุงประสบการณ์ผู้ใช้ JemaOS</translation>
+	<translation id="1147139514756087229">ลงชื่อเข้าใช้ด้วยบัญชีท้องถิ่น</translation>
+	<translation id="2054784944085654098">กำลังสร้างไฟล์สำรองทันที การดำเนินการนี้อาจใช้เวลาสักครู่ กรุณารอสักครู่...</translation>
+	<translation id="3554401467586751874">สร้างไฟล์สำรองสำเร็จแล้ว</translation>
+	<translation id="2349211327705667074">ดูไฟล์สำรอง</translation>
+	<translation id="3049367131589710124">ดูบันทึกข้อผิดพลาด</translation>
+	<translation id="1079017345574916945">เดสก์ท็อประยะไกล</translation>
+	<translation id="3064478898280877715">แอพสโตร์</translation>
+	<translation id="5890206344045530832">โปรแกรมติดตั้ง</translation>
+	<translation id="2173278076276376488">ยูทิลิตีนี้จะช่วยคุณติดตั้ง <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ลงในที่จัดเก็บข้อมูลภายในของอุปกรณ์นี้</translation>
+	<translation id="5323182426977498659">คำเตือน! ขั้นตอนนี้เป็นการทำลายล้างและไม่สามารถยกเลิกได้ โปรดทราบว่าเราจะไม่รับผิดชอบต่อการสูญเสียข้อมูลที่อาจเกิดขึ้นหรือให้การสนับสนุนด้านเทคนิคเร่งด่วนใด ๆ โปรดดำเนินการด้วยความเสี่ยงของคุณเอง</translation>
+	<translation id="8517836015601969896">การติดตั้งดิสก์แบบเต็ม</translation>
+	<translation id="7300045760790370189">ติดตั้ง <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> เพื่อครอบครองฮาร์ดดิสก์ทั้งหมด ข้อมูลทั้งหมดของฮาร์ดดิสก์เป้าหมายจะถูกล้าง</translation>
+	<translation id="8762511733918256595">การติดตั้งมัลติบูต</translation>
+	<translation id="248900698427753678">ติดตั้ง <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ลงในพาร์ติชันที่มีอยู่ของฮาร์ดดิสก์ โดยที่ <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> สามารถอยู่คู่ขนานกับระบบปฏิบัติการอื่นได้ ข้อมูลทั้งหมดบนพาร์ติชันเป้าหมายจะถูกล้าง</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> จะถูกติดตั้งบนฮาร์ดไดรฟ์ที่คุณเลือก ข้อมูลทั้งหมดบนดิสก์เป้าหมายจะถูกล้าง</translation>
+	<translation id="4039091757234555415">ดิสก์</translation>
+	<translation id="7783580523889684697">ไม่มีดิสก์</translation>
+	<translation id="8217653566575018388">การติดตั้งเสร็จสมบูรณ์</translation>
+	<translation id="8846746259444262774">การติดตั้งล้มเหลว</translation>
+	<translation id="7263815009235541549">การติดตั้งเสร็จสิ้นเรียบร้อยแล้ว โปรดปิดอุปกรณ์ของคุณก่อน จากนั้นจึงนำสื่อการติดตั้งใดๆ ออก และเปิดใหม่อีกครั้งเพื่อบูต <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph></translation>
+	<translation id="3380151284134965398">อ๊ะ มีบางอย่างผิดพลาดและการติดตั้งไม่เสร็จสมบูรณ์ โปรดลองดำเนินการอีกครั้ง หากยังคงเกิดข้อผิดพลาดเดิม โปรดติดต่อฝ่ายสนับสนุน JemaOS ตามบันทึกข้างต้น</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> จะถูกติดตั้งบนพาร์ติชันที่เลือกของฮาร์ดไดรฟ์ของคุณ ภายใต้รูปแบบมัลติบูตปัจจุบัน การดำเนินการนี้จะดำเนินต่อไปได้ก็ต่อเมื่ออุปกรณ์ของคุณรองรับ UEFI และฮาร์ดดิสก์ของคุณได้รับการฟอร์แมตด้วย GPT</translation>
+	<translation id="7831363758161884243">พาร์ติชันเป้าหมายจะถูกล้าง คุณต้องระบุพาร์ติชัน EFI ที่ใช้งานอยู่ (โดยปกติจะทำโดยอัตโนมัติ) เนื่องจากตัวติดตั้งจำเป็นต้องแก้ไขการกำหนดค่าการบูตระบบ</translation>
+	<translation id="5670799238446305550">เลือกพาร์ติชันเป้าหมาย <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph></translation>
+	<translation id="3695537760133394753">ฉากกั้นห้อง</translation>
+	<translation id="5610519566593708119">เลือกพาร์ติชัน EFI</translation>
+	<translation id="3367650349940010965">ไม่มีพาร์ติชันสำหรับดิสก์ที่เลือก</translation>
+	<translation id="7453223384507098390">ไม่มีพาร์ติชัน EFI สำหรับดิสก์ที่เลือก</translation>
+	<translation id="1854532683465500847">ขนาดของพาร์ติชันที่เลือกน้อยกว่า 20GB การติดตั้งอาจล้มเหลว</translation>
+	<translation id="4144613075340468247">พาร์ติชั่นที่เลือกถูกเมาท์เข้ากับมัลติบูต <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> การติดตั้งอีกครั้งอาจล้มเหลว</translation>
+	<translation id="5793361052649920836">หลังการติดตั้ง คุณต้องการบูต <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> อย่างไร</translation>
+	<translation id="4273235330352963866">ติดตั้งและกำหนดค่า rEFInd ให้ฉัน (แนะนำ)</translation>
+	<translation id="1858708492548921044">rEFInd เป็นโปรแกรมจัดการการบูตที่นำเสนออินเทอร์เฟซแบบกราฟิกที่ดีสำหรับตัวเลือกการบูตระบบปฏิบัติการ เมื่อพีซีของคุณเริ่มทำงาน คุณจะสามารถเลือกระบบปฏิบัติการที่คุณต้องการเพื่อบู๊ตด้วยได้ สำหรับข้อมูลเพิ่มเติมเกี่ยวกับ rEFInd โปรดดูที่หน้าแรก</translation>
+	<translation id="3861924051442564602">เพิ่มตัวเลือกเมนูการบูต UEFI ให้ฉัน</translation>
+	<translation id="8622370666798589804">เมื่อพีซีของคุณเริ่มต้นระบบ คุณอาจสามารถเข้าสู่เมนูตัวเลือกการบูต UEFI ได้ (โดยส่วนใหญ่จะกดปุ่มลัด) ตัวเลือกนี้จะเพิ่ม <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> เป็นรายการในเมนูนั้น (รองรับเฉพาะเฟิร์มแวร์ BIOS และ UEFI บางรุ่นเท่านั้น)</translation>
+	<translation id="1569398690544416170">ไม่ต้องทำอะไรที่นี่ ฉันจะกำหนดค่าเอง</translation>
+	<translation id="3554866444001249532">สคริปต์การติดตั้งนี้จะใส่เฉพาะไฟล์ .efi ที่จำเป็นสำหรับการบูต <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ไปยังพาร์ติชัน EFI ของคุณ คุณจะต้องกำหนดค่าวิธีการบูตด้วยตัวเอง</translation>
+	<translation id="7492832751164189534">บังคับให้ออก</translation>
+	<translation id="5159534860632584026">กระบวนการติดตั้งสิ้นสุดลงแล้ว</translation>
+	<translation id="8686749782014838344">ไม่สามารถรับข้อมูลดิสก์</translation>
+	<translation id="5688543378771259173">การติดตั้งกำลังยุติลง...</translation>
+	<translation id="5350452134936384991">ติดตั้งใน USB</translation>
+	<translation id="8008470485414925603">ติดตั้ง <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ลงในดิสก์ USB ข้อมูลทั้งหมดบนดิสก์ USB เป้าหมายจะถูกล้าง</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> จะถูกติดตั้งบนดิสก์ USB ที่คุณเลือก ข้อมูลทั้งหมดบนดิสก์เป้าหมายจะถูกล้าง</translation>
+	<translation id="5725593226060700263">ไม่มีดิสก์ USB</translation>
+	<translation id="4357040841587078287">เราตรวจพบว่าคุณกำลังเรียกใช้สำเนา JemaOS นี้จากไฟล์ภาพที่ดาวน์โหลด หากต้องการใช้คุณสมบัติการสนับสนุนที่ครอบคลุมที่สุด (รวมถึงการอัปเดตแบบ Over-The-Air) ที่ JemaOS นำเสนอ เราขอแนะนำอย่างยิ่งให้คุณเปิดใช้ฟังก์ชัน "ตัวติดตั้ง" เพื่อทำการติดตั้ง JemaOS เต็มดิสก์ไปยังอุปกรณ์จัดเก็บข้อมูลที่แยกต่างหาก</translation>
+	<translation id="1246398339704431302">คุณสามารถ <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>ใช้สำเนาของ JemaOS นี้ต่อไปได้<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph> กระบวนการติดตั้งสามารถดำเนินการได้ในขั้นตอนต่อมาในระบบ อย่างไรก็ตาม ข้อมูลทั้งหมดของคุณจะถูกล้างหลังการติดตั้ง และคุณจะเริ่มต้นใหม่อีกครั้งจากหน้านี้</translation>
+	<translation id="3654532222088291133">แทนที่จะป้อนรหัสผ่านบัญชี JemaOS เพื่อลงชื่อเข้าใช้ คุณสามารถสร้างรหัสผ่าน <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> สำหรับอุปกรณ์นี้</translation>
+	<translation id="8377684629839541977">ใช้รหัสผ่านบัญชี JemaOS</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">อัปเดต <ph name="DEVICE_OS" /> โดยอัตโนมัติเสมอ</translation>
+<translation id="2347352406101856238">เปิดใช้การอัปเดต <ph name="DEVICE_OS" /> แล้ว</translation>
+<translation id="185834232609012804">ปิดใช้การอัปเดต <ph name="DEVICE_OS" /> แล้ว</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) แพลตฟอร์ม <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">เดสก์ท็อประยะไกล</translation>
+<translation id="6898090158927982244">Linux ของคุณเป็นเวอร์ชันล่าสุดแล้ว</translation>
+<translation id="4886703929102211360">มีการอัปเดตที่สำคัญสำหรับคอมโพเนนต์ Linux (เบต้า) ขอแนะนำอย่างยิ่งให้ติดตั้งการอัปเดตนี้โดยเร็วที่สุด มิฉะนั้น Linux (เบต้า) ของคุณอาจหยุดทำงาน</translation>
+<translation id="6694016202036959050">การตั้งค่า <ph name="DEVICE_OS" /></translation>
+<translation id="8362858344151826493">บัญชี JemaOS การสำรองข้อมูล และอื่นๆ</translation>
+<translation id="9150429437595727962">การตั้งค่า Wi-Fi</translation>
+<translation id="4938972461544498524">การตั้งค่าทัชแพด</translation>
+<translation id="1210024513248363065">บริการระยะไกล</translation>
+<translation id="2878862288885588535">บริการวินิจฉัยระยะไกล</translation>
+<translation id="7409197984340676806">บริการวินิจฉัยระยะไกลช่วยให้ตัวแทนฝ่ายสนับสนุนอย่างเป็นทางการของ JemaOS สามารถระบุปัญหาของระบบได้ ขณะนี้บริการวินิจฉัยระยะไกลสามารถเริ่มได้โดยตัวแทนฝ่ายสนับสนุนอย่างเป็นทางการของ JemaOS เท่านั้น</translation>
+<translation id="1791028023086176332">โปรดแชร์หมายเลขนี้กับตัวแทนฝ่ายสนับสนุนอย่างเป็นทางการของ JemaOS</translation>
+<translation id="6279304275399437025">กำลังเริ่มบริการวินิจฉัยระยะไกล...</translation>
+<translation id="1501882165699826662">โปรดหยุดบริการวินิจฉัยระยะไกลแล้วลองอีกครั้ง</translation>
+<translation id="3100283258447375201">ข้อมูลเพิ่มเติม</translation>
+<translation id="4070039109671307724">อื่นๆ</translation>
+<translation id="7326893024940073254">ปุ่ม "รีสตาร์ท"</translation>
+<translation id="3002423764319968103">แสดงปุ่ม "รีสตาร์ท" ในเมนูระบบ</translation>
+<translation id="6243454903512423518">ปุ่ม "หมุนหน้าจอ"</translation>
+<translation id="6491049336868978729">ขณะนี้คุณไม่ได้อยู่ในโหมดแท็บเล็ต ปุ่ม "หมุนหน้าจอ" จึงถูกซ่อนอยู่</translation>
+<translation id="5496012402277579695">แสดงปุ่ม "หมุนหน้าจอ" ในเมนูระบบ</translation>
+<translation id="5882838977344999606">ตัวสลับโหมดแท็บเล็ต/แล็ปท็อป</translation>
+<translation id="472164133625585606">แสดงตัวสลับโหมดแท็บเล็ต/แล็ปท็อปในเมนูระบบ</translation>
+<translation id="1851103550468466960">เปิดใช้ Widevine</translation>
+<translation id="4058176713282795846">เปิดใช้ Widevine เพื่อสตรีมเนื้อหาพรีเมียมที่มีการป้องกัน <ph name="BEGIN_LINK_LEARN_MORE" />ดูข้อมูลเพิ่มเติม<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">เลือก "libwidevine.so"</translation>
+<translation id="4838463656205005584">เปิดใช้ Widevine ไม่สำเร็จ...</translation>
+<translation id="2164041826798266548">การติดตั้งโมดูล Widevine CDM ล้มเหลว โปรดตรวจสอบการเชื่อมต่อของคุณแล้วลองอีกครั้ง</translation>
+<translation id="4106982328079440606">การตั้งค่าบัญชี JemaOS</translation>
+<translation id="6468776556018764845">ฟีเจอร์ทดลอง</translation>
+<translation id="3487615413425326553">ข้ามการตรวจสอบ Trusted Platform Module (TPM)</translation>
+<translation id="4817176087932811573">บางฟีเจอร์อาจทำงานไม่สำเร็จเนื่องจากชิป TPM ในอุปกรณ์ของคุณไม่เข้ากัน คุณสามารถข้ามการตรวจสอบ TPM เป็นวิธีแก้ปัญหาเบื้องต้นได้</translation>
+<translation id="3356003366173774486">การลงชื่อเข้าใช้อัตโนมัติ</translation>
+<translation id="6218459410891191693">อนุญาตให้บัญชีปัจจุบันลงชื่อเข้าใช้เดสก์ท็อปโดยอัตโนมัติเมื่ออุปกรณ์รีสตาร์ท</translation>
+<translation id="6620839363422062843">ไม่สามารถเปิดใช้สำหรับบัญชีนี้ เนื่องจากการลงชื่อเข้าใช้อัตโนมัติใช้งานอยู่สำหรับบัญชีอื่นบนอุปกรณ์นี้แล้ว</translation>
+<translation id="6734500226490446035">ไม่สามารถเปิดใช้สำหรับบัญชีนี้ เกิดข้อผิดพลาดที่ไม่ทราบสาเหตุขณะเตรียมระบบไฟล์สำหรับบัญชีนี้ โปรดลองรีสตาร์ทหรือสร้างบัญชีใหม่</translation>
+<translation id="5464880042146818691">ไม่สามารถเปิดใช้สำหรับบัญชีนี้ ตัวเลือกการลงชื่อเข้าใช้อัตโนมัติใช้ได้เฉพาะกับบัญชีประเภท "บัญชีในเครื่อง" เท่านั้น</translation>
+<translation id="3335654854106476749">โปรดเพิ่มรหัสผ่านสำหรับลงชื่อเข้าใช้ในการตั้งค่า <ph name="BEGIN_LINK" />ความเป็นส่วนตัวและความปลอดภัย<ph name="END_LINK" /> ก่อนเปิดใช้การลงชื่อเข้าใช้อัตโนมัติ</translation>
+<translation id="5586831602198585601">มี JemaOS เวอร์ชันใหม่กว่าพร้อมให้อัปเดตแล้ว อย่างไรก็ตาม การสมัครใช้งาน JemaOS for You ของคุณหมดอายุแล้ว คุณต้องมีการสมัครใช้งานที่ใช้งานอยู่เพื่ออัปเดต JemaOS ของคุณ</translation>
+<translation id="3869860597719956574">มี JemaOS เวอร์ชันหลักใหม่พร้อมให้อัปเดตแล้ว คุณต้องชำระค่าธรรมเนียมครั้งเดียวเพื่อดำเนินการอัปเดตนี้ต่อ</translation>
+<translation id="6523879681771260760">โปรดระบุเส้นทางสำหรับจัดเก็บไฟล์สำรองข้อมูล</translation>
+<translation id="2036152819788683293">สร้างไฟล์สำรองข้อมูลสำหรับบัญชีนี้ (เบต้า) <ph name="BEGIN_LINK_LEARN_MORE" />ดูข้อมูลเพิ่มเติม<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">สำรองข้อมูล</translation>
+<translation id="4267347174163690295">สร้างไฟล์สำรองข้อมูลสำหรับบัญชีนี้ (เบต้า)</translation>
+<translation id="8112950994208888917">การดำเนินการนี้จะสร้างการสำรองข้อมูลดิสก์แบบเต็มสำหรับบัญชีนี้ ทำให้คุณคืนค่า JemaOS กลับสู่สถานะ ณ เวลาที่สร้างการสำรองข้อมูลได้อย่างง่ายดาย รวมถึงการตั้งค่า ส่วนขยายเบราว์เซอร์ที่ติดตั้ง และแอประบบย่อย ไฟล์สำรองข้อมูลอาจมีขนาดใหญ่ขึ้นอยู่กับแอปและเนื้อหาในโฟลเดอร์หลักของคุณ ขอแนะนำให้จัดเก็บไฟล์สำรองข้อมูลไว้ในอุปกรณ์จัดเก็บข้อมูลภายนอก หากคุณมีไดรฟ์ USB แบบพกพา โปรดเชื่อมต่อตอนนี้ <ph name="BEGIN_LINK_LEARN_MORE" />ดูข้อมูลเพิ่มเติม<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">โปรดป้อนรหัสผ่านสำหรับลงชื่อเข้าใช้ของบัญชีนี้</translation>
+<translation id="8663988871299316062">โปรดจำรหัสผ่านนี้ไว้ เนื่องจากจะต้องใช้เมื่อคืนค่าไฟล์สำรองข้อมูลนี้</translation>
+<translation id="6408904153044317846">เลือกไฟล์สำรองข้อมูลที่จะคืนค่า</translation>
+<translation id="8062988348127771021">คืนค่าข้อมูล JemaOS ของคุณจากไฟล์สำรองข้อมูล</translation>
+<translation id="7309192418866543730">ป้อนรหัสผ่านสำรองข้อมูล</translation>
+<translation id="3642408376366598984">ป้อนรหัสผ่านที่ใช้เข้ารหัสไฟล์สำรองข้อมูลนี้</translation>
+<translation id="7783974937157985523">รหัสผ่านสำรองข้อมูล</translation>
+<translation id="6583780301401541007">คืนค่าสำเร็จ</translation>
+<translation id="3514011352559420398">คืนค่าไม่สำเร็จ</translation>
+<translation id="7535980903266533458">บันทึกการสำรองข้อมูลลงในอุปกรณ์หรือที่จัดเก็บข้อมูลภายนอกของคุณ</translation>
+<translation id="604001903249547235">สำรองข้อมูลบนคลาวด์</translation>
+<translation id="8885702701336541611">อัปโหลดการสำรองข้อมูลไปยังที่จัดเก็บข้อมูลคลาวด์ของ JemaOS</translation>
+<translation id="3939744430096549862">สำรองข้อมูลไปยังคลาวด์</translation>
+<translation id="619129431573254316">คืนค่าจากไฟล์สำรองข้อมูลในเครื่อง</translation>
+<translation id="1859592711955106569">คืนค่าจากคลาวด์</translation>
+<translation id="38222223336741457">ดาวน์โหลดและคืนค่าจากคลาวด์ของ JemaOS</translation>
+<translation id="1241089811244416179">คืนค่าจากคลาวด์</translation>
+<translation id="652479689372703360">กำลังสำรองข้อมูล</translation>
+<translation id="3655220146274872918">สำรองข้อมูลเสร็จสิ้น</translation>
+<translation id="4243579853635792694">สร้างการสำรองข้อมูลของคุณเรียบร้อยแล้ว</translation>
+<translation id="6337433855796857931">สำรองข้อมูลไม่สำเร็จ</translation>
+<translation id="4854179463174744546">เกิดข้อผิดพลาดระหว่างกระบวนการสำรองข้อมูล</translation>
+<translation id="2410668771600309999">ข้อมูลผู้ใช้ Connect API</translation>
+<translation id="2223892939866251845">รหัสผู้ใช้</translation>
+<translation id="3850846286480935456">การวิเคราะห์พื้นที่จัดเก็บข้อมูลสำรอง</translation>
+<translation id="6244494465581273970">ต้องระบุรหัสผู้ใช้</translation>
+<translation id="9204006549413740506">อัปเดตล่าสุด</translation>
+<translation id="476642412165431515">อุปกรณ์ฮาร์ดแวร์</translation>
+<translation id="3386337985825120901">ไม่มีข้อมูลสำรอง</translation>
+<translation id="8490990067870590760">กำลังโหลดไฟล์สำรองข้อมูล...</translation>
+<translation id="2955409026764742995">เลือกไฟล์สำรองข้อมูลที่จะคืนค่า:</translation>
+<translation id="7414629348005657242">-- เลือกไฟล์สำรองข้อมูล --</translation>
+<translation id="918246516374174381">ไม่พบไฟล์สำรองข้อมูล โปรดสร้างการสำรองข้อมูลก่อน</translation>
+<translation id="77997252117517973">เร็วๆ นี้</translation>
+<translation id="1930692852800776096">เพิ่มพจนานุกรม</translation>
+<translation id="8793060353848771694">รูปหูฟังอินเอียร์ซ้าย</translation>
+<translation id="6257440204887306255">รูปเคสชาร์จ</translation>
+<translation id="2754700616124958693">รูปหูฟังอินเอียร์ขวา</translation>
+<translation id="1068676292264983586">รูปอุปกรณ์เริ่มต้น</translation>
+<translation id="6364075396486660405">ปิดการสแกนไฟล์สื่ออัตโนมัติสำหรับทุกพาร์ติชันเพื่อเพิ่มอายุการใช้งานแบตเตอรี่ <ph name="BEGIN_LINK_LEARN_MORE" />ดูข้อมูลเพิ่มเติม<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">ตัวเลือกความปลอดภัย</translation>
+<translation id="5618366106086725045">เปิดใช้ "โหมดนักพัฒนา" สำหรับการติดตั้ง <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> นี้ พร้อมฟีเจอร์สำหรับนักพัฒนาเพิ่มเติม <ph name="BEGIN_LINK_LEARN_MORE" />ดูข้อมูลเพิ่มเติม<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">คุณอยู่ใน "โหมดนักพัฒนา" แล้ว</translation>
+<translation id="6074549317340202195">เปิดใช้ "โหมดนักพัฒนา"</translation>
+<translation id="418781258674176053">คำเตือน! การเปิดใช้ "โหมดนักพัฒนา" เป็นการดำเนินการที่ไม่สามารถย้อนกลับได้ หากคุณต้องการปิดใช้ "โหมดนักพัฒนา" คุณต้องติดตั้ง JemaOS ใหม่ ซึ่งจะลบข้อมูลทั้งหมด โปรดสำรองข้อมูลของคุณและดำเนินการต่อด้วยความเสี่ยงของคุณเอง</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    แพลตฟอร์ม <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">ขณะนี้ออฟไลน์</translation>
+<translation id="2590678769628709242">ตรวจสอบการสมัครใช้งาน JemaOS ของคุณทางออนไลน์</translation>
+<translation id="4701836089682883918">ข้อมูลการสมัครใช้งาน JemaOS</translation>
+<translation id="5891566673089952188">เกิดข้อผิดพลาดขณะดึงรหัสอุปกรณ์ของคุณ</translation>
+<translation id="4685086787606104322">การสมัครใช้งานสิ้นสุด</translation>
+<translation id="3354919960795782984">รหัสอุปกรณ์</translation>
+<translation id="5758632069869992306">ตรวจสอบการสมัครใช้งานของคุณทางออนไลน์</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     แพลตฟอร์ม <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">การสมัครใช้งานแบบทดลอง</translation>
+<translation id="4362781408813685579">การสมัครใช้งานที่ใช้งานอยู่</translation>
+<translation id="1141274201089997510">การสมัครใช้งานที่หมดอายุ</translation>
+<translation id="2553683254139782404">รุ่นที่ไม่ใช่เชิงพาณิชย์</translation>
+<translation id="8466048683756385518">เวอร์ชันที่มีสิทธิ์การใช้งานสำหรับองค์กร (ทดลอง)</translation>
+<translation id="2853871047705932424">เวอร์ชันที่มีสิทธิ์การใช้งานสำหรับองค์กร</translation>
+<translation id="5239675900317881945">เวอร์ชันที่มีสิทธิ์การใช้งานสำหรับองค์กร (หมดอายุ)</translation>
+<translation id="189101945990408398">Intel รุ่นเก่า</translation>
+<translation id="6816405236809604904">Intel รุ่นใหม่</translation>
+<translation id="6169452478137972655">กราฟิก AMD</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="2747689477259164256">JemaOS AI</translation>
+<translation id="1270291881045478104">เปิดใช้ JemaOS AI</translation>
+<translation id="2013780539677437932">เปิดหรือปิดใช้ฟีเจอร์ทั้งหมดที่เกี่ยวข้องกับ JemaOS AI</translation>
+<translation id="3398637633218757480">เปิดใช้การเรียกด่วน JemaOS AI</translation>
+<translation id="8986197796475507452">เรียกตัวเลือก JemaOS AI สำหรับเนื้อหาที่ไฮไลต์ได้อย่างรวดเร็วด้วยการกด Ctrl + C + C</translation>
+<translation id="6407628130593274137">การตั้งค่าและตัวเลือกอื่นๆ สำหรับ JemaOS AI</translation>
+<translation id="4005574560653331142">หากต้องการเปลี่ยน PIN หรือรหัสผ่านสำหรับลงชื่อเข้าใช้ของบัญชีในเครื่องนี้ ให้ไปที่การตั้งค่า <ph name="BEGIN_LINK" />ความเป็นส่วนตัวและความปลอดภัย<ph name="END_LINK" /></translation>
+
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">คุณสามารถ<ph name="LINK_START" />เข้าสู่ระบบด้วยบัญชี JemaOS ในเครื่อง<ph name="LINK_END" />ได้</translation>
+<translation id="5291842596976929391">อีเมล <ph name="EMAIL_ADDRESS" /> มีอยู่แล้ว โปรดลองอีกครั้งด้วยอีเมลอื่น</translation>
+<translation id="4519800823932975782">ศูนย์ช่วยเหลือ JemaOS</translation>
+<translation id="4737474693231655139">ค้นหาบทความช่วยเหลือและคำตอบสำหรับคำถามทั่วไปเกี่ยวกับ JemaOS</translation>
+</translationbundle>

@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="vi">
+	<translation id="7386402409475121504">Tạo tài khoản JemaOS cục bộ của bạn</translation>
+	<translation id="3760308806144055927">Đăng nhập tài khoản JemaOS cục bộ của bạn</translation>
+	<translation id="3325117507482096812">Vui lòng nhập mật khẩu</translation>
+	<translation id="1838206877831947154">Mật khẩu của bạn không khớp</translation>
+	<translation id="2158276988029582286">Tạo một tài khoản cục bộ mới</translation>
+	<translation id="8592849747346274067">Đăng nhập vào tài khoản hiện có</translation>
+	<translation id="482190417986201746">Tên người dùng hoặc mật khẩu bạn nhập không chính xác</translation>
+	<translation id="6603987686259425085">Bạn có thể <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>đăng nhập bằng tài khoản cục bộ JemaOS<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">Email <ph name="EMAIL_ADDRESS">$1</ph> đã tồn tại. Vui lòng thử lại bằng email khác.</translation>
+	<translation id="7215016743510876720">Sử dụng tài khoản cục bộ</translation>
+	<translation id="6657635042185516718">Tiếp tục sử dụng tài khoản trực tuyến</translation>
+	<translation id="6867476688065565618">Chuyển sang tài khoản cục bộ?</translation>
+	<translation id="4840454774882557974">Nếu bạn chọn sử dụng tài khoản cục bộ, các tính năng hữu ích bao gồm đồng bộ hóa dữ liệu và tùy chọn của bạn trên nhiều thiết bị và tự động đăng nhập ứng dụng web bằng tài khoản JemaOS của bạn sẽ không hoạt động.</translation>
+	<translation id="8951507920859729424">Chúng tôi khuyên bạn nên sử dụng tài khoản trực tuyến để tận dụng tối đa JemaOS.</translation>
+	<translation id="479773200536372215">Bạn sẽ không thể thêm tài khoản Google vì thiếu khóa Google API. Xem <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> để biết chi tiết.</translation>
+	<translation id="1198491307547164157">Bạn sẽ không thể thêm tài khoản JemaOS vì thiếu khóa API JemaOS. Xem <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> để biết chi tiết.</translation>
+	<translation id="5042404702659901995">Tuyên bố về quyền riêng tư</translation>
+	<translation id="4907736162587268100">Nội dung tuyên bố về quyền riêng tư</translation>
+	<translation id="5988344732274877691">Đăng ký nhận bản tin (rất không thường xuyên, đã hứa) cho JemaOS</translation>
+	<translation id="1706203008474708805">Tham gia kế hoạch cải thiện trải nghiệm người dùng JemaOS</translation>
+	<translation id="1147139514756087229">Đăng nhập bằng tài khoản cục bộ</translation>
+	<translation id="2054784944085654098">Tạo tập tin sao lưu ngay bây giờ. Việc này có thể mất một lúc; xin vui lòng chờ…</translation>
+	<translation id="3554401467586751874">Tệp sao lưu đã được tạo thành công</translation>
+	<translation id="2349211327705667074">Xem tập tin sao lưu</translation>
+	<translation id="3049367131589710124">Xem nhật ký lỗi</translation>
+	<translation id="1079017345574916945">Máy tính để bàn từ xa</translation>
+	<translation id="3064478898280877715">Cửa hàng ứng dụng</translation>
+	<translation id="5890206344045530832">Trình cài đặt</translation>
+	<translation id="2173278076276376488">Tiện ích này sẽ giúp bạn cài đặt <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> vào bộ nhớ trong của thiết bị này.</translation>
+	<translation id="5323182426977498659">Cảnh báo! Thủ tục này là phá hoại và không thể hoàn tác. Xin lưu ý rằng chúng tôi sẽ không chịu bất kỳ trách nhiệm nào về việc mất dữ liệu có thể xảy ra của bạn cũng như không cung cấp bất kỳ hỗ trợ kỹ thuật khẩn cấp nào, bạn phải tự chịu rủi ro khi tiếp tục.</translation>
+	<translation id="8517836015601969896">Cài đặt toàn bộ đĩa</translation>
+	<translation id="7300045760790370189">Cài đặt <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> để chiếm toàn bộ đĩa cứng, tất cả dữ liệu của đĩa cứng đích sẽ bị xóa.</translation>
+	<translation id="8762511733918256595">Cài đặt đa khởi động</translation>
+	<translation id="248900698427753678">Cài đặt <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> vào một phân vùng hiện có của đĩa cứng, trong đó <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> có thể tồn tại song song với hệ điều hành khác. Tất cả dữ liệu trên phân vùng đích sẽ bị xóa.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> sẽ được cài đặt trên ổ cứng đã chọn của bạn; tất cả dữ liệu trên đĩa đích sẽ bị xóa.</translation>
+	<translation id="4039091757234555415">đĩa</translation>
+	<translation id="7783580523889684697">Không có đĩa sẵn</translation>
+	<translation id="8217653566575018388">Cài đặt hoàn tất</translation>
+	<translation id="8846746259444262774">Cài đặt không thành công</translation>
+	<translation id="7263815009235541549">Quá trình cài đặt đã kết thúc thành công. Trước tiên hãy tắt nguồn thiết bị của bạn, sau đó tháo mọi phương tiện cài đặt rồi bật lại để khởi động <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>.</translation>
+	<translation id="3380151284134965398">Rất tiếc, đã xảy ra lỗi và quá trình cài đặt không hoàn tất. Vui lòng thử lại quá trình này. Nếu lỗi tương tự vẫn tiếp diễn, vui lòng liên hệ với bộ phận Hỗ trợ JemaOS bằng nhật ký trên.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> sẽ được cài đặt trên phân vùng đã chọn trên ổ cứng của bạn. Theo sơ đồ đa khởi động hiện tại, việc này chỉ có thể tiếp tục nếu thiết bị của bạn hỗ trợ UEFI và ổ cứng của bạn được định dạng bằng GPT.</translation>
+	<translation id="7831363758161884243">Phân vùng đích sẽ bị xóa; bạn cũng cần chỉ định phân vùng EFI đang hoạt động của mình (thường được thực hiện tự động) vì Trình cài đặt cần sửa đổi cấu hình khởi động hệ thống.</translation>
+	<translation id="5670799238446305550">Chọn phân vùng đích <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph></translation>
+	<translation id="3695537760133394753">Phân vùng</translation>
+	<translation id="5610519566593708119">Chọn phân vùng EFI</translation>
+	<translation id="3367650349940010965">Không có phân vùng nào cho đĩa đã chọn</translation>
+	<translation id="7453223384507098390">Không có phân vùng EFI nào cho đĩa đã chọn</translation>
+	<translation id="1854532683465500847">Kích thước của phân vùng đã chọn nhỏ hơn 20GB, quá trình cài đặt có thể không thành công</translation>
+	<translation id="4144613075340468247">Phân vùng đã chọn đã được gắn vào <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> đa khởi động, việc cài đặt lại vào nó có thể không thành công</translation>
+	<translation id="5793361052649920836">Sau khi cài đặt, bạn muốn khởi động <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> bằng cách nào?</translation>
+	<translation id="4273235330352963866">Cài đặt và định cấu hình rEFInd cho tôi (được khuyến nghị)</translation>
+	<translation id="1858708492548921044">rEFInd là chương trình quản lý khởi động cung cấp giao diện đồ họa đẹp mắt cho các tùy chọn khởi động hệ điều hành khi PC của bạn khởi động, bạn sẽ có thể chọn hệ điều hành mong muốn để khởi động với nó. Để biết thêm thông tin về rEFInd, vui lòng tham khảo trang chủ của nó.</translation>
+	<translation id="3861924051442564602">Thêm tùy chọn menu khởi động UEFI cho tôi</translation>
+	<translation id="8622370666798589804">Khi PC khởi động, bạn có thể vào menu tùy chọn khởi động UEFI (rất có thể bằng cách nhấn phím nóng), tùy chọn này thêm <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> làm mục nhập vào menu đó. (Chỉ hỗ trợ một số model firmware BIOS và UEFI).</translation>
+	<translation id="1569398690544416170">Không làm gì ở đây, tôi sẽ tự cấu hình</translation>
+	<translation id="3554866444001249532">Tập lệnh cài đặt này sẽ chỉ đặt các tệp .efi cần thiết để khởi động <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> vào phân vùng EFI của bạn, bạn sẽ cần phải tự định cấu hình cách khởi động nó.</translation>
+	<translation id="7492832751164189534">Buộc thoát</translation>
+	<translation id="5159534860632584026">Quá trình cài đặt đã kết thúc</translation>
+	<translation id="8686749782014838344">Không lấy được thông tin ổ đĩa</translation>
+	<translation id="5688543378771259173">Quá trình cài đặt đang bị chấm dứt...</translation>
+	<translation id="5350452134936384991">Cài đặt trong USB</translation>
+	<translation id="8008470485414925603">Cài đặt <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> vào đĩa USB; tất cả dữ liệu trên đĩa USB mục tiêu sẽ bị xóa.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> sẽ được cài đặt trên đĩa USB đã chọn của bạn; tất cả dữ liệu trên đĩa đích sẽ bị xóa.</translation>
+	<translation id="5725593226060700263">Không có đĩa USB</translation>
+	<translation id="4357040841587078287">Chúng tôi phát hiện thấy bạn đang chạy bản sao JemaOS này từ tệp hình ảnh đã tải xuống. Để sử dụng các tính năng hỗ trợ toàn diện nhất (bao gồm các bản cập nhật qua mạng) mà JemaOS có thể cung cấp, chúng tôi thực sự khuyên bạn nên khởi chạy chức năng "Trình cài đặt" để thực hiện cài đặt toàn bộ đĩa của JemaOS vào một thiết bị lưu trữ riêng.</translation>
+	<translation id="1246398339704431302">Bạn vẫn có thể <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>tiếp tục sử dụng bản sao JemaOS này<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, quá trình cài đặt có thể được thực hiện ở giai đoạn sau trong hệ thống, tuy nhiên, tất cả dữ liệu của bạn sẽ bị xóa sau khi cài đặt và bạn sẽ bắt đầu lại từ trang này.</translation>
+	<translation id="3654532222088291133">Thay vì nhập mật khẩu tài khoản JemaOS để đăng nhập, bạn có thể tạo mật khẩu <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> cho thiết bị này</translation>
+	<translation id="8377684629839541977">Sử dụng mật khẩu tài khoản JemaOS</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">Tự động cập nhật <ph name="DEVICE_OS" /></translation>
+<translation id="2347352406101856238">Đã bật cập nhật <ph name="DEVICE_OS" /></translation>
+<translation id="185834232609012804">Đã tắt cập nhật <ph name="DEVICE_OS" /></translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Nền tảng <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Máy tính từ xa</translation>
+<translation id="6898090158927982244">Linux của bạn đã được cập nhật</translation>
+<translation id="4886703929102211360">Có bản cập nhật quan trọng cho thành phần Linux (beta). Bạn nên cài đặt bản cập nhật này càng sớm càng tốt, nếu không Linux (beta) có thể ngừng hoạt động.</translation>
+<translation id="6694016202036959050">Cài đặt <ph name="DEVICE_OS" /></translation>
+<translation id="8362858344151826493">Tài khoản JemaOS, sao lưu, khác</translation>
+<translation id="9150429437595727962">Cài đặt Wi-Fi</translation>
+<translation id="4938972461544498524">Cài đặt bàn di chuột</translation>
+<translation id="1210024513248363065">Dịch vụ từ xa</translation>
+<translation id="2878862288885588535">Dịch vụ chẩn đoán từ xa</translation>
+<translation id="7409197984340676806">Dịch vụ chẩn đoán từ xa cho phép đại diện hỗ trợ chính thức của JemaOS xác định các sự cố hệ thống. Hiện tại, dịch vụ chẩn đoán từ xa chỉ có thể do đại diện hỗ trợ chính thức của JemaOS khởi động.</translation>
+<translation id="1791028023086176332">Vui lòng chia sẻ số này với đại diện hỗ trợ chính thức của JemaOS</translation>
+<translation id="6279304275399437025">Đang khởi động dịch vụ chẩn đoán từ xa...</translation>
+<translation id="1501882165699826662">Vui lòng dừng dịch vụ chẩn đoán từ xa rồi thử lại</translation>
+<translation id="3100283258447375201">Thông tin thêm</translation>
+<translation id="4070039109671307724">Khác</translation>
+<translation id="7326893024940073254">Nút "Khởi động lại"</translation>
+<translation id="3002423764319968103">Hiện nút "Khởi động lại" trong trình đơn hệ thống</translation>
+<translation id="6243454903512423518">Nút "Xoay màn hình"</translation>
+<translation id="6491049336868978729">Bạn hiện không ở chế độ máy tính bảng, nút "Xoay màn hình" đang bị ẩn</translation>
+<translation id="5496012402277579695">Hiện nút "Xoay màn hình" trong trình đơn hệ thống</translation>
+<translation id="5882838977344999606">Công tắc chế độ máy tính bảng/máy tính xách tay</translation>
+<translation id="472164133625585606">Hiện công tắc chế độ máy tính bảng/máy tính xách tay trong trình đơn hệ thống</translation>
+<translation id="1851103550468466960">Bật Widevine</translation>
+<translation id="4058176713282795846">Bật Widevine để phát trực tuyến nội dung cao cấp được bảo vệ. <ph name="BEGIN_LINK_LEARN_MORE" />Tìm hiểu thêm<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">Chọn "libwidevine.so"</translation>
+<translation id="4838463656205005584">Không bật được Widevine...</translation>
+<translation id="2164041826798266548">Cài đặt mô-đun Widevine CDM không thành công. Vui lòng kiểm tra kết nối rồi thử lại.</translation>
+<translation id="4106982328079440606">Cài đặt tài khoản JemaOS</translation>
+<translation id="6468776556018764845">Tính năng thử nghiệm</translation>
+<translation id="3487615413425326553">Bỏ qua kiểm tra Trusted Platform Module (TPM)</translation>
+<translation id="4817176087932811573">Một số tính năng có thể bị lỗi do chip TPM không tương thích trong thiết bị của bạn; bạn có thể bỏ qua kiểm tra TPM như một giải pháp tạm thời.</translation>
+<translation id="3356003366173774486">Tự động đăng nhập</translation>
+<translation id="6218459410891191693">Cho phép tài khoản hiện tại tự động đăng nhập vào màn hình nền khi thiết bị khởi động lại</translation>
+<translation id="6620839363422062843">Không thể bật cho tài khoản này; tính năng tự động đăng nhập đã được kích hoạt cho các tài khoản khác trên thiết bị này</translation>
+<translation id="6734500226490446035">Không thể bật cho tài khoản này; đã xảy ra lỗi không xác định khi khởi tạo hệ thống tệp cho tài khoản này. Vui lòng thử khởi động lại hoặc tạo tài khoản mới</translation>
+<translation id="5464880042146818691">Không thể bật cho tài khoản này; tùy chọn tự động đăng nhập chỉ dành cho loại "Tài khoản cục bộ".</translation>
+<translation id="3335654854106476749">Vui lòng thêm mật khẩu đăng nhập trong phần cài đặt <ph name="BEGIN_LINK" />Quyền riêng tư và bảo mật<ph name="END_LINK" /> trước khi bật tự động đăng nhập.</translation>
+<translation id="5586831602198585601">Hiện đã có phiên bản JemaOS mới hơn để cập nhật. Tuy nhiên, gói thuê bao JemaOS for You của bạn đã hết hạn; bạn cần có gói thuê bao đang hoạt động để cập nhật JemaOS.</translation>
+<translation id="3869860597719956574">Hiện đã có phiên bản chính mới của JemaOS để cập nhật. Bạn phải trả phí một lần để tiếp tục bản cập nhật này.</translation>
+<translation id="6523879681771260760">Vui lòng chỉ định đường dẫn lưu tệp sao lưu</translation>
+<translation id="2036152819788683293">Tạo tệp sao lưu cho tài khoản này (beta). <ph name="BEGIN_LINK_LEARN_MORE" />Tìm hiểu thêm<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Sao lưu</translation>
+<translation id="4267347174163690295">Tạo tệp sao lưu cho tài khoản này (beta).</translation>
+<translation id="8112950994208888917">Thao tác này tạo bản sao lưu toàn bộ ổ đĩa cho tài khoản này, giúp dễ dàng khôi phục JemaOS về trạng thái khi tạo bản sao lưu, bao gồm cài đặt, tiện ích trình duyệt đã cài đặt và ứng dụng hệ thống con. Tùy thuộc vào ứng dụng và nội dung thư mục chính của bạn, tệp sao lưu có thể lớn; nên lưu tệp sao lưu trên thiết bị lưu trữ ngoài. Nếu bạn có ổ USB di động, vui lòng kết nối ngay bây giờ. <ph name="BEGIN_LINK_LEARN_MORE" />Tìm hiểu thêm<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Vui lòng nhập mật khẩu đăng nhập cho tài khoản này</translation>
+<translation id="8663988871299316062">Vui lòng ghi nhớ mật khẩu này vì bạn sẽ cần đến khi khôi phục tệp sao lưu này</translation>
+<translation id="6408904153044317846">Chọn tệp sao lưu để khôi phục</translation>
+<translation id="8062988348127771021">Khôi phục dữ liệu JemaOS của bạn từ tệp sao lưu</translation>
+<translation id="7309192418866543730">Nhập mật khẩu sao lưu</translation>
+<translation id="3642408376366598984">Nhập mật khẩu đã dùng để mã hóa tệp sao lưu này</translation>
+<translation id="7783974937157985523">Mật khẩu sao lưu</translation>
+<translation id="6583780301401541007">Khôi phục thành công</translation>
+<translation id="3514011352559420398">Khôi phục không thành công</translation>
+<translation id="7535980903266533458">Lưu bản sao lưu vào thiết bị hoặc bộ nhớ ngoài của bạn</translation>
+<translation id="604001903249547235">Sao lưu đám mây</translation>
+<translation id="8885702701336541611">Tải bản sao lưu lên bộ nhớ đám mây JemaOS</translation>
+<translation id="3939744430096549862">Sao lưu lên đám mây</translation>
+<translation id="619129431573254316">Khôi phục từ tệp sao lưu cục bộ</translation>
+<translation id="1859592711955106569">Khôi phục từ đám mây</translation>
+<translation id="38222223336741457">Tải xuống và khôi phục từ đám mây JemaOS</translation>
+<translation id="1241089811244416179">Khôi phục từ đám mây</translation>
+<translation id="652479689372703360">Đang sao lưu</translation>
+<translation id="3655220146274872918">Đã sao lưu xong</translation>
+<translation id="4243579853635792694">Đã tạo bản sao lưu của bạn thành công</translation>
+<translation id="6337433855796857931">Sao lưu không thành công</translation>
+<translation id="4854179463174744546">Đã xảy ra lỗi trong quá trình sao lưu</translation>
+<translation id="2410668771600309999">Thông tin người dùng Connect API</translation>
+<translation id="2223892939866251845">ID người dùng</translation>
+<translation id="3850846286480935456">Phân tích bộ nhớ sao lưu</translation>
+<translation id="6244494465581273970">Yêu cầu ID người dùng</translation>
+<translation id="9204006549413740506">Cập nhật lần cuối</translation>
+<translation id="476642412165431515">Thiết bị phần cứng</translation>
+<translation id="3386337985825120901">Không có dữ liệu sao lưu</translation>
+<translation id="8490990067870590760">Đang tải tệp sao lưu...</translation>
+<translation id="2955409026764742995">Chọn tệp sao lưu để khôi phục:</translation>
+<translation id="7414629348005657242">-- Chọn tệp sao lưu --</translation>
+<translation id="918246516374174381">Không tìm thấy tệp sao lưu nào. Vui lòng tạo bản sao lưu trước.</translation>
+<translation id="77997252117517973">Sắp ra mắt</translation>
+<translation id="1930692852800776096">Thêm từ điển</translation>
+<translation id="8793060353848771694">Hình ảnh tai nghe trái</translation>
+<translation id="6257440204887306255">Hình ảnh hộp sạc</translation>
+<translation id="2754700616124958693">Hình ảnh tai nghe phải</translation>
+<translation id="1068676292264983586">Hình ảnh thiết bị mặc định</translation>
+<translation id="6364075396486660405">Tắt tính năng tự động quét tệp đa phương tiện cho tất cả các phân vùng để tối ưu hóa thời lượng pin. <ph name="BEGIN_LINK_LEARN_MORE" />Tìm hiểu thêm<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Tùy chọn bảo mật</translation>
+<translation id="5618366106086725045">Bật "Chế độ nhà phát triển" cho bản cài đặt <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> này với nhiều tính năng dành cho nhà phát triển hơn. <ph name="BEGIN_LINK_LEARN_MORE" />Tìm hiểu thêm<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Bạn đã ở trong "Chế độ nhà phát triển"</translation>
+<translation id="6074549317340202195">Bật "Chế độ nhà phát triển"</translation>
+<translation id="418781258674176053">Cảnh báo! Bật "Chế độ nhà phát triển" là thao tác không thể hoàn tác. Nếu muốn tắt "Chế độ nhà phát triển", bạn phải cài đặt lại JemaOS, việc này sẽ xóa tất cả dữ liệu. Vui lòng sao lưu dữ liệu của bạn và tự chịu rủi ro khi tiếp tục.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Nền tảng <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Hiện đang ngoại tuyến</translation>
+<translation id="2590678769628709242">Kiểm tra gói thuê bao JemaOS của bạn trực tuyến</translation>
+<translation id="4701836089682883918">Thông tin gói thuê bao JemaOS</translation>
+<translation id="5891566673089952188">Đã xảy ra lỗi khi lấy ID thiết bị của bạn</translation>
+<translation id="4685086787606104322">Ngày kết thúc thuê bao</translation>
+<translation id="3354919960795782984">ID thiết bị</translation>
+<translation id="5758632069869992306">Kiểm tra gói thuê bao của bạn trực tuyến</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Nền tảng <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Gói thuê bao dùng thử</translation>
+<translation id="4362781408813685579">Gói thuê bao đang hoạt động</translation>
+<translation id="1141274201089997510">Gói thuê bao đã hết hạn</translation>
+<translation id="2553683254139782404">Phiên bản phi thương mại</translation>
+<translation id="8466048683756385518">Phiên bản có giấy phép doanh nghiệp (dùng thử)</translation>
+<translation id="2853871047705932424">Phiên bản có giấy phép doanh nghiệp</translation>
+<translation id="5239675900317881945">Phiên bản có giấy phép doanh nghiệp (đã hết hạn)</translation>
+<translation id="189101945990408398">Intel thế hệ cũ</translation>
+<translation id="6816405236809604904">Intel hiện đại</translation>
+<translation id="6169452478137972655">Đồ họa AMD</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="2747689477259164256">AI JemaOS</translation>
+<translation id="1270291881045478104">Bật AI JemaOS</translation>
+<translation id="2013780539677437932">Bật hoặc tắt tất cả các tính năng liên quan đến AI JemaOS</translation>
+<translation id="3398637633218757480">Bật Gọi nhanh AI JemaOS</translation>
+<translation id="8986197796475507452">Nhanh chóng hiển thị các tùy chọn AI JemaOS cho nội dung được chọn bằng cách nhấn Ctrl + C + C</translation>
+<translation id="6407628130593274137">Các cài đặt và tùy chọn khác cho AI JemaOS</translation>
+<translation id="4005574560653331142">Để thay đổi mã PIN hoặc mật khẩu đăng nhập của tài khoản cục bộ này, hãy chuyển đến phần cài đặt <ph name="BEGIN_LINK" />Quyền riêng tư và bảo mật<ph name="END_LINK" />.</translation>
+
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">Bạn có thể <ph name="LINK_START" />đăng nhập bằng tài khoản JemaOS cục bộ<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">Email <ph name="EMAIL_ADDRESS" /> đã tồn tại. Vui lòng thử lại bằng email khác.</translation>
+<translation id="4519800823932975782">Trung tâm trợ giúp JemaOS</translation>
+<translation id="4737474693231655139">Tìm bài viết trợ giúp và câu trả lời cho các câu hỏi thường gặp về JemaOS</translation>
+</translationbundle>

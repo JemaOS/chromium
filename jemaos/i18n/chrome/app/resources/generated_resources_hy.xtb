@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="hy">
+	<translation id="7386402409475121504">Ստեղծեք ձեր տեղական JemaOS հաշիվը</translation>
+	<translation id="3760308806144055927">Մուտք գործեք ձեր տեղական JemaOS հաշիվ</translation>
+	<translation id="3325117507482096812">Խնդրում ենք մուտքագրել գաղտնաբառը</translation>
+	<translation id="1838206877831947154">Ձեր գաղտնաբառերը չեն համընկնում</translation>
+	<translation id="2158276988029582286">Ստեղծեք նոր տեղական հաշիվ</translation>
+	<translation id="8592849747346274067">Մուտք գործեք գոյություն ունեցող հաշիվ</translation>
+	<translation id="482190417986201746">Ձեր մուտքագրած օգտանունը կամ գաղտնաբառը սխալ է</translation>
+	<translation id="6603987686259425085">Դուք կարող եք <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>մուտք գործել JemaOS տեղական հաշիվ<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>:</translation>
+	<translation id="3598802966230712759">Էլփոստ <ph name="EMAIL_ADDRESS">$1</ph> արդեն գոյություն ունի: Խնդրում ենք նորից փորձել մեկ այլ էլ.փոստով:</translation>
+	<translation id="7215016743510876720">Օգտագործեք տեղական հաշիվ</translation>
+	<translation id="6657635042185516718">Շարունակեք օգտագործել առցանց հաշիվը</translation>
+	<translation id="6867476688065565618">Անցե՞լ տեղական հաշվին:</translation>
+	<translation id="4840454774882557974">Եթե դուք ընտրում եք օգտագործել տեղական հաշիվ, օգտակար գործառույթները ներառում են ձեր տվյալների և նախապատվությունների համաժամացումը մի քանի սարքերի միջև և ավտոմատ կերպով մուտք գործել վեբ հավելվածներ՝ օգտագործելով ձեր JemaOS հաշիվը, չի աշխատի:</translation>
+	<translation id="8951507920859729424">Մենք խորհուրդ ենք տալիս օգտագործել առցանց հաշիվ՝ JemaOS-ն առավելագույնս օգտագործելու համար:</translation>
+	<translation id="479773200536372215">Դուք չեք կարողանա ավելացնել Google հաշիվներ, քանի որ Google API ստեղները բացակայում են: Մանրամասների համար տես <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph>:</translation>
+	<translation id="1198491307547164157">Դուք չեք կարողանա ավելացնել JemaOS հաշիվներ, քանի որ JemaOS API ստեղները բացակայում են: Մանրամասների համար տես <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph>:</translation>
+	<translation id="5042404702659901995">Գաղտնիության հայտարարություն</translation>
+	<translation id="4907736162587268100">Գաղտնիության հայտարարության բովանդակությունը</translation>
+	<translation id="5988344732274877691">Գրանցվեք JemaOS-ի համար (շատ հազվադեպ, խոստացված) տեղեկագրին</translation>
+	<translation id="1706203008474708805">Միացեք JemaOS-ի օգտատերերի փորձի բարելավման պլանին</translation>
+	<translation id="1147139514756087229">Մուտք գործեք տեղական հաշիվով</translation>
+	<translation id="2054784944085654098">Այժմ պահուստային ֆայլի ստեղծում: Սա կարող է որոշ ժամանակ տևել; խնդրում եմ սպասել…</translation>
+	<translation id="3554401467586751874">Պահուստային ֆայլը հաջողությամբ ստեղծվեց</translation>
+	<translation id="2349211327705667074">Դիտեք կրկնօրինակ ֆայլը</translation>
+	<translation id="6337433855796857931">Պահուստավորումը ձախողվեց</translation>
+	<translation id="3049367131589710124">Դիտեք սխալների մատյանը</translation>
+	<translation id="1079017345574916945">Հեռավոր աշխատասեղան</translation>
+	<translation id="3064478898280877715">App Store</translation>
+	<translation id="2747689477259164256">JemaOS AI</translation>
+	<translation id="5890206344045530832">Տեղադրող</translation>
+	<translation id="2173278076276376488">Այս օգտակար ծրագիրը կօգնի ձեզ տեղադրել <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> այս սարքի ներքին պահեստում:</translation>
+	<translation id="5323182426977498659">Զգուշացում. Այս ընթացակարգը կործանարար է և հնարավոր չէ հետարկել: Խնդրում ենք նկատի ունենալ, որ մենք որևէ պատասխանատվություն չենք կրելու ձեր հնարավոր տվյալների կորստի համար և որևէ հրատապ տեխնիկական աջակցություն չենք տրամադրելու, շարունակեք ձեր ռիսկով:</translation>
+	<translation id="8517836015601969896">Սկավառակի ամբողջական տեղադրում</translation>
+	<translation id="7300045760790370189">Տեղադրեք <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>՝ մի ամբողջ կոշտ սկավառակ զբաղեցնելու համար, թիրախային կոշտ սկավառակի բոլոր տվյալները կջնջվեն:</translation>
+	<translation id="8762511733918256595">Multi-boot տեղադրում</translation>
+	<translation id="248900698427753678">Տեղադրեք <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> կոշտ սկավառակի գոյություն ունեցող բաժանման վրա, որտեղ <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> կարող է գոյություն ունենալ այլ ՕՀ-ի հետ զուգահեռ: Թիրախային բաժանման բոլոր տվյալները կջնջվեն:</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> կտեղադրվի ձեր ընտրած կոշտ սկավառակի վրա; նպատակային սկավառակի բոլոր տվյալները կջնջվեն:</translation>
+	<translation id="4039091757234555415">Սկավառակ</translation>
+	<translation id="7783580523889684697">Սկավառակ չկա</translation>
+	<translation id="8217653566575018388">Տեղադրումն ավարտված է</translation>
+	<translation id="8846746259444262774">Տեղադրումը ձախողվեց</translation>
+	<translation id="7263815009235541549">Տեղադրումը հաջողությամբ ավարտվեց: Խնդրում ենք նախ անջատեք ձեր սարքը, ապա հեռացրեք տեղադրման ցանկացած մեդիա և նորից միացրեք այն՝ <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> բեռնելու համար:</translation>
+	<translation id="3380151284134965398">Վա՜յ, ինչ-որ բան սխալ է տեղի ունեցել, և տեղադրումը չի ավարտվել: Խնդրում ենք նորից փորձել գործընթացը: Եթե ​​նույն սխալը չվերանա, դիմեք JemaOS-ի աջակցության համար վերը նշված մատյանով:</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> կտեղադրվի ձեր կոշտ սկավառակի ընտրված բաժանման վրա: Բազմագործարկման ընթացիկ սխեմայի համաձայն, դա կարող է շարունակվել միայն այն դեպքում, եթե ձեր սարքն աջակցում է UEFI-ին, և ձեր կոշտ սկավառակները ձևաչափված են GPT-ով:</translation>
+	<translation id="7831363758161884243">Թիրախային միջնորմը կջնջվի; դուք նաև պետք է նշեք ձեր ակտիվ EFI միջնորմը (սովորաբար կատարվում է ավտոմատ կերպով), քանի որ Տեղադրողը պետք է փոփոխի համակարգի բեռնման կոնֆիգուրացիաները:</translation>
+	<translation id="5670799238446305550">Ընտրեք <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> թիրախային բաժանումը</translation>
+	<translation id="3695537760133394753">Միջնորմ</translation>
+	<translation id="5610519566593708119">Ընտրեք EFI միջնորմ</translation>
+	<translation id="3367650349940010965">Ընտրված սկավառակի համար հասանելի բաժանումներ չկան</translation>
+	<translation id="7453223384507098390">Ընտրված սկավառակի համար հասանելի EFI միջնորմներ չկան</translation>
+	<translation id="1854532683465500847">Ընտրված բաժանման չափը 20 ԳԲ-ից պակաս է, տեղադրումը կարող է ձախողվել</translation>
+	<translation id="4144613075340468247">Ընտրված բաժինը տեղադրվել է <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> բազմաբեռնման մեջ, նորից տեղադրումը կարող է ձախողվել:</translation>
+	<translation id="5793361052649920836">Տեղադրվելուց հետո ինչպե՞ս եք ցանկանում բեռնել <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>:</translation>
+	<translation id="4273235330352963866">Տեղադրեք և կարգավորեք rEFInd ինձ համար (խորհուրդ է տրվում)</translation>
+	<translation id="1858708492548921044">rEFInd-ը բեռնման մենեջեր ծրագիր է, որն առաջարկում է գեղեցիկ գրաֆիկական ինտերֆեյս OS-ի բեռնման ընտրանքների համար, երբ ձեր համակարգիչը գործարկվի, դուք կկարողանաք ընտրել ձեր ուզած ՕՀ-ը՝ դրանով բեռնելու համար: REFInd-ի վերաբերյալ լրացուցիչ տեղեկությունների համար խնդրում ենք այցելել նրա գլխավոր էջը:</translation>
+	<translation id="3861924051442564602">Ինձ համար ավելացրեք UEFI բեռնման ընտրացանկի տարբերակ</translation>
+	<translation id="8622370666798589804">Երբ ձեր համակարգիչը գործարկվի, դուք կարող եք մուտք գործել UEFI-ի բեռնման ընտրանքների ընտրացանկ (ամենայն հավանականությամբ՝ սեղմելով թեժ ստեղնը), այս ընտրանքն ավելացնում է <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> որպես մուտք այդ ընտրացանկում: (Աջակցում է միայն BIOS-ի և UEFI որոնվածի որոշ մոդելներ):</translation>
+	<translation id="1569398690544416170">Այստեղ ոչինչ մի արեք, ես ինքս կկարգավորեմ այն</translation>
+	<translation id="3554866444001249532">Տեղադրման այս սկրիպտը միայն անհրաժեշտ .efi ֆայլերը կտեղադրի <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ձեր EFI միջնորմում բեռնելու համար, դուք պետք է կարգավորեք, թե ինչպես բեռնել այն ինքներդ:</translation>
+	<translation id="7492832751164189534">Ստիպել հեռանալ</translation>
+	<translation id="5159534860632584026">Տեղադրման գործընթացը դադարեցվել է</translation>
+	<translation id="8686749782014838344">Չհաջողվեց ստանալ սկավառակի մասին տեղեկությունները</translation>
+	<translation id="5688543378771259173">Տեղադրումն ավարտվում է...</translation>
+	<translation id="5350452134936384991">Տեղադրեք USB-ում</translation>
+	<translation id="8008470485414925603">Տեղադրեք <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> USB սկավառակի վրա; թիրախային USB սկավառակի բոլոր տվյալները կջնջվեն:</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> կտեղադրվի ձեր ընտրած USB սկավառակի վրա; նպատակային սկավառակի բոլոր տվյալները կջնջվեն:</translation>
+	<translation id="5725593226060700263">USB սկավառակ չկա</translation>
+	<translation id="4357040841587078287">Մենք հայտնաբերել ենք, որ դուք օգտագործում եք JemaOS-ի այս պատճենը ներբեռնված պատկերային ֆայլից: Առավել համապարփակ աջակցության գործառույթներն օգտագործելու համար (ներառյալ Օդային թարմացումները), որոնք կարող է առաջարկել JemaOS-ը, մենք խստորեն խորհուրդ ենք տալիս գործարկել «Տեղադրող» գործառույթը՝ JemaOS-ի ամբողջական սկավառակի տեղադրումը առանձին պահեստավորման սարքում կատարելու համար:</translation>
+	<translation id="1246398339704431302">Դուք կարող եք <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>միևնույն է շարունակել օգտագործել JemaOS-ի այս պատճենը<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, տեղադրման գործընթացը կարող է իրականացվել ավելի ուշ համակարգում, սակայն, տեղադրման էջից հետո ձեր բոլոր տվյալները նորից կսկսվեն:</translation>
+	<translation id="3654532222088291133">Մուտք գործելու համար ձեր JemaOS հաշվի գաղտնաբառը մուտքագրելու փոխարեն կարող եք այս սարքի համար ստեղծել <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> գաղտնաբառ:</translation>
+	<translation id="8377684629839541977">Օգտագործեք JemaOS հաշվի գաղտնաբառը</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">Ավտոմատ կերպով թարմացված պահել <ph name="DEVICE_OS" />-ը</translation>
+<translation id="2347352406101856238"><ph name="DEVICE_OS" />-ի թարմացումը միացված է</translation>
+<translation id="185834232609012804"><ph name="DEVICE_OS" />-ի թարմացումը անջատված է</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Հարթակ <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Հեռավար աշխատասեղան</translation>
+<translation id="6898090158927982244">Ձեր Linux-ը թարմացված է</translation>
+<translation id="4886703929102211360">Linux (բետա) բաղադրիչի համար հասանելի է կրիտիկական թարմացում: Խորհուրդ է տրվում տեղադրել այն հնարավորինս շուտ, հակառակ դեպքում ձեր Linux (բետա)-ն կարող է դադարել աշխատել:</translation>
+<translation id="6694016202036959050"><ph name="DEVICE_OS" />-ի կարգավորումներ</translation>
+<translation id="8362858344151826493">JemaOS հաշիվ, կրկնօրինակ, այլ</translation>
+<translation id="9150429437595727962">Wi-Fi կարգավորումներ</translation>
+<translation id="4938972461544498524">Շփավահանակի կարգավորումներ</translation>
+<translation id="1210024513248363065">Հեռավար ծառայություններ</translation>
+<translation id="2878862288885588535">Հեռավար ախտորոշման ծառայություն</translation>
+<translation id="7409197984340676806">Հեռավար ախտորոշման ծառայությունը թույլ է տալիս JemaOS-ի պաշտոնական աջակցության ներկայացուցիչներին բացահայտել համակարգի խնդիրները: Ներկայումս հեռավար ախտորոշման ծառայությունը կարող են գործարկել միայն JemaOS-ի պաշտոնական աջակցության ներկայացուցիչները:</translation>
+<translation id="1791028023086176332">Խնդրում ենք կիսվել այս համարով JemaOS-ի պաշտոնական աջակցության ներկայացուցիչների հետ</translation>
+<translation id="6279304275399437025">Հեռավար ախտորոշման ծառայությունը գործարկվում է...</translation>
+<translation id="1501882165699826662">Խնդրում ենք դադարեցնել հեռավար ախտորոշման ծառայությունը և փորձել կրկին</translation>
+<translation id="3100283258447375201">Լրացուցիչ տեղեկատվություն</translation>
+<translation id="4070039109671307724">Այլ</translation>
+<translation id="7326893024940073254">«Վերամեկնարկել» կոճակ</translation>
+<translation id="3002423764319968103">Ցուցադրել «Վերամեկնարկել» կոճակը համակարգի ընտրացանկում</translation>
+<translation id="6243454903512423518">«Պտտել էկրանը» կոճակ</translation>
+<translation id="6491049336868978729">Դուք այժմ պլանշետային ռեժիմում չեք, «Պտտել էկրանը» կոճակը թաքնված է</translation>
+<translation id="5496012402277579695">Ցուցադրել «Պտտել էկրանը» կոճակը համակարգի ընտրացանկում</translation>
+<translation id="5882838977344999606">Պլանշետ/նոթբուք ռեժիմի փոխարկիչ</translation>
+<translation id="472164133625585606">Ցուցադրել պլանշետ/նոթբուք ռեժիմի փոխարկիչը համակարգի ընտրացանկում</translation>
+<translation id="1851103550468466960">Միացնել Widevine-ը</translation>
+<translation id="4058176713282795846">Միացրեք Widevine-ը՝ պաշտպանված պրեմիում բովանդակություն հոսքելու համար: <ph name="BEGIN_LINK_LEARN_MORE" />Իմանալ ավելին<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">Ընտրեք «libwidevine.so»</translation>
+<translation id="4838463656205005584">Չհաջողվեց միացնել Widevine-ը...</translation>
+<translation id="2164041826798266548">Widevine CDM մոդուլի տեղադրումը ձախողվեց: Խնդրում ենք ստուգել ձեր կապը և փորձել կրկին:</translation>
+<translation id="4106982328079440606">JemaOS հաշվի կարգավորումներ</translation>
+<translation id="6468776556018764845">Փորձարարական հնարավորություններ</translation>
+<translation id="3487615413425326553">Շրջանցել Trusted Platform Module (TPM) ստուգումները</translation>
+<translation id="4817176087932811573">Որոշ հնարավորություններ կարող են չաշխատել ձեր սարքի անհամատեղելի TPM չիպի պատճառով. որպես լուծում կարող եք շրջանցել TPM ստուգումները:</translation>
+<translation id="3356003366173774486">Ավտոմատ մուտք</translation>
+<translation id="6218459410891191693">Թույլատրել ընթացիկ հաշվին ավտոմատ մուտք գործել աշխատասեղան սարքի վերամեկնարկվելիս</translation>
+<translation id="6620839363422062843">Այս հաշվի համար հնարավոր չէ միացնել. ավտոմատ մուտքն արդեն ակտիվ է այս սարքի այլ հաշիվների համար</translation>
+<translation id="6734500226490446035">Այս հաշվի համար հնարավոր չէ միացնել. այս հաշվի ֆայլային համակարգերը սկզբնավորելիս անհայտ սխալ տեղի ունեցավ: Խնդրում ենք փորձել վերամեկնարկել կամ ստեղծել նոր հաշիվ</translation>
+<translation id="5464880042146818691">Այս հաշվի համար հնարավոր չէ միացնել. ավտոմատ մուտքի տարբերակը հասանելի է միայն «Տեղական հաշիվ» տեսակի համար:</translation>
+<translation id="3335654854106476749">Ավտոմատ մուտքը միացնելուց առաջ ավելացրեք մուտքի գաղտնաբառ <ph name="BEGIN_LINK" />Գաղտնիություն և անվտանգություն<ph name="END_LINK" /> կարգավորումներում:</translation>
+<translation id="5586831602198585601">Այժմ հասանելի է JemaOS-ի ավելի նոր տարբերակ թարմացման համար: Սակայն ձեր JemaOS for You բաժանորդագրությունը սպառվել է. JemaOS-ը թարմացնելու համար անհրաժեշտ է ակտիվ բաժանորդագրություն:</translation>
+<translation id="3869860597719956574">Այժմ հասանելի է JemaOS-ի նոր հիմնական տարբերակ թարմացման համար: Այս թարմացումը շարունակելու համար պետք է կատարեք միանգամյա վճարում:</translation>
+<translation id="6523879681771260760">Խնդրում ենք նշել կրկնօրինակի ֆայլը պահելու ուղին</translation>
+<translation id="2036152819788683293">Ստեղծել այս հաշվի կրկնօրինակի ֆայլ (բետա): <ph name="BEGIN_LINK_LEARN_MORE" />Իմանալ ավելին<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Կրկնօրինակել</translation>
+<translation id="4267347174163690295">Ստեղծել այս հաշվի կրկնօրինակի ֆայլ (բետա):</translation>
+<translation id="8112950994208888917">Այս գործողությունը ստեղծում է այս հաշվի սկավառակի ամբողջական կրկնօրինակ՝ հեշտացնելով JemaOS-ի վերականգնումը կրկնօրինակի ստեղծման պահին եղած վիճակին, ներառյալ կարգավորումները, տեղադրված դիտարկչի ընդլայնումները և ենթահամակարգի հավելվածները: Կախված ձեր հավելվածներից և գլխավոր թղթապանակի բովանդակությունից, կրկնօրինակի ֆայլը կարող է մեծ լինել. խորհուրդ է տրվում այն պահել արտաքին կրիչի վրա: Եթե ունեք շարժական USB կրիչ, խնդրում ենք միացնել այն հիմա: <ph name="BEGIN_LINK_LEARN_MORE" />Իմանալ ավելին<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Խնդրում ենք մուտքագրել այս հաշվի մուտքի գաղտնաբառը</translation>
+<translation id="8663988871299316062">Խնդրում ենք հիշել այս գաղտնաբառը, քանի որ այն անհրաժեշտ կլինի այս կրկնօրինակի ֆայլը վերականգնելիս</translation>
+<translation id="6408904153044317846">Ընտրեք վերականգնվելիք կրկնօրինակի ֆայլը</translation>
+<translation id="8062988348127771021">Վերականգնեք ձեր JemaOS-ի տվյալները կրկնօրինակի ֆայլից</translation>
+<translation id="7309192418866543730">Մուտքագրեք կրկնօրինակի գաղտնաբառը</translation>
+<translation id="3642408376366598984">Մուտքագրեք այս կրկնօրինակի ֆայլը ծածկագրելու համար օգտագործված գաղտնաբառը</translation>
+<translation id="7783974937157985523">Կրկնօրինակի գաղտնաբառ</translation>
+<translation id="6583780301401541007">Վերականգնումը հաջողվեց</translation>
+<translation id="3514011352559420398">Վերականգնումը ձախողվեց</translation>
+<translation id="7535980903266533458">Պահել կրկնօրինակը ձեր սարքում կամ արտաքին կրիչում</translation>
+<translation id="604001903249547235">Ամպային կրկնօրինակ</translation>
+<translation id="8885702701336541611">Վերբեռնել կրկնօրինակը JemaOS ամպային պահոց</translation>
+<translation id="3939744430096549862">Կրկնօրինակել ամպում</translation>
+<translation id="619129431573254316">Վերականգնել տեղական կրկնօրինակի ֆայլից</translation>
+<translation id="1859592711955106569">Վերականգնում ամպից</translation>
+<translation id="38222223336741457">Ներբեռնել և վերականգնել JemaOS ամպից</translation>
+<translation id="1241089811244416179">Վերականգնել ամպից</translation>
+<translation id="652479689372703360">Կրկնօրինակումը ընթացքի մեջ է</translation>
+<translation id="3655220146274872918">Կրկնօրինակումն ավարտվեց</translation>
+<translation id="4243579853635792694">Ձեր կրկնօրինակը հաջողությամբ ստեղծվեց</translation>
+<translation id="4854179463174744546">Կրկնօրինակման ընթացքում սխալ տեղի ունեցավ</translation>
+<translation id="2410668771600309999">Connect API օգտատիրոջ տեղեկատվություն</translation>
+<translation id="2223892939866251845">Օգտատիրոջ ID</translation>
+<translation id="3850846286480935456">Կրկնօրինակների պահոցի վերլուծություն</translation>
+<translation id="6244494465581273970">Պահանջվում է օգտատիրոջ ID</translation>
+<translation id="9204006549413740506">Վերջին թարմացումը</translation>
+<translation id="476642412165431515">Սարքաշարի սարքեր</translation>
+<translation id="3386337985825120901">Կրկնօրինակի տվյալներ չկան</translation>
+<translation id="8490990067870590760">Կրկնօրինակի ֆայլերը բեռնվում են...</translation>
+<translation id="2955409026764742995">Ընտրեք վերականգնվելիք կրկնօրինակի ֆայլը.</translation>
+<translation id="7414629348005657242">-- Ընտրեք կրկնօրինակի ֆայլ --</translation>
+<translation id="918246516374174381">Կրկնօրինակի ֆայլեր չեն գտնվել: Խնդրում ենք նախ ստեղծել կրկնօրինակ:</translation>
+<translation id="77997252117517973">Շուտով</translation>
+<translation id="1930692852800776096">Ավելացնել բառարան</translation>
+<translation id="8793060353848771694">Ձախ ականջակալի պատկեր</translation>
+<translation id="6257440204887306255">Լիցքավորման տուփի պատկեր</translation>
+<translation id="2754700616124958693">Աջ ականջակալի պատկեր</translation>
+<translation id="1068676292264983586">Լռակյաց սարքի պատկեր</translation>
+<translation id="6364075396486660405">Անջատել մուլտիմեդիա ֆայլերի ավտոմատ սկանավորումը բոլոր բաժինների համար՝ մարտկոցի աշխատանքի ժամանակը օպտիմալացնելու նպատակով: <ph name="BEGIN_LINK_LEARN_MORE" />Իմանալ ավելին<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Անվտանգության տարբերակներ</translation>
+<translation id="5618366106086725045">Միացնել «Ծրագրավորողի ռեժիմը» այս <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> տեղադրման համար՝ ավելի շատ ծրագրավորողական հնարավորություններով: <ph name="BEGIN_LINK_LEARN_MORE" />Իմանալ ավելին<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Դուք արդեն «Ծրագրավորողի ռեժիմում» եք</translation>
+<translation id="6074549317340202195">Միացնել «Ծրագրավորողի ռեժիմը»</translation>
+<translation id="418781258674176053">Զգուշացում։ «Ծրագրավորողի ռեժիմի» միացումը անդարձելի գործողություն է: Եթե ցանկանաք անջատել «Ծրագրավորողի ռեժիմը», պետք է վերատեղադրեք JemaOS-ը, ինչը կջնջի բոլոր տվյալները: Խնդրում ենք կրկնօրինակել ձեր տվյալները և շարունակել ձեր ռիսկի հաշվին:</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Հարթակ <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Այժմ օֆլայն է</translation>
+<translation id="2590678769628709242">Ստուգեք ձեր JemaOS բաժանորդագրությունը առցանց</translation>
+<translation id="4701836089682883918">JemaOS բաժանորդագրության տեղեկատվություն</translation>
+<translation id="5891566673089952188">Ձեր սարքի ID-ն ստանալիս սխալ տեղի ունեցավ</translation>
+<translation id="4685086787606104322">Բաժանորդագրության ավարտ</translation>
+<translation id="3354919960795782984">Սարքի ID</translation>
+<translation id="5758632069869992306">Ստուգեք ձեր բաժանորդագրությունը առցանց</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Հարթակ <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Փորձնական բաժանորդագրություն</translation>
+<translation id="4362781408813685579">Ակտիվ բաժանորդագրություն</translation>
+<translation id="1141274201089997510">Սպառված բաժանորդագրություն</translation>
+<translation id="2553683254139782404">Ոչ առևտրային հրատարակություն</translation>
+<translation id="8466048683756385518">Կորպորատիվ լիցենզավորված տարբերակ (փորձնական)</translation>
+<translation id="2853871047705932424">Կորպորատիվ լիցենզավորված տարբերակ</translation>
+<translation id="5239675900317881945">Կորպորատիվ լիցենզավորված տարբերակ (սպառված)</translation>
+<translation id="189101945990408398">Հին սերնդի Intel</translation>
+<translation id="6816405236809604904">Նոր սերնդի Intel</translation>
+<translation id="6169452478137972655">AMD գրաֆիկա</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="1270291881045478104">Միացնել JemaOS AI-ը</translation>
+<translation id="2013780539677437932">Միացնել կամ անջատել JemaOS AI-ին կապված բոլոր հնարավորությունները</translation>
+<translation id="3398637633218757480">Միացնել JemaOS AI-ի արագ կանչը</translation>
+<translation id="8986197796475507452">Արագ բացեք JemaOS AI-ի տարբերակները ընդգծված բովանդակության համար՝ սեղմելով Ctrl + C + C</translation>
+<translation id="6407628130593274137">JemaOS AI-ի այլ կարգավորումներ և տարբերակներ</translation>
+<translation id="4005574560653331142">Այս տեղական հաշվի PIN-ը կամ մուտքի գաղտնաբառը փոխելու համար գնացեք <ph name="BEGIN_LINK" />Գաղտնիություն և անվտանգություն<ph name="END_LINK" /> կարգավորումներ:</translation>
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">Դուք կարող եք <ph name="LINK_START" />մուտք գործել JemaOS տեղական հաշվով<ph name="LINK_END" />։</translation>
+<translation id="5291842596976929391"><ph name="EMAIL_ADDRESS" /> էլ. փոստը արդեն գոյություն ունի։ Խնդրում ենք կրկին փորձել այլ էլ. փոստով։</translation>
+<translation id="4519800823932975782">JemaOS օգնության կենտրոն</translation>
+<translation id="4737474693231655139">Գտեք օգնության հոդվածներ և պատասխաններ JemaOS-ի վերաբերյալ ընդհանուր հարցերի</translation>
+</translationbundle>

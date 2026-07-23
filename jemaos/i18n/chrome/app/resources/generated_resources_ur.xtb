@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="ur">
+	<translation id="7386402409475121504">اپنا مقامی JemaOS اکاؤنٹ بنائیں</translation>
+	<translation id="3760308806144055927">اپنے مقامی JemaOS اکاؤنٹ میں سائن ان کریں۔</translation>
+	<translation id="3325117507482096812">براہ کرم پاس ورڈ درج کریں۔</translation>
+	<translation id="1838206877831947154">آپ کے پاس ورڈز مماثل نہیں ہیں۔</translation>
+	<translation id="2158276988029582286">ایک نیا مقامی اکاؤنٹ بنائیں</translation>
+	<translation id="8592849747346274067">موجودہ اکاؤنٹ میں سائن ان کریں۔</translation>
+	<translation id="482190417986201746">آپ نے جو صارف نام یا پاس ورڈ درج کیا ہے وہ غلط ہے۔</translation>
+	<translation id="6603987686259425085">آپ <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>کسی JemaOS مقامی اکاؤنٹ سے سائن ان کر سکتے ہیں<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>۔</translation>
+	<translation id="3598802966230712759">ای میل <ph name="EMAIL_ADDRESS">$1</ph> پہلے سے موجود ہے۔ براہ کرم ایک اور ای میل کے ساتھ دوبارہ کوشش کریں۔</translation>
+	<translation id="7215016743510876720">مقامی اکاؤنٹ استعمال کریں۔</translation>
+	<translation id="6657635042185516718">آن لائن اکاؤنٹ استعمال کرنا جاری رکھیں</translation>
+	<translation id="6867476688065565618">مقامی اکاؤنٹ پر سوئچ کریں؟</translation>
+	<translation id="4840454774882557974">اگر آپ مقامی اکاؤنٹ استعمال کرنے کا انتخاب کرتے ہیں تو مفید خصوصیات میں آپ کے ڈیٹا اور ترجیحات کو متعدد آلات پر مطابقت پذیر بنانا اور آپ کے JemaOS اکاؤنٹ کا استعمال کرتے ہوئے خودکار طور پر ویب ایپس میں سائن ان کرنا کام نہیں کرے گا۔</translation>
+	<translation id="8951507920859729424">ہم JemaOS کو مکمل طور پر استعمال کرنے کے لیے ایک آن لائن اکاؤنٹ استعمال کرنے کی تجویز کرتے ہیں۔</translation>
+	<translation id="479773200536372215">آپ گوگل اکاؤنٹس شامل نہیں کر سکیں گے کیونکہ گوگل API کیز غائب ہیں۔ تفصیلات کے لیے <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> دیکھیں۔</translation>
+	<translation id="1198491307547164157">آپ JemaOS اکاؤنٹس شامل نہیں کر سکیں گے کیونکہ JemaOS API کیز غائب ہیں۔ تفصیلات کے لیے <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> دیکھیں۔</translation>
+	<translation id="5042404702659901995">رازداری کا بیان</translation>
+	<translation id="4907736162587268100">رازداری کے بیان کے مواد</translation>
+	<translation id="5988344732274877691">JemaOS کے لیے (بہت کم، وعدہ شدہ) نیوز لیٹر کے لیے سائن اپ کریں۔</translation>
+	<translation id="1706203008474708805">JemaOS صارف کے تجربے میں بہتری کے منصوبے میں شامل ہوں۔</translation>
+	<translation id="1147139514756087229">مقامی اکاؤنٹ کے ساتھ سائن ان کریں۔</translation>
+	<translation id="2054784944085654098">ابھی بیک اپ فائل بنائی جا رہی ہے۔ اس میں کچھ وقت لگ سکتا ہے۔ براہ مہربانی انتظار کریں…</translation>
+	<translation id="3554401467586751874">بیک اپ فائل کامیابی کے ساتھ بنائی گئی۔</translation>
+	<translation id="2349211327705667074">بیک اپ فائل دیکھیں</translation>
+	<translation id="6337433855796857931">بیک اپ ناکام ہو گیا۔</translation>
+	<translation id="3049367131589710124">غلطی لاگ دیکھیں</translation>
+	<translation id="1079017345574916945">ریموٹ ڈیسک ٹاپ</translation>
+	<translation id="3064478898280877715">ایپ اسٹور</translation>
+	<translation id="2747689477259164256">JemaOS AI</translation>
+	<translation id="5890206344045530832">انسٹالر</translation>
+	<translation id="2173278076276376488">یہ یوٹیلیٹی اس ڈیوائس کے اندرونی اسٹوریج پر <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> انسٹال کرنے میں آپ کی مدد کرے گی۔</translation>
+	<translation id="5323182426977498659">وارننگ! یہ طریقہ کار تباہ کن ہے اور اسے کالعدم نہیں کیا جا سکتا۔ براہ کرم نوٹ کریں کہ ہم آپ کے ڈیٹا کے ممکنہ نقصان کی کوئی ذمہ داری نہیں لیں گے اور نہ ہی کوئی فوری تکنیکی مدد فراہم کریں گے، اپنے خطرے پر آگے بڑھیں۔</translation>
+	<translation id="8517836015601969896">مکمل ڈسک کی تنصیب</translation>
+	<translation id="7300045760790370189">پوری ہارڈ ڈسک پر قبضہ کرنے کے لیے <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> انسٹال کریں، ٹارگٹ ہارڈ ڈسک کا تمام ڈیٹا صاف کر دیا جائے گا۔</translation>
+	<translation id="8762511733918256595">ملٹی بوٹ کی تنصیب</translation>
+	<translation id="248900698427753678"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> کو ہارڈ ڈسک کے موجودہ پارٹیشن میں انسٹال کریں، جہاں <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> دوسرے OS کے متوازی طور پر موجود ہو سکتا ہے۔ ٹارگٹ پارٹیشن کا تمام ڈیٹا مٹا دیا جائے گا۔</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> آپ کی منتخب کردہ ہارڈ ڈرائیو پر انسٹال ہو جائے گا۔ ٹارگٹ ڈسک پر موجود تمام ڈیٹا کو صاف کر دیا جائے گا۔</translation>
+	<translation id="4039091757234555415">ڈسک</translation>
+	<translation id="7783580523889684697">کوئی ڈسک دستیاب نہیں ہے۔</translation>
+	<translation id="8217653566575018388">تنصیب مکمل ہو گئی۔</translation>
+	<translation id="8846746259444262774">تنصیب ناکام ہو گئی۔</translation>
+	<translation id="7263815009235541549">تنصیب کامیابی سے ختم ہو گئی ہے۔ براہ کرم پہلے اپنے آلے کو پاور آف کریں، پھر کسی بھی انسٹالیشن میڈیا کو ہٹا دیں، اور <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> کو بوٹ کرنے کے لیے اسے دوبارہ آن کریں۔</translation>
+	<translation id="3380151284134965398">افوہ، کچھ غلط ہو گیا ہے اور انسٹالیشن مکمل نہیں ہوئی۔ براہ کرم عمل کی دوبارہ کوشش کریں۔ اگر یہی خرابی برقرار رہتی ہے، تو براہ کرم اوپر والے لاگ کے ساتھ JemaOS سپورٹ کے لیے رابطہ کریں۔</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> آپ کی ہارڈ ڈرائیو کے منتخب کردہ پارٹیشن پر انسٹال ہوگا۔ موجودہ ملٹی بوٹ اسکیم کے تحت، یہ صرف اس صورت میں آگے بڑھ سکتا ہے جب آپ کا آلہ UEFI کو سپورٹ کرتا ہے اور آپ کی ہارڈ ڈسکیں GPT کے ساتھ فارمیٹ کی جاتی ہیں۔</translation>
+	<translation id="7831363758161884243">ہدف کی تقسیم کو مٹا دیا جائے گا۔ آپ کو اپنے فعال EFI پارٹیشن کی بھی وضاحت کرنی ہوگی (عام طور پر خود بخود ہو جاتی ہے) کیونکہ انسٹالر کو سسٹم بوٹ کنفیگریشنز میں ترمیم کرنے کی ضرورت ہے۔</translation>
+	<translation id="5670799238446305550">منتخب کریں <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ٹارگٹ پارٹیشن</translation>
+	<translation id="3695537760133394753">تقسیم</translation>
+	<translation id="5610519566593708119">EFI پارٹیشن کو منتخب کریں۔</translation>
+	<translation id="3367650349940010965">منتخب کردہ ڈسک کے لیے کوئی پارٹیشن دستیاب نہیں ہیں۔</translation>
+	<translation id="7453223384507098390">منتخب ڈسک کے لیے کوئی EFI پارٹیشن دستیاب نہیں ہے۔</translation>
+	<translation id="1854532683465500847">منتخب پارٹیشن کا سائز 20GB سے کم ہے، انسٹالیشن ناکام ہو سکتی ہے۔</translation>
+	<translation id="4144613075340468247">منتخب پارٹیشن کو <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ملٹی بوٹ پر لگا دیا گیا ہے، اسے دوبارہ انسٹال کرنا ناکام ہو سکتا ہے</translation>
+	<translation id="5793361052649920836">انسٹالیشن کے بعد، آپ <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> کو کیسے بوٹ کرنا چاہیں گے؟</translation>
+	<translation id="4273235330352963866">میرے لیے rEFInd انسٹال اور کنفیگر کریں (تجویز کردہ)</translation>
+	<translation id="1858708492548921044">rEFInd ایک بوٹ مینیجر پروگرام ہے جو OS بوٹ کے اختیارات کے لیے ایک اچھا گرافیکل انٹرفیس پیش کرتا ہے جب آپ کا پی سی شروع ہوتا ہے، آپ اس کے ساتھ بوٹ کرنے کے لیے اپنے مطلوبہ OS کا انتخاب کر سکیں گے۔ rEFInd کے بارے میں مزید معلومات کے لیے، براہ کرم اس کے ہوم پیج سے رجوع کریں۔</translation>
+	<translation id="3861924051442564602">میرے لیے UEFI بوٹ مینو آپشن شامل کریں۔</translation>
+	<translation id="8622370666798589804">جب آپ کا پی سی شروع ہوتا ہے تو آپ UEFI بوٹ آپشنز مینو میں داخل ہو سکتے ہیں (زیادہ تر ممکنہ طور پر ہاٹ کی دبانے سے)، یہ آپشن <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> کو اس مینو میں بطور اندراج شامل کرتا ہے۔ (صرف BIOS اور UEFI فرم ویئر کے کچھ ماڈلز کو سپورٹ کرتا ہے)۔</translation>
+	<translation id="1569398690544416170">یہاں کچھ نہ کریں، میں اسے خود ترتیب دوں گا۔</translation>
+	<translation id="3554866444001249532">یہ انسٹالیشن اسکرپٹ آپ کے EFI پارٹیشن میں <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> کو بوٹ کرنے کے لیے صرف ضروری .efi فائلیں ڈالے گا، آپ کو خود سے اسے بوٹ کرنے کا طریقہ ترتیب دینا ہوگا۔</translation>
+	<translation id="7492832751164189534">زبردستی چھوڑ دیں۔</translation>
+	<translation id="5159534860632584026">تنصیب کا عمل ختم کر دیا گیا ہے۔</translation>
+	<translation id="8686749782014838344">ڈسک کی معلومات حاصل کرنے میں ناکام</translation>
+	<translation id="5688543378771259173">تنصیب کو ختم کیا جا رہا ہے...</translation>
+	<translation id="5350452134936384991">USB میں انسٹال کریں۔</translation>
+	<translation id="8008470485414925603"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> کو USB ڈسک پر انسٹال کریں۔ ٹارگٹ USB ڈسک پر موجود تمام ڈیٹا کو صاف کر دیا جائے گا۔</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> آپ کی منتخب کردہ USB ڈسک پر انسٹال ہو جائے گا۔ ٹارگٹ ڈسک پر موجود تمام ڈیٹا کو صاف کر دیا جائے گا۔</translation>
+	<translation id="5725593226060700263">کوئی USB ڈسک دستیاب نہیں ہے۔</translation>
+	<translation id="4357040841587078287">ہمیں پتہ چلا ہے کہ آپ JemaOS کی اس کاپی کو ڈاؤن لوڈ کردہ تصویری فائل سے چلا رہے ہیں۔ سب سے زیادہ جامع سپورٹ فیچرز (بشمول اوور دی ایئر اپ ڈیٹس) کو استعمال کرنے کے لیے جو JemaOS پیش کر سکتا ہے، ہم آپ کو پرزور مشورہ دیتے ہیں کہ آپ "Installer" فنکشن شروع کریں تاکہ JemaOS کی فل ڈسک انسٹالیشن کو علیحدہ اسٹوریج ڈیوائس پر انجام دیں۔</translation>
+	<translation id="1246398339704431302">آپ <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>کسی بھی طرح JemaOS کی اس کاپی کو استعمال کرنا جاری رکھ سکتے ہیں<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>، انسٹالیشن کا عمل سسٹم میں بعد کے مرحلے پر عمل میں لایا جا سکتا ہے، تاہم، انسٹالیشن کے بعد آپ کا تمام ڈیٹا صاف کر دیا جائے گا اور آپ دوبارہ شروع کریں گے۔</translation>
+	<translation id="3654532222088291133">سائن ان کرنے کے لیے اپنے JemaOS اکاؤنٹ کا پاس ورڈ درج کرنے کے بجائے، آپ اس ڈیوائس کے لیے ایک <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> پاس ورڈ بنا سکتے ہیں۔</translation>
+	<translation id="8377684629839541977">JemaOS اکاؤنٹ کا پاس ورڈ استعمال کریں۔</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398"><ph name="DEVICE_OS" /> کو خودکار طور پر اپ ڈیٹ رکھیں</translation>
+<translation id="2347352406101856238"><ph name="DEVICE_OS" /> اپ ڈیٹ فعال ہے</translation>
+<translation id="185834232609012804"><ph name="DEVICE_OS" /> اپ ڈیٹ غیر فعال ہے</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) پلیٹ فارم <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">ریموٹ ڈیسک ٹاپ</translation>
+<translation id="6898090158927982244">آپ کا Linux اپ ڈیٹ ہے</translation>
+<translation id="4886703929102211360">Linux (بیٹا) جزو کے لیے ایک اہم اپ ڈیٹ دستیاب ہے۔ اس اپ ڈیٹ کو جلد از جلد انسٹال کرنے کی سختی سے سفارش کی جاتی ہے، بصورت دیگر آپ کا Linux (بیٹا) کام کرنا بند کر سکتا ہے۔</translation>
+<translation id="6694016202036959050"><ph name="DEVICE_OS" /> کی ترتیبات</translation>
+<translation id="8362858344151826493">JemaOS اکاؤنٹ، بیک اپ، متفرق</translation>
+<translation id="9150429437595727962">Wi-Fi ترتیبات</translation>
+<translation id="4938972461544498524">ٹچ پیڈ ترتیبات</translation>
+<translation id="1210024513248363065">ریموٹ سروسز</translation>
+<translation id="2878862288885588535">ریموٹ تشخیصی سروس</translation>
+<translation id="7409197984340676806">ریموٹ تشخیصی سروس JemaOS کے سرکاری معاونت نمائندوں کو سسٹم کے مسائل کی شناخت کرنے کی اجازت دیتی ہے۔ فی الحال، ریموٹ تشخیصی سروس صرف JemaOS کے سرکاری معاونت نمائندے شروع کر سکتے ہیں۔</translation>
+<translation id="1791028023086176332">براہ کرم یہ نمبر JemaOS کے سرکاری معاونت نمائندوں کے ساتھ شیئر کریں</translation>
+<translation id="6279304275399437025">ریموٹ تشخیصی سروس شروع ہو رہی ہے...</translation>
+<translation id="1501882165699826662">براہ کرم ریموٹ تشخیصی سروس بند کریں اور دوبارہ کوشش کریں</translation>
+<translation id="3100283258447375201">مزید معلومات</translation>
+<translation id="4070039109671307724">متفرق</translation>
+<translation id="7326893024940073254">"دوبارہ شروع کریں" بٹن</translation>
+<translation id="3002423764319968103">سسٹم مینیو میں "دوبارہ شروع کریں" بٹن دکھائیں</translation>
+<translation id="6243454903512423518">"اسکرین گھمائیں" بٹن</translation>
+<translation id="6491049336868978729">آپ ابھی ٹیبلٹ موڈ میں نہیں ہیں، "اسکرین گھمائیں" بٹن چھپا ہوا ہے</translation>
+<translation id="5496012402277579695">سسٹم مینیو میں "اسکرین گھمائیں" بٹن دکھائیں</translation>
+<translation id="5882838977344999606">ٹیبلٹ/لیپ ٹاپ موڈ سوئچ</translation>
+<translation id="472164133625585606">سسٹم مینیو میں ٹیبلٹ/لیپ ٹاپ موڈ سوئچ دکھائیں</translation>
+<translation id="1851103550468466960">Widevine فعال کریں</translation>
+<translation id="4058176713282795846">محفوظ پریمیم مواد سٹریم کرنے کے لیے Widevine فعال کریں۔ <ph name="BEGIN_LINK_LEARN_MORE" />مزید جانیں<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">"libwidevine.so" منتخب کریں</translation>
+<translation id="4838463656205005584">Widevine فعال کرنے میں ناکامی...</translation>
+<translation id="2164041826798266548">Widevine CDM ماڈیول کی تنصیب ناکام ہو گئی۔ براہ کرم اپنا کنکشن چیک کریں اور دوبارہ کوشش کریں۔</translation>
+<translation id="4106982328079440606">JemaOS اکاؤنٹ کی ترتیبات</translation>
+<translation id="6468776556018764845">تجرباتی خصوصیات</translation>
+<translation id="3487615413425326553">Trusted Platform Module (TPM) چیکس کو نظرانداز کریں</translation>
+<translation id="4817176087932811573">آپ کے ڈیوائس میں غیر مطابق TPM چپ کی وجہ سے کچھ خصوصیات ناکام ہو سکتی ہیں؛ حل کے طور پر آپ TPM چیکس کو نظرانداز کر سکتے ہیں۔</translation>
+<translation id="3356003366173774486">خودکار سائن اِن</translation>
+<translation id="6218459410891191693">ڈیوائس دوبارہ شروع ہونے پر موجودہ اکاؤنٹ کو ڈیسک ٹاپ پر خودکار سائن اِن کی اجازت دیں</translation>
+<translation id="6620839363422062843">اس اکاؤنٹ کے لیے فعال نہیں کیا جا سکتا؛ خودکار سائن اِن اس ڈیوائس پر دیگر اکاؤنٹس کے لیے پہلے سے فعال ہے</translation>
+<translation id="6734500226490446035">اس اکاؤنٹ کے لیے فعال نہیں کیا جا سکتا؛ اس اکاؤنٹ کے فائل سسٹمز شروع کرتے وقت ایک نامعلوم خرابی پیش آئی۔ براہ کرم دوبارہ شروع کریں یا نیا اکاؤنٹ بنائیں</translation>
+<translation id="5464880042146818691">اس اکاؤنٹ کے لیے فعال نہیں کیا جا سکتا؛ خودکار سائن اِن کا اختیار صرف "مقامی اکاؤنٹ" کی قسم کے لیے دستیاب ہے۔</translation>
+<translation id="3335654854106476749">خودکار سائن اِن فعال کرنے سے پہلے <ph name="BEGIN_LINK" />رازداری اور سیکیورٹی<ph name="END_LINK" /> ترتیبات میں سائن اِن پاس ورڈ شامل کریں۔</translation>
+<translation id="5586831602198585601">JemaOS کا نیا ورژن ابھی اپ ڈیٹ کے لیے دستیاب ہے۔ تاہم، آپ کی JemaOS for You رکنیت کی میعاد ختم ہو گئی ہے؛ اپنے JemaOS کو اپ ڈیٹ کرنے کے لیے آپ کو فعال رکنیت درکار ہے۔</translation>
+<translation id="3869860597719956574">JemaOS کا ایک نیا بڑا ورژن ابھی اپ ڈیٹ کے لیے دستیاب ہے۔ اس اپ ڈیٹ کو جاری رکھنے کے لیے آپ کو ایک بار کی فیس ادا کرنی ہوگی۔</translation>
+<translation id="6523879681771260760">براہ کرم بیک اپ فائل محفوظ کرنے کا راستہ بتائیں</translation>
+<translation id="2036152819788683293">اس اکاؤنٹ کے لیے بیک اپ فائل بنائیں (بیٹا)۔ <ph name="BEGIN_LINK_LEARN_MORE" />مزید جانیں<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">بیک اپ</translation>
+<translation id="4267347174163690295">اس اکاؤنٹ کے لیے بیک اپ فائل بنائیں (بیٹا)۔</translation>
+<translation id="8112950994208888917">یہ عمل اس اکاؤنٹ کا مکمل ڈسک بیک اپ بناتا ہے، جس سے ترتیبات، انسٹال شدہ براؤزر ایکسٹینشنز اور سب سسٹم ایپس سمیت آپ کے JemaOS کو اس حالت میں بحال کرنا آسان ہو جاتا ہے جس میں بیک اپ بنائے جانے کے وقت تھا۔ آپ کی ایپس اور ہوم فولڈر کے مواد کے لحاظ سے بیک اپ فائل بڑی ہو سکتی ہے؛ بیک اپ فائل کو بیرونی اسٹوریج ڈیوائس پر محفوظ کرنے کی سفارش کی جاتی ہے۔ اگر آپ کے پاس پورٹیبل USB ڈرائیو ہے تو براہ کرم اسے ابھی جوڑیں۔ <ph name="BEGIN_LINK_LEARN_MORE" />مزید جانیں<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">براہ کرم اس اکاؤنٹ کا سائن اِن پاس ورڈ درج کریں</translation>
+<translation id="8663988871299316062">براہ کرم یہ پاس ورڈ یاد رکھیں، کیونکہ اس بیک اپ فائل کو بحال کرتے وقت اس کی ضرورت ہوگی</translation>
+<translation id="6408904153044317846">بحال کرنے کے لیے بیک اپ فائل منتخب کریں</translation>
+<translation id="8062988348127771021">بیک اپ فائل سے اپنے JemaOS کا ڈیٹا بحال کریں</translation>
+<translation id="7309192418866543730">بیک اپ پاس ورڈ درج کریں</translation>
+<translation id="3642408376366598984">اس بیک اپ فائل کو خفیہ کرنے کے لیے استعمال ہونے والا پاس ورڈ درج کریں</translation>
+<translation id="7783974937157985523">بیک اپ پاس ورڈ</translation>
+<translation id="6583780301401541007">بحالی کامیاب</translation>
+<translation id="3514011352559420398">بحالی ناکام</translation>
+<translation id="7535980903266533458">بیک اپ کو اپنے ڈیوائس یا بیرونی اسٹوریج پر محفوظ کریں</translation>
+<translation id="604001903249547235">کلاؤڈ بیک اپ</translation>
+<translation id="8885702701336541611">بیک اپ کو JemaOS کلاؤڈ اسٹوریج پر اپ لوڈ کریں</translation>
+<translation id="3939744430096549862">کلاؤڈ پر بیک اپ کریں</translation>
+<translation id="619129431573254316">مقامی بیک اپ فائل سے بحال کریں</translation>
+<translation id="1859592711955106569">کلاؤڈ سے بحالی</translation>
+<translation id="38222223336741457">JemaOS کلاؤڈ سے ڈاؤن لوڈ اور بحال کریں</translation>
+<translation id="1241089811244416179">کلاؤڈ سے بحال کریں</translation>
+<translation id="652479689372703360">بیک اپ جاری ہے</translation>
+<translation id="3655220146274872918">بیک اپ مکمل</translation>
+<translation id="4243579853635792694">آپ کا بیک اپ کامیابی سے بن گیا</translation>
+<translation id="4854179463174744546">بیک اپ کے عمل کے دوران ایک خرابی پیش آئی</translation>
+<translation id="2410668771600309999">Connect API صارف کی معلومات</translation>
+<translation id="2223892939866251845">صارف ID</translation>
+<translation id="3850846286480935456">بیک اپ اسٹوریج کا تجزیہ</translation>
+<translation id="6244494465581273970">صارف ID درکار ہے</translation>
+<translation id="9204006549413740506">آخری بار اپ ڈیٹ ہوا</translation>
+<translation id="476642412165431515">ہارڈویئر ڈیوائسز</translation>
+<translation id="3386337985825120901">کوئی بیک اپ ڈیٹا دستیاب نہیں</translation>
+<translation id="8490990067870590760">بیک اپ فائلیں لوڈ ہو رہی ہیں...</translation>
+<translation id="2955409026764742995">بحال کرنے کے لیے بیک اپ فائل منتخب کریں:</translation>
+<translation id="7414629348005657242">-- بیک اپ فائل منتخب کریں --</translation>
+<translation id="918246516374174381">کوئی بیک اپ فائل نہیں ملی۔ براہ کرم پہلے بیک اپ بنائیں۔</translation>
+<translation id="77997252117517973">جلد آ رہا ہے</translation>
+<translation id="1930692852800776096">لغت شامل کریں</translation>
+<translation id="8793060353848771694">بائیں ائربڈ کی تصویر</translation>
+<translation id="6257440204887306255">چارجنگ کیس کی تصویر</translation>
+<translation id="2754700616124958693">دائیں ائربڈ کی تصویر</translation>
+<translation id="1068676292264983586">ڈیفالٹ ڈیوائس کی تصویر</translation>
+<translation id="6364075396486660405">بیٹری کی کارکردگی کو بہتر بنانے کے لیے تمام پارٹیشنز کے لیے میڈیا فائلوں کی خودکار اسکیننگ غیر فعال کریں۔ <ph name="BEGIN_LINK_LEARN_MORE" />مزید جانیں<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">سیکیورٹی اختیارات</translation>
+<translation id="5618366106086725045">مزید ڈیولپر خصوصیات کے ساتھ اس <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> انسٹالیشن کے لیے "ڈیولپر موڈ" فعال کریں۔ <ph name="BEGIN_LINK_LEARN_MORE" />مزید جانیں<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">آپ پہلے ہی "ڈیولپر موڈ" میں ہیں</translation>
+<translation id="6074549317340202195">"ڈیولپر موڈ" فعال کریں</translation>
+<translation id="418781258674176053">انتباہ! "ڈیولپر موڈ" فعال کرنا ایک ناقابل واپسی عمل ہے۔ اگر آپ "ڈیولپر موڈ" غیر فعال کرنا چاہتے ہیں تو آپ کو JemaOS دوبارہ انسٹال کرنا ہوگا، جس سے تمام ڈیٹا مٹ جائے گا۔ براہ کرم اپنے ڈیٹا کا بیک اپ لیں اور اپنی ذمہ داری پر آگے بڑھیں۔</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />، <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    پلیٹ فارم <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">فی الحال آف لائن</translation>
+<translation id="2590678769628709242">اپنی JemaOS رکنیت آن لائن چیک کریں</translation>
+<translation id="4701836089682883918">JemaOS رکنیت کی معلومات</translation>
+<translation id="5891566673089952188">آپ کی ڈیوائس ID حاصل کرنے میں خرابی پیش آئی</translation>
+<translation id="4685086787606104322">رکنیت کا اختتام</translation>
+<translation id="3354919960795782984">ڈیوائس ID</translation>
+<translation id="5758632069869992306">اپنی رکنیت آن لائن چیک کریں</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />، <ph name="JEMAOS_MAJOR_VERSION" />، <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     پلیٹ فارم <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">آزمائشی رکنیت</translation>
+<translation id="4362781408813685579">فعال رکنیت</translation>
+<translation id="1141274201089997510">میعاد ختم شدہ رکنیت</translation>
+<translation id="2553683254139782404">غیر تجارتی ایڈیشن</translation>
+<translation id="8466048683756385518">انٹرپرائز لائسنس یافتہ ورژن (آزمائشی)</translation>
+<translation id="2853871047705932424">انٹرپرائز لائسنس یافتہ ورژن</translation>
+<translation id="5239675900317881945">انٹرپرائز لائسنس یافتہ ورژن (میعاد ختم)</translation>
+<translation id="189101945990408398">پرانا Intel</translation>
+<translation id="6816405236809604904">جدید Intel</translation>
+<translation id="6169452478137972655">AMD گرافکس</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="1270291881045478104">JemaOS AI فعال کریں</translation>
+<translation id="2013780539677437932">JemaOS AI سے متعلق تمام خصوصیات کو فعال یا غیر فعال کریں</translation>
+<translation id="3398637633218757480">JemaOS AI فوری کال فعال کریں</translation>
+<translation id="8986197796475507452">Ctrl + C + C دبا کر نمایاں کردہ مواد کے لیے JemaOS AI اختیارات فوری کھولیں</translation>
+<translation id="6407628130593274137">JemaOS AI کے لیے دیگر ترتیبات اور اختیارات</translation>
+<translation id="4005574560653331142">اس مقامی اکاؤنٹ کا PIN یا سائن اِن پاس ورڈ تبدیل کرنے کے لیے <ph name="BEGIN_LINK" />رازداری اور سیکیورٹی<ph name="END_LINK" /> ترتیبات پر جائیں۔</translation>
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">آپ <ph name="LINK_START" />JemaOS مقامی اکاؤنٹ سے سائن ان کر سکتے ہیں<ph name="LINK_END" />۔</translation>
+<translation id="5291842596976929391">ای میل <ph name="EMAIL_ADDRESS" /> پہلے سے موجود ہے۔ براہ کرم کسی اور ای میل سے دوبارہ کوشش کریں۔</translation>
+<translation id="4519800823932975782">JemaOS ہیلپ سینٹر</translation>
+<translation id="4737474693231655139">JemaOS کے عام سوالات کے جوابات اور معاون مضامین تلاش کریں</translation>
+</translationbundle>

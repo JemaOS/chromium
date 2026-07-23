@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="he">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">אודות Thot</translation>
+<translation id="5639860668557220477">קבלת עזרה בדפדפן Thot</translation>
+<translation id="1692689520561928457">אודות JemaOS</translation>
+<translation id="8692765844418174375">גרסת JemaOS</translation>
+<translation id="2943260250558374955">קבלת עזרה ב-JemaOS</translation>
+<translation id="713321354492170993">הדפדפן משחרר זיכרון מכרטיסיות לא פעילות. פעולה זו מעניקה לכרטיסיות פעילות ולאפליקציות אחרות משאבי מחשוב נוספים ושומרת על מהירות הדפדפן. הכרטיסיות הלא פעילות הופכות לפעילות שוב באופן אוטומטי כשחוזרים אליהן.</translation>
+<translation id="1774190491044887444">הדפדפן חוסך בסוללה על ידי הגבלת פעילות ברקע ואפקטים חזותיים, כמו גלילה חלקה וקצב פריימים של וידאו.</translation>
+<translation id="180121268008059459">הדפדפן טוען דפים מראש, מה שהופך את הגלישה והחיפוש למהירים יותר.</translation>
+<translation id="7127093527178692287">שחזור גיבוי (בטא)</translation>
+<translation id="4439042171549201806">כדי לשחזר את JemaOS מקובץ גיבוי, יש להכניס כעת את הכונן הנשלף המכיל את קובץ הגיבוי למכשיר ה-JemaOS ולציין איזה קובץ גיבוי לשחזר. שים לב שקובץ הגיבוי צריך להיות בספריית השורש של הכונן הנשלף כדי שהאשף יזהה אותו.</translation>
+<translation id="2955409026764742995">בחירת קובץ הגיבוי לשחזור:</translation>
+<translation id="7040434808685140085">מצטערים, לא ניתן לזהות את קובץ הגיבוי שנבחר; יש לבחור קובץ חדש.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />כדי לשחזר את JemaOS מקובץ הגיבוי שנבחר, חיוני שיהיו פרטים מדויקים על הגיבוי בעת יצירתו. אחרת, תהליך השחזור ייכשל.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"שם החשבון" הוא אישור הכניסה הראשי של החשבון שתחתיו נוצר קובץ הגיבוי. בדרך כלל זוהי כתובת האימייל שבה נרשמת לחשבון JemaOS/Google. אם מדובר בחשבון מקומי, זה יהיה שם המשתמש עם הסיומת "@jemaos.local".<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />הסיסמה היא ביטוי הסיסמה שביקשו ממך להזין בעת יצירת הגיבוי. בדרך כלל זו אותה סיסמה שבה השתמשת כדי להיכנס לשולחן העבודה של JemaOS עבור חשבון זה.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">שם חשבון</translation>
+<translation id="5490570429039308155">מצטערים, יש להזין את שם החשבון הנכון</translation>
+<translation id="6657585470893396449">סיסמה</translation>
+<translation id="8200189938001188563">מצטערים, הסיסמה לא יכולה להיות ריקה</translation>
+<translation id="3157931365184549694">שחזור</translation>
+<translation id="8556278756526311953">משחזר את הגיבוי</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />אנחנו פועלים כעת לשחזור קובץ הגיבוי; פעולה זו עשויה להימשך זמן מה, לכן נא להתאזר בסבלנות.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />שים לב שממשק המשתמש יופעל מחדש באופן אוטומטי כשתהליך השחזור יסתיים בהצלחה.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">שחזור הגיבוי נכשל</translation>
+<translation id="5003531399442003695">לפרטים נוספים, יש ללחוץ על הקישור למטה כדי לצפות ביומנים. אם שגיאה זו נמשכת, יש לפנות לערוצי התמיכה הטכנית של JemaOS ולספק את יומני השגיאות.</translation>
+<translation id="6363786367719063276">צפייה ביומנים</translation>
+<translation id="8730621377337864115">סיום</translation>
+<translation id="975238173507911396">הנתונים שוחזרו בהצלחה</translation>
+<translation id="6276879052695618521">יומני שחזור גיבוי</translation>
+<translation id="4901207598072637766">JemaOS, מסופק על ידי <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS והשירותים שלו עומדים בדרישות ה-GDPR ובהוראות חוק הגנת המידע האירופי. למידע נוסף, עיינו ב<ph name="BEGIN_LINK_PRIVACY" />מדיניות הפרטיות<ph name="END_LINK_PRIVACY" /> וב<ph name="BEGIN_LINK_TOS" />תנאי השירות<ph name="END_LINK_TOS" /> שלנו.</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, כל הזכויות שמורות.</translation>
+<translation id="370679569376308836">JemaOS הוא מוצר מסחרי המבוסס על מכשיר Jema וה-SaaS שלו.</translation>
+<translation id="2773644194450163486">JemaOS מתאפשר הודות לפרויקט הקוד הפתוח <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" />.</translation>
+<translation id="2330680727776977160">גם Chromium מתאפשר הודות ל<ph name="BEGIN_LINK_1" />תוכנות קוד פתוח<ph name="END_LINK_1" /> אחרות ול<ph name="BEGIN_LINK_2" />תוכנות קוד פתוח נוספות<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">תוכנן ויוצר על ידי Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, כל הזכויות שמורות.</translation>
+<translation id="6168072053306020326">Jema Technology הוא השם המסחרי של Jema Technology LTD ושל Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD היא חברה הרשומה באנגליה ובוויילס במספר חברה 12273803.</translation>
+<translation id="1251589813188467292">מידע חשוב על אחריות ושירות למכשיר</translation>
+<translation id="4851115775198886021">מספר סידורי של המכשיר:</translation>
+</translationbundle>

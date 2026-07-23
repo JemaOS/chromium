@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="pl">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">O programie Thot</translation>
+<translation id="5639860668557220477">Uzyskaj pomoc dotyczącą przeglądarki Thot</translation>
+<translation id="1692689520561928457">O systemie JemaOS</translation>
+<translation id="8692765844418174375">Wersja JemaOS</translation>
+<translation id="2943260250558374955">Uzyskaj pomoc dotyczącą systemu JemaOS</translation>
+<translation id="713321354492170993">Przeglądarka zwalnia pamięć z nieaktywnych kart. Dzięki temu aktywne karty i inne aplikacje otrzymują więcej zasobów obliczeniowych, a przeglądarka działa szybko. Nieaktywne karty automatycznie stają się ponownie aktywne, gdy do nich wrócisz.</translation>
+<translation id="1774190491044887444">Przeglądarka oszczędza baterię, ograniczając aktywność w tle i efekty wizualne, takie jak płynne przewijanie i liczba klatek wideo.</translation>
+<translation id="180121268008059459">Przeglądarka wstępnie wczytuje strony, dzięki czemu przeglądanie i wyszukiwanie są szybsze.</translation>
+<translation id="7127093527178692287">Przywróć kopię zapasową (beta)</translation>
+<translation id="4439042171549201806">Aby przywrócić system JemaOS z pliku kopii zapasowej, włóż teraz do urządzenia JemaOS napęd wymienny zawierający plik kopii zapasowej i wskaż plik kopii zapasowej, który chcesz przywrócić. Pamiętaj, że plik kopii zapasowej musi znajdować się w katalogu głównym napędu wymiennego, aby kreator mógł go wykryć.</translation>
+<translation id="2955409026764742995">Wybierz plik kopii zapasowej do przywrócenia:</translation>
+<translation id="7040434808685140085">Niestety wybrany plik kopii zapasowej nie może zostać rozpoznany; wybierz nowy plik.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />Aby przywrócić system JemaOS z wybranego pliku kopii zapasowej, konieczne jest podanie dokładnych informacji o kopii zapasowej z momentu jej utworzenia. W przeciwnym razie proces przywracania zakończy się niepowodzeniem.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />„Nazwa konta” to podstawowe dane logowania konta, w ramach którego utworzono plik kopii zapasowej. Zazwyczaj jest to adres e-mail użyty do rejestracji konta JemaOS/Google. Jeśli było to konto lokalne, będzie to nazwa użytkownika z dopiskiem „@jemaos.local”.<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Hasło to fraza, którą poproszono o wprowadzenie podczas tworzenia kopii zapasowej. Zazwyczaj jest to to samo hasło, którego używasz do logowania się na pulpit JemaOS dla tego konta.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Nazwa konta</translation>
+<translation id="5490570429039308155">Przepraszamy, wprowadź poprawną nazwę konta</translation>
+<translation id="6657585470893396449">Hasło</translation>
+<translation id="8200189938001188563">Przepraszamy, hasło nie może być puste</translation>
+<translation id="3157931365184549694">Przywróć</translation>
+<translation id="8556278756526311953">Przywracanie kopii zapasowej</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Trwa przywracanie pliku kopii zapasowej; może to chwilę potrwać, więc prosimy o cierpliwość.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Pamiętaj, że po pomyślnym zakończeniu procesu przywracania interfejs użytkownika zostanie automatycznie uruchomiony ponownie.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Przywracanie kopii zapasowej nie powiodło się</translation>
+<translation id="5003531399442003695">Aby uzyskać więcej informacji, kliknij poniższy link, aby wyświetlić dzienniki. Jeśli ten błąd będzie się powtarzał, skontaktuj się z kanałami pomocy technicznej JemaOS i przekaż dzienniki błędów.</translation>
+<translation id="6363786367719063276">Wyświetl dzienniki</translation>
+<translation id="8730621377337864115">Gotowe</translation>
+<translation id="975238173507911396">Przywracanie danych zakończone pomyślnie</translation>
+<translation id="6276879052695618521">Dzienniki przywracania kopii zapasowej</translation>
+<translation id="4901207598072637766">JemaOS, dostarczany przez <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">System JemaOS i jego usługi są zgodne z GDPR i przepisami europejskiego prawa o ochronie danych. Więcej informacji znajdziesz w naszej <ph name="BEGIN_LINK_PRIVACY" />Polityce prywatności<ph name="END_LINK_PRIVACY" /> oraz w naszych <ph name="BEGIN_LINK_TOS" />Warunkach korzystania z usługi.<ph name="END_LINK_TOS" /></translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, wszelkie prawa zastrzeżone.</translation>
+<translation id="370679569376308836">JemaOS to oferta komercyjna oparta na urządzeniu Jema i jego usłudze SaaS.</translation>
+<translation id="2773644194450163486">JemaOS powstał dzięki projektowi open source <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" />.</translation>
+<translation id="2330680727776977160">Chromium powstał również dzięki innemu <ph name="BEGIN_LINK_1" />oprogramowaniu open source<ph name="END_LINK_1" /> i <ph name="BEGIN_LINK_2" />dodatkowemu oprogramowaniu open source<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Zaprojektowane i wyprodukowane przez Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, wszelkie prawa zastrzeżone.</translation>
+<translation id="6168072053306020326">Jema Technology jest nazwą handlową spółek Jema Technology LTD i Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD to spółka zarejestrowana w Anglii i Walii pod numerem 12273803.</translation>
+<translation id="1251589813188467292">Ważne informacje o gwarancji i serwisie urządzenia</translation>
+<translation id="4851115775198886021">SN urządzenia:</translation>
+</translationbundle>

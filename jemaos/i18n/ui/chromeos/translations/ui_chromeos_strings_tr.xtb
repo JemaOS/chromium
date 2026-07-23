@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="tr">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">JemaOS'ta dosyalarınızı bulutla senkronize etmek için Nutstore'a kaydolun.</translation>
+<translation id="8672291834743661083">Nutstore'a kaydolun</translation>
+<translation id="5103639294476249880">Güvenlik ayarlarında "Uygulama Ekle" düğmesine tıklayın</translation>
+<translation id="8371020157576651120">Uygulama parolanızı oluşturup kopyalayın</translation>
+<translation id="3855250998276979579">Nutstore uygulamasını açın</translation>
+<translation id="6565655783894300125">ve Nutstore hesabınızı e-postanız ve uygulama parolanızla JemaOS'a bağlayın</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Çok yakında</translation>
+<translation id="4928968570611226525">Bu işleme devam etmek için JemaOS cihazınızda <ph name="BEGIN_LINK_ARC_APP" />&gt;Android alt sistemini etkinleştirmeniz<ph name="END_LINK_ARC_APP" />; ayrıca JemaOS cihazınızı <ph name="BEGIN_LINK_HELP" />Geliştirici Moduna geçirmeniz<ph name="END_LINK_HELP" /> gerekir.</translation>
+<translation id="7395250550107972941">.apk dosyaları yandan yüklenemiyor. Lütfen Android alt sisteminin etkinleştirildiğinden ve JemaOS Geliştirici modunda olduğunuzdan emin olun.</translation>
+<translation id="5690820326685091783">JemaOS AI ile aç</translation>
+</translationbundle>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="ja">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Thot について</translation>
+<translation id="5639860668557220477">Thot ブラウザのヘルプを表示</translation>
+<translation id="1692689520561928457">JemaOS について</translation>
+<translation id="8692765844418174375">JemaOS バージョン</translation>
+<translation id="2943260250558374955">JemaOS のヘルプを表示</translation>
+<translation id="713321354492170993">ブラウザは非アクティブなタブのメモリを解放します。これにより、アクティブなタブや他のアプリにより多くのコンピューティング リソースが割り当てられ、ブラウザの高速動作が維持されます。非アクティブなタブは、再び開いたときに自動的にアクティブになります。</translation>
+<translation id="1774190491044887444">ブラウザは、バックグラウンド アクティビティとスムーズ スクロールや動画のフレームレートなどの視覚効果を制限して、バッテリーを節約します。</translation>
+<translation id="180121268008059459">ブラウザがページをプリロードするため、ブラウジングと検索が高速になります。</translation>
+<translation id="7127093527178692287">バックアップの復元（ベータ版）</translation>
+<translation id="4439042171549201806">バックアップ ファイルから JemaOS を復元するには、バックアップ ファイルを含むリムーバブル ドライブを JemaOS デバイスに挿入し、復元するバックアップ ファイルを指定してください。このウィザードで検出されるには、バックアップ ファイルがリムーバブル ドライブのルート ディレクトリにある必要があります。</translation>
+<translation id="2955409026764742995">復元するバックアップ ファイルを選択:</translation>
+<translation id="7040434808685140085">選択したバックアップ ファイルは認識できません。新しいファイルを選択してください。</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />選択したバックアップ ファイルから JemaOS を復元するには、バックアップ作成時の正確な情報が必要です。情報が正確でない場合、復元プロセスは失敗します。<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />「アカウント名」とは、バックアップ ファイルの作成に使用されたアカウントの主なログイン認証情報です。通常は JemaOS/Google アカウントの登録に使用したメールアドレスです。ローカル アカウントの場合は、ユーザー名の後に「@jemaos.local」が付いたものになります。<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />パスワードは、バックアップ作成時に入力を求められたパスフレーズです。通常は、このアカウントで JemaOS デスクトップにログインする際に使用するパスワードと同じものです。<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">アカウント名</translation>
+<translation id="5490570429039308155">正しいアカウント名を入力してください</translation>
+<translation id="6657585470893396449">パスワード</translation>
+<translation id="8200189938001188563">パスワードは空にできません</translation>
+<translation id="3157931365184549694">復元</translation>
+<translation id="8556278756526311953">バックアップを復元中</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />現在、バックアップ ファイルを復元しています。しばらく時間がかかる場合がありますので、お待ちください。<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />復元プロセスが正常に完了すると、UI が自動的に再起動しますのでご注意ください。<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">バックアップの復元に失敗しました</translation>
+<translation id="5003531399442003695">詳細については、下のリンクをクリックしてログをご覧ください。このエラーが解消されない場合は、JemaOS テクニカル サポート チャンネルにお問い合わせのうえ、エラー ログをご提供ください。</translation>
+<translation id="6363786367719063276">ログを表示</translation>
+<translation id="8730621377337864115">完了</translation>
+<translation id="975238173507911396">データの復元に成功しました</translation>
+<translation id="6276879052695618521">バックアップ復元ログ</translation>
+<translation id="4901207598072637766">JemaOS（提供元: <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" />）</translation>
+<translation id="7894910504474624324">JemaOS およびそのサービスは、GDPR および欧州データ保護法の規定に準拠しています。詳しくは、<ph name="BEGIN_LINK_PRIVACY" />プライバシー ポリシー<ph name="END_LINK_PRIVACY" />と<ph name="BEGIN_LINK_TOS" />利用規約<ph name="END_LINK_TOS" />をご覧ください。</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, 無断転載を禁じます。</translation>
+<translation id="370679569376308836">JemaOS は、Jema デバイスとその SaaS を基盤とした商用製品です。</translation>
+<translation id="2773644194450163486">JemaOS は、<ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> オープンソース プロジェクトによって実現しました。</translation>
+<translation id="2330680727776977160">Chromium は、他の<ph name="BEGIN_LINK_1" />オープンソース ソフトウェア<ph name="END_LINK_1" />と<ph name="BEGIN_LINK_2" />その他のオープンソース ソフトウェア<ph name="END_LINK_2" />によっても実現しています。</translation>
+<translation id="1419954813084261088">Jema Technology によって設計・製造されています。</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, 無断転載を禁じます。</translation>
+<translation id="6168072053306020326">Jema Technology は、Jema Technology LTD および Jema Technology (Beijing) Limited の商号です。
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD は、会社番号 12273803 としてイングランドおよびウェールズに登記された会社です。</translation>
+<translation id="1251589813188467292">デバイスの保証とサービスに関する重要な情報</translation>
+<translation id="4851115775198886021">デバイス SN:</translation>
+</translationbundle>

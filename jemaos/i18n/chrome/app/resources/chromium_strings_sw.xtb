@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="sw">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Kuhusu Thot</translation>
+<translation id="5639860668557220477">Pata msaada na kivinjari Thot</translation>
+<translation id="1692689520561928457">Kuhusu JemaOS</translation>
+<translation id="8692765844418174375">Toleo la JemaOS</translation>
+<translation id="2943260250558374955">Pata msaada na JemaOS</translation>
+<translation id="713321354492170993">Kivinjari hutoa nafasi ya kumbukumbu kutoka kwa vichupo visivyotumika. Hii hupatia vichupo vinavyotumika na programu zingine rasilimali zaidi za kompyuta na kuweka kivinjari kiwe haraka. Vichupo vyako visivyotumika huanza kutumika tena kiotomatiki unapovirudia.</translation>
+<translation id="1774190491044887444">Kivinjari huokoa betri kwa kupunguza shughuli za usuli na athari za kuonekana, kama vile kusonga laini na viwango vya fremu za video.</translation>
+<translation id="180121268008059459">Kivinjari hupakia kurasa mapema, na kufanya kuvinjari na kutafuta kuwe haraka zaidi.</translation>
+<translation id="7127093527178692287">Rejesha hifadhi (beta)</translation>
+<translation id="4439042171549201806">Ili kurejesha JemaOS kutoka kwa faili ya hifadhi, tafadhali ingiza kiendeshi kinachotolewa kilicho na faili ya hifadhi kwenye kifaa chako cha JemaOS sasa na ubainishe ni faili gani ya hifadhi ungependa kurejesha. Tafadhali kumbuka kuwa faili yako ya hifadhi inahitaji kuwa katika saraka kuu ya kiendeshi chako kinachotolewa ili kugunduliwa na mchawi huu.</translation>
+<translation id="2955409026764742995">Chagua faili ya hifadhi ya kurejesha:</translation>
+<translation id="7040434808685140085">Samahani, faili ya hifadhi iliyochaguliwa haiwezi kutambuliwa; tafadhali chagua nyingine mpya.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />Ili kurejesha JemaOS kutoka kwa faili ya hifadhi iliyochaguliwa, ni muhimu kuwa na taarifa sahihi kuhusu hifadhi ilipoundwa. Vinginevyo, mchakato wa kurejesha utashindwa.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"Jina la akaunti" ni kitambulisho kikuu cha kuingia cha akaunti ambayo faili yako ya hifadhi iliundwa chini yake. Kwa kawaida ni anwani ya barua pepe uliyotumia kujisajili kwa akaunti yako ya JemaOS/Google. Ikiwa ilikuwa akaunti ya ndani, ingekuwa jina la mtumiaji lililoambatishwa na "@jemaos.local".<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Nenosiri ni kirai ambacho uliulizwa kuingiza hifadhi ilipoundwa. Kwa kawaida ni nenosiri lile lile ulilotumia kuingia kwenye eneo-kazi la JemaOS kwa akaunti hii.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Jina la akaunti</translation>
+<translation id="5490570429039308155">Samahani, tafadhali ingiza jina sahihi la akaunti</translation>
+<translation id="6657585470893396449">Nenosiri</translation>
+<translation id="8200189938001188563">Samahani, nenosiri haliwezi kuwa tupu</translation>
+<translation id="3157931365184549694">Rejesha</translation>
+<translation id="8556278756526311953">Inarejesha hifadhi</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Sasa tunafanya kazi ya kurejesha faili yako ya hifadhi; hii inaweza kuchukua muda, kwa hivyo tafadhali kuwa na subira.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Tafadhali kumbuka kuwa UI itaanzisha upya kiotomatiki mchakato wa kurejesha utakapokamilika kwa mafanikio.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Kurejesha hifadhi kumeshindwa</translation>
+<translation id="5003531399442003695">Kwa maelezo zaidi, tafadhali bofya kiungo hapa chini kuona kumbukumbu. Ikiwa hitilafu hii inaendelea, tafadhali wasiliana na njia za usaidizi wa kiufundi wa JemaOS na utoe kumbukumbu za hitilafu.</translation>
+<translation id="6363786367719063276">Tazama kumbukumbu</translation>
+<translation id="8730621377337864115">Imekamilika</translation>
+<translation id="975238173507911396">Data imerejeshwa kwa mafanikio</translation>
+<translation id="6276879052695618521">Kumbukumbu za kurejesha hifadhi</translation>
+<translation id="4901207598072637766">JemaOS, inatolewa na <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS na huduma zake zinazingatia GDPR na masharti ya sheria ya ulinzi wa data ya Ulaya. Kwa maelezo zaidi, tafadhali angalia <ph name="BEGIN_LINK_PRIVACY" />Sera ya Faragha<ph name="END_LINK_PRIVACY" /> na <ph name="BEGIN_LINK_TOS" />Masharti ya Huduma<ph name="END_LINK_TOS" /> yetu.</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, haki zote zimehifadhiwa.</translation>
+<translation id="370679569376308836">JemaOS ni toleo la kibiashara linalotegemea kifaa cha Jema na SaaS yake.</translation>
+<translation id="2773644194450163486">JemaOS imewezekana kwa mradi wa chanzo huria wa <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" />.</translation>
+<translation id="2330680727776977160">Chromium pia imewezekana kwa <ph name="BEGIN_LINK_1" />programu nyingine za chanzo huria<ph name="END_LINK_1" /> na <ph name="BEGIN_LINK_2" />programu za ziada za chanzo huria<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Imeundwa na kutengenezwa na Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, haki zote zimehifadhiwa.</translation>
+<translation id="6168072053306020326">Jema Technology ni jina la biashara la Jema Technology LTD na Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD ni kampuni iliyosajiliwa nchini Uingereza na Welisi kwa namba ya kampuni 12273803.</translation>
+<translation id="1251589813188467292">Taarifa muhimu za dhamana na huduma ya kifaa</translation>
+<translation id="4851115775198886021">SN ya kifaa:</translation>
+</translationbundle>

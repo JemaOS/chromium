@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="it">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Informazioni su Thot</translation>
+<translation id="5639860668557220477">Ottieni assistenza per il browser Thot</translation>
+<translation id="1692689520561928457">Informazioni su JemaOS</translation>
+<translation id="8692765844418174375">Versione di JemaOS</translation>
+<translation id="2943260250558374955">Ottieni assistenza per JemaOS</translation>
+<translation id="713321354492170993">Il browser libera la memoria utilizzata dalle schede inattive. In questo modo le schede attive e le altre app dispongono di più risorse di calcolo e il browser rimane veloce. Le schede inattive tornano attive automaticamente quando ci ritorni.</translation>
+<translation id="1774190491044887444">Il browser risparmia la batteria limitando l'attività in background e gli effetti visivi, come lo scorrimento fluido e la frequenza dei fotogrammi dei video.</translation>
+<translation id="180121268008059459">Il browser precarica le pagine web, rendendo la navigazione e la ricerca più veloci.</translation>
+<translation id="7127093527178692287">Ripristina backup (beta)</translation>
+<translation id="4439042171549201806">Per ripristinare JemaOS da un file di backup, inserisci ora l'unità rimovibile contenente il file di backup nel tuo dispositivo JemaOS e specifica quale file di backup vuoi ripristinare. Tieni presente che il file di backup deve trovarsi nella directory radice dell'unità rimovibile per essere rilevato da questa procedura guidata.</translation>
+<translation id="2955409026764742995">Seleziona il file di backup da ripristinare:</translation>
+<translation id="7040434808685140085">Spiacenti, il file di backup selezionato non può essere riconosciuto. Selezionane uno nuovo.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />Per ripristinare JemaOS dal file di backup selezionato, è essenziale disporre delle informazioni esatte impostate al momento della creazione del backup. In caso contrario, il processo di ripristino non riuscirà.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Il "nome dell'account" è la credenziale di accesso principale dell'account con cui è stato creato il file di backup. Di solito è l'indirizzo email utilizzato per registrare il tuo account JemaOS/Google. Se si trattasse di un account locale, sarebbe il nome utente seguito da "@jemaos.local".<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />La password è la passphrase che ti è stata chiesta di inserire al momento della creazione del backup. Di solito è la stessa password utilizzata per accedere al desktop di JemaOS con questo account.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Nome dell'account</translation>
+<translation id="5490570429039308155">Spiacenti, inserisci il nome dell'account corretto</translation>
+<translation id="6657585470893396449">Password</translation>
+<translation id="8200189938001188563">Spiacenti, la password non può essere vuota</translation>
+<translation id="3157931365184549694">Ripristina</translation>
+<translation id="8556278756526311953">Ripristino del backup in corso</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Stiamo ripristinando il tuo file di backup. L'operazione potrebbe richiedere del tempo, quindi abbi pazienza.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Tieni presente che l'interfaccia utente si riavvierà automaticamente al completamento del processo di ripristino.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Ripristino del backup non riuscito</translation>
+<translation id="5003531399442003695">Per maggiori dettagli, fai clic sul link qui sotto per visualizzare i log. Se questo errore persiste, contatta i canali di assistenza tecnica di JemaOS e fornisci i log degli errori.</translation>
+<translation id="6363786367719063276">Visualizza log</translation>
+<translation id="8730621377337864115">Fine</translation>
+<translation id="975238173507911396">Dati ripristinati correttamente</translation>
+<translation id="6276879052695618521">Log di ripristino del backup</translation>
+<translation id="4901207598072637766">JemaOS, offerto da <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS e i suoi servizi sono conformi al GDPR e alle disposizioni della legislazione europea sulla protezione dei dati. Per maggiori informazioni, consulta la nostra <ph name="BEGIN_LINK_PRIVACY" />Informativa sulla privacy<ph name="END_LINK_PRIVACY" /> e i nostri <ph name="BEGIN_LINK_TOS" />Termini di servizio.<ph name="END_LINK_TOS" /></translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, tutti i diritti riservati.</translation>
+<translation id="370679569376308836">JemaOS è un'offerta commerciale basata sul dispositivo Jema e sul suo SaaS.</translation>
+<translation id="2773644194450163486">JemaOS è reso possibile dal progetto open source <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" />.</translation>
+<translation id="2330680727776977160">Anche Chromium è reso possibile da altro <ph name="BEGIN_LINK_1" />software open source<ph name="END_LINK_1" /> e da <ph name="BEGIN_LINK_2" />ulteriore software open source<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Progettato e realizzato da Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, tutti i diritti riservati.</translation>
+<translation id="6168072053306020326">Jema Technology è il nome commerciale di Jema Technology LTD e Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD è una società registrata in Inghilterra e Galles con numero di registrazione 12273803.</translation>
+<translation id="1251589813188467292">Informazioni importanti su garanzia e assistenza del dispositivo</translation>
+<translation id="4851115775198886021">Numero di serie del dispositivo:</translation>
+</translationbundle>

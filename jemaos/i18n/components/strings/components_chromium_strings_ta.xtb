@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="ta">
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">JemaOS அதன் ஆரம்ப அமைப்பை இன்னும் முடிக்கவில்லை.</translation>
+<translation id="4257170804800372451">JemaOS மற்றும் Thot <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> திறந்த மூல திட்டம் மற்றும் பிற <ph name="BEGIN_LINK_OSS" />திறந்த மூல மென்பொருள்<ph name="END_LINK_OSS" /> ஆகியவற்றால் சாத்தியமானவை.</translation>
+</translationbundle>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="mn">
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">JemaOS анхны тохиргоогоо дуусгаагүй байна.</translation>
+<translation id="4257170804800372451">JemaOS болон Thot нь <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> нээлттэй эхийн төсөл болон бусад <ph name="BEGIN_LINK_OSS" />нээлттэй эхийн программ хангамжийн<ph name="END_LINK_OSS" /> ачаар боломжит болсон.</translation>
+</translationbundle>

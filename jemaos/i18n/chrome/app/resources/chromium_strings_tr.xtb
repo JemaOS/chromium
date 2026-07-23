@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="tr">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Thot Hakkında</translation>
+<translation id="5639860668557220477">Thot tarayıcısıyla ilgili yardım alın</translation>
+<translation id="1692689520561928457">JemaOS Hakkında</translation>
+<translation id="8692765844418174375">JemaOS sürümü</translation>
+<translation id="2943260250558374955">JemaOS ile ilgili yardım alın</translation>
+<translation id="713321354492170993">Tarayıcı, etkin olmayan sekmelerdeki belleği boşaltır. Bu, etkin sekmelere ve diğer uygulamalara daha fazla bilgi işlem kaynağı sağlar ve tarayıcının hızlı kalmasını sağlar. Etkin olmayan sekmeleriniz, onlara geri döndüğünüzde otomatik olarak yeniden etkinleşir.</translation>
+<translation id="1774190491044887444">Tarayıcı, arka plan etkinliğini ve akıcı kaydırma ile video kare hızları gibi görsel efektleri sınırlayarak pil tasarrufu sağlar.</translation>
+<translation id="180121268008059459">Tarayıcı sayfaları önceden yükleyerek gezinme ve aramayı hızlandırır.</translation>
+<translation id="7127093527178692287">Yedeği geri yükle (beta)</translation>
+<translation id="4439042171549201806">JemaOS'u bir yedek dosyasından geri yüklemek için lütfen yedek dosyasını içeren çıkarılabilir sürücüyü şimdi JemaOS cihazınıza takın ve geri yüklemek istediğiniz yedek dosyasını belirtin. Yedek dosyanızın bu sihirbaz tarafından algılanabilmesi için çıkarılabilir sürücünüzün kök dizininde olması gerektiğini lütfen unutmayın.</translation>
+<translation id="2955409026764742995">Geri yüklenecek yedek dosyasını seçin:</translation>
+<translation id="7040434808685140085">Üzgünüz, seçilen yedek dosyası tanınamadı; lütfen yeni bir dosya seçin.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />JemaOS'u seçilen yedek dosyasından geri yüklemek için, yedek oluşturulduğundaki bilgilerin doğru olması şarttır. Aksi takdirde geri yükleme işlemi başarısız olur.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"Hesap adı", yedek dosyanızın oluşturulduğu hesabın birincil oturum açma kimlik bilgisidir. Genellikle JemaOS/Google hesabınıza kaydolurken kullandığınız e-posta adresidir. Yerel bir hesap ise sonuna "@jemaos.local" eklenmiş kullanıcı adıdır.<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Parola, yedek oluşturulurken girmeniz istenen parola ifadesidir. Genellikle bu hesap için JemaOS masaüstünde oturum açarken kullandığınız parola ile aynıdır.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Hesap adı</translation>
+<translation id="5490570429039308155">Üzgünüz, lütfen doğru hesap adını girin</translation>
+<translation id="6657585470893396449">Parola</translation>
+<translation id="8200189938001188563">Üzgünüz, parola boş bırakılamaz</translation>
+<translation id="3157931365184549694">Geri Yükle</translation>
+<translation id="8556278756526311953">Yedek geri yükleniyor</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Yedek dosyanızı geri yüklüyoruz; bu biraz zaman alabilir, lütfen sabırlı olun.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Geri yükleme işlemi başarıyla tamamlandığında kullanıcı arayüzünün otomatik olarak yeniden başlatılacağını lütfen unutmayın.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Yedeği geri yükleme başarısız oldu</translation>
+<translation id="5003531399442003695">Daha fazla ayrıntı için lütfen aşağıdaki bağlantıya tıklayarak günlükleri görüntüleyin. Bu hata devam ederse lütfen JemaOS teknik destek kanallarıyla iletişime geçin ve hata günlüklerini paylaşın.</translation>
+<translation id="6363786367719063276">Günlükleri görüntüle</translation>
+<translation id="8730621377337864115">Bitti</translation>
+<translation id="975238173507911396">Veriler başarıyla geri yüklendi</translation>
+<translation id="6276879052695618521">Yedek geri yükleme günlükleri</translation>
+<translation id="4901207598072637766">JemaOS, sağlayıcı: <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS ve hizmetleri, GDPR ile Avrupa veri koruma yasasının hükümlerine uygundur. Daha fazla bilgi için lütfen <ph name="BEGIN_LINK_PRIVACY" />Gizlilik Politikamıza<ph name="END_LINK_PRIVACY" /> ve <ph name="BEGIN_LINK_TOS" />Hizmet Şartlarımıza<ph name="END_LINK_TOS" /> bakın.</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, tüm hakları saklıdır.</translation>
+<translation id="370679569376308836">JemaOS, Jema cihazına ve SaaS'ına dayanan ticari bir üründür.</translation>
+<translation id="2773644194450163486">JemaOS, <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> açık kaynak projesi sayesinde mümkün olmuştur.</translation>
+<translation id="2330680727776977160">Chromium da diğer <ph name="BEGIN_LINK_1" />açık kaynak yazılımlar<ph name="END_LINK_1" /> ve <ph name="BEGIN_LINK_2" />ek açık kaynak yazılımlar<ph name="END_LINK_2" /> sayesinde mümkün olmuştur.</translation>
+<translation id="1419954813084261088">Jema Technology tarafından tasarlanmış ve üretilmiştir.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, tüm hakları saklıdır.</translation>
+<translation id="6168072053306020326">Jema Technology, Jema Technology LTD ve Jema Technology (Beijing) Limited şirketlerinin ticari unvanıdır.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD, İngiltere ve Galler'de 12273803 şirket numarasıyla kayıtlı bir şirkettir.</translation>
+<translation id="1251589813188467292">Önemli cihaz garantisi ve servis bilgileri</translation>
+<translation id="4851115775198886021">Cihaz SN:</translation>
+</translationbundle>

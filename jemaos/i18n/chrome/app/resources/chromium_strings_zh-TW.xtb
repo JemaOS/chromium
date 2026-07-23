@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="zh-TW">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">關於 Thot</translation>
+<translation id="5639860668557220477">取得 Thot 瀏覽器的相關說明</translation>
+<translation id="1692689520561928457">關於 JemaOS</translation>
+<translation id="8692765844418174375">JemaOS 版本</translation>
+<translation id="2943260250558374955">取得 JemaOS 的相關說明</translation>
+<translation id="713321354492170993">瀏覽器會釋放閒置分頁佔用的記憶體，讓使用中的分頁和其他應用程式獲得更多運算資源，並維持瀏覽器的執行速度。當你返回閒置分頁時，系統會自動將其重新啟用。</translation>
+<translation id="1774190491044887444">瀏覽器會限制背景活動和視覺效果（例如平滑捲動和影片畫面更新率），藉此節省電池電量。</translation>
+<translation id="180121268008059459">瀏覽器會預先載入網頁，加快瀏覽和搜尋速度。</translation>
+<translation id="7127093527178692287">還原備份（Beta 版）</translation>
+<translation id="4439042171549201806">如要從備份檔案還原 JemaOS，請立即將內含備份檔案的卸除式磁碟機插入 JemaOS 裝置，並指定要還原的備份檔案。請注意，備份檔案必須位於卸除式磁碟機的根目錄中，這個精靈才能偵測到該檔案。</translation>
+<translation id="2955409026764742995">選取要還原的備份檔案：</translation>
+<translation id="7040434808685140085">很抱歉，系統無法辨識所選的備份檔案，請重新選取。</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />如要從所選備份檔案還原 JemaOS，務必提供建立備份時的正確資訊，否則還原程序將會失敗。<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />「帳戶名稱」是建立備份檔案時所用帳戶的主要登入憑證，通常是您註冊 JemaOS/Google 帳戶時使用的電子郵件地址。如果是本機帳戶，則為使用者名稱加上「@jemaos.local」。<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />密碼是建立備份時系統要求您輸入的密碼片語，通常與您登入此帳戶的 JemaOS 桌面時使用的密碼相同。<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">帳戶名稱</translation>
+<translation id="5490570429039308155">很抱歉，請輸入正確的帳戶名稱</translation>
+<translation id="6657585470893396449">密碼</translation>
+<translation id="8200189938001188563">很抱歉，密碼不得為空白</translation>
+<translation id="3157931365184549694">還原</translation>
+<translation id="8556278756526311953">正在還原備份</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />系統正在還原您的備份檔案，這可能需要一些時間，請耐心等候。<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />請注意，還原程序順利完成後，使用者介面會自動重新啟動。<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">還原備份失敗</translation>
+<translation id="5003531399442003695">如要瞭解詳情，請點按下方連結查看記錄。如果這個錯誤持續發生，請與 JemaOS 技術支援管道聯絡，並提供錯誤記錄。</translation>
+<translation id="6363786367719063276">查看記錄</translation>
+<translation id="8730621377337864115">完成</translation>
+<translation id="975238173507911396">資料還原成功</translation>
+<translation id="6276879052695618521">備份還原記錄</translation>
+<translation id="4901207598072637766">JemaOS，由 <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /> 提供</translation>
+<translation id="7894910504474624324">JemaOS 及其服務遵循 GDPR 與歐洲資料保護法規定。詳情請參閱我們的<ph name="BEGIN_LINK_PRIVACY" />隱私權政策<ph name="END_LINK_PRIVACY" />和<ph name="BEGIN_LINK_TOS" />服務條款<ph name="END_LINK_TOS" />。</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, 版權所有。</translation>
+<translation id="370679569376308836">JemaOS 是以 Jema 裝置及其 SaaS 為基礎的商業產品。</translation>
+<translation id="2773644194450163486">JemaOS 採用 <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> 開放原始碼專案。</translation>
+<translation id="2330680727776977160">Chromium 也採用了其他<ph name="BEGIN_LINK_1" />開放原始碼軟體<ph name="END_LINK_1" />以及<ph name="BEGIN_LINK_2" />更多開放原始碼軟體<ph name="END_LINK_2" />。</translation>
+<translation id="1419954813084261088">由 Jema Technology 設計及製造。</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, 版權所有。</translation>
+<translation id="6168072053306020326">Jema Technology 是 Jema Technology LTD 和 Jema Technology (Beijing) Limited 的商業名稱。
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD 是在英格蘭和威爾斯註冊的公司，公司編號為 12273803。</translation>
+<translation id="1251589813188467292">重要裝置保固與服務資訊</translation>
+<translation id="4851115775198886021">裝置序號：</translation>
+</translationbundle>

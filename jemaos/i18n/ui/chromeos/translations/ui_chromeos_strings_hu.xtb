@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="hu">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">Regisztráljon a Nutstore-ra, hogy felhőalapúan szinkronizálja fájljait a JemaOS-ben.</translation>
+<translation id="8672291834743661083">Regisztráció a Nutstore-ra</translation>
+<translation id="5103639294476249880">Kattintson az „Alkalmazás hozzáadása” gombra a Biztonság beállításainál</translation>
+<translation id="8371020157576651120">Hozza létre és másolja ki az alkalmazásjelszót</translation>
+<translation id="3855250998276979579">Nyissa meg a Nutstore alkalmazást</translation>
+<translation id="6565655783894300125">és csatlakoztassa Nutstore-fiókját a JemaOS-hez e-mail-címével és alkalmazásjelszavával</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Hamarosan</translation>
+<translation id="4928968570611226525">A művelet folytatásához <ph name="BEGIN_LINK_ARC_APP" />&gt;aktiválnia kell az Android-alrendszert<ph name="END_LINK_ARC_APP" /> JemaOS-eszközén; emellett JemaOS-eszközét <ph name="BEGIN_LINK_HELP" />Fejlesztői módra kell váltania<ph name="END_LINK_HELP" />.</translation>
+<translation id="7395250550107972941">Az .apk fájlok melléktöltése nem sikerült. Győződjön meg róla, hogy az Android-alrendszer aktiválva van, és Ön JemaOS fejlesztői módban van.</translation>
+<translation id="5690820326685091783">Megnyitás JemaOS AI-jal</translation>
+</translationbundle>

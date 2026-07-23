@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="zh-TW">
+
+
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">JemaOS 尚未完成初始設定。</translation>
+<translation id="4257170804800372451">JemaOS 和 Thot 採用 <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> 開放原始碼專案及其他<ph name="BEGIN_LINK_OSS" />開放原始碼軟體<ph name="END_LINK_OSS" />。</translation>
+</translationbundle>

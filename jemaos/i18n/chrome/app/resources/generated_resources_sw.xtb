@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="sw">
+	<translation id="7386402409475121504">Unda akaunti yako ya ndani ya JemaOS</translation>
+	<translation id="3760308806144055927">Ingia katika akaunti yako ya ndani ya JemaOS</translation>
+	<translation id="3325117507482096812">Tafadhali weka nenosiri</translation>
+	<translation id="1838206877831947154">Manenosiri yako hayalingani</translation>
+	<translation id="2158276988029582286">Fungua akaunti mpya ya ndani</translation>
+	<translation id="8592849747346274067">Ingia kwa akaunti iliyopo</translation>
+	<translation id="482190417986201746">Jina la mtumiaji au nenosiri uliloweka si sahihi</translation>
+	<translation id="6603987686259425085">Unaweza <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>kuingia kwa kutumia akaunti ya ndani ya JemaOS<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">Barua pepe <ph name="EMAIL_ADDRESS">$1</ph> tayari ipo. Tafadhali jaribu tena kwa barua pepe nyingine.</translation>
+	<translation id="7215016743510876720">Tumia akaunti ya ndani</translation>
+	<translation id="6657635042185516718">Endelea kutumia akaunti mtandaoni</translation>
+	<translation id="6867476688065565618">Je, ungependa kutumia akaunti ya ndani?</translation>
+	<translation id="4840454774882557974">Ukichagua kutumia akaunti ya karibu nawe, vipengele muhimu ni pamoja na kusawazisha data na mapendeleo yako kwenye vifaa vingi na kuingia kiotomatiki katika programu za wavuti kwa kutumia akaunti yako ya JemaOS haitafanya kazi.</translation>
+	<translation id="8951507920859729424">Tunapendekeza kutumia akaunti ya mtandaoni kutumia JemaOS kikamilifu.</translation>
+	<translation id="479773200536372215">Hutaweza kuongeza akaunti za Google kwa sababu funguo za API za Google hazipo. Tazama <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> kwa maelezo.</translation>
+	<translation id="1198491307547164157">Hutaweza kuongeza akaunti za JemaOS kwa sababu funguo za API za JemaOS hazipo. Tazama <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> kwa maelezo.</translation>
+	<translation id="5042404702659901995">Taarifa ya faragha</translation>
+	<translation id="4907736162587268100">Yaliyomo kwenye taarifa ya faragha</translation>
+	<translation id="5988344732274877691">Jiandikishe kwa jarida (lililo nadra sana, lililoahidiwa) la JemaOS</translation>
+	<translation id="1706203008474708805">Jiunge na mpango wa uboreshaji wa matumizi ya JemaOS</translation>
+	<translation id="1147139514756087229">Ingia ukitumia akaunti ya karibu nawe</translation>
+	<translation id="2054784944085654098">Inaunda faili chelezo sasa. Hii inaweza kuchukua muda; tafadhali subiri...</translation>
+	<translation id="3554401467586751874">Faili ya hifadhi rudufu iliundwa kwa ufanisi</translation>
+	<translation id="2349211327705667074">Tazama faili ya chelezo</translation>
+	<translation id="3049367131589710124">Tazama kumbukumbu ya makosa</translation>
+	<translation id="1079017345574916945">Kompyuta ya mbali</translation>
+	<translation id="3064478898280877715">Duka la programu</translation>
+	<translation id="5890206344045530832">Kisakinishi</translation>
+	<translation id="2173278076276376488">Huduma hii itakusaidia kusakinisha <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> kwenye hifadhi ya ndani ya kifaa hiki.</translation>
+	<translation id="5323182426977498659">Onyo! Utaratibu huu ni wa uharibifu na hauwezi kutenduliwa. Tafadhali kumbuka kuwa hatutawajibikia uwezekano wa kupoteza data wala kutoa usaidizi wowote wa haraka wa kiufundi, endelea kwa hatari yako mwenyewe.</translation>
+	<translation id="8517836015601969896">Ufungaji kamili wa diski</translation>
+	<translation id="7300045760790370189">Sakinisha <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ili kuchukua diski kuu nzima, data yote ya diski kuu inayolengwa itafutwa.</translation>
+	<translation id="8762511733918256595">Ufungaji wa boot nyingi</translation>
+	<translation id="248900698427753678">Sakinisha <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> kwenye sehemu iliyopo ya diski kuu, ambapo <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> inaweza kuwepo sambamba na OS nyinginezo. Data yote kwenye kizigeu lengwa itafutwa.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> itasakinishwa kwenye diski kuu uliyochagua; data zote kwenye diski lengwa zitafutwa.</translation>
+	<translation id="4039091757234555415">Diski</translation>
+	<translation id="7783580523889684697">Hakuna diski inayopatikana</translation>
+	<translation id="8217653566575018388">Usakinishaji umekamilika</translation>
+	<translation id="8846746259444262774">Usakinishaji haukufaulu</translation>
+	<translation id="7263815009235541549">Usakinishaji umekamilika kwa mafanikio. Tafadhali zima kifaa chako kwanza, kisha uondoe chombo chochote cha usakinishaji, na uwashe tena ili kuwasha <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>.</translation>
+	<translation id="3380151284134965398">Lo, hitilafu imetokea na usakinishaji haukukamilika. Tafadhali jaribu tena mchakato. Ikiwa hitilafu sawa itaendelea, tafadhali fikia Usaidizi wa JemaOS na logi iliyo hapo juu.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> itasakinishwa kwenye sehemu iliyochaguliwa ya diski yako kuu. Chini ya mpango wa sasa wa kuwasha nyingi, hii inaweza tu kuendelea ikiwa kifaa chako kinatumia UEFI na diski kuu zako zimeumbizwa na GPT.</translation>
+	<translation id="7831363758161884243">Sehemu inayolengwa itafutwa; unahitaji pia kubainisha kizigeu chako kinachotumika cha EFI (kawaida hufanywa kiotomatiki) kwani Kisakinishi kinahitaji kurekebisha usanidi wa kuwasha mfumo.</translation>
+	<translation id="5670799238446305550">Chagua <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> kizigeu lengwa</translation>
+	<translation id="3695537760133394753">Sehemu</translation>
+	<translation id="5610519566593708119">Chagua kizigeu cha EFI</translation>
+	<translation id="3367650349940010965">Hakuna sehemu zinazopatikana kwa diski iliyochaguliwa</translation>
+	<translation id="7453223384507098390">Hakuna sehemu za EFI zinazopatikana kwa diski iliyochaguliwa</translation>
+	<translation id="1854532683465500847">Saizi ya kizigeu kilichochaguliwa ni chini ya 20GB, usakinishaji unaweza kushindwa</translation>
+	<translation id="4144613075340468247">Sehemu iliyochaguliwa imepachikwa kwenye <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> za kuwasha nyingi, kusakinisha kwake tena kunaweza kushindwa.</translation>
+	<translation id="5793361052649920836">Baada ya usakinishaji, ungependa kuwasha vipi <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>?</translation>
+	<translation id="4273235330352963866">Sanikisha na unisanidi reEFInd (inapendekezwa)</translation>
+	<translation id="1858708492548921044">rEFInd ni programu ya meneja wa buti ambayo hutoa kiolesura kizuri cha picha kwa chaguo za boot ya OS wakati Kompyuta yako inapoanza, utaweza kuchagua OS yako unayotaka kuanza nayo. Kwa habari zaidi kuhusu REFInd, tafadhali rejelea ukurasa wake wa nyumbani.</translation>
+	<translation id="3861924051442564602">Niongezee chaguo la menyu ya boot ya UEFI</translation>
+	<translation id="8622370666798589804">Kompyuta yako inapowashwa unaweza kuingiza menyu ya chaguo za kuwasha UEFI (inawezekana zaidi kwa kubofya kitufe cha hotkey), chaguo hili linaongeza <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> kama ingizo la menyu hiyo. (Inasaidia tu baadhi ya mifano ya BIOS na UEFI firmware).</translation>
+	<translation id="1569398690544416170">Usifanye chochote hapa, nitaisanidi mwenyewe</translation>
+	<translation id="3554866444001249532">Hati hii ya usakinishaji itaweka tu faili muhimu za .efi kwa ajili ya kuanzisha <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> kwenye kizigeu chako cha EFI, utahitaji kusanidi jinsi ya kuiwasha peke yako.</translation>
+	<translation id="7492832751164189534">Lazimisha kuacha</translation>
+	<translation id="5159534860632584026">Mchakato wa usakinishaji umekatishwa</translation>
+	<translation id="8686749782014838344">Imeshindwa kupata maelezo ya diski</translation>
+	<translation id="5688543378771259173">Usakinishaji unakatishwa...</translation>
+	<translation id="5350452134936384991">Sakinisha kwenye USB</translation>
+	<translation id="8008470485414925603">Sakinisha <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> kwenye diski ya USB; data yote kwenye diski ya USB inayolengwa itafutwa.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> itasakinishwa kwenye diski yako ya USB iliyochaguliwa; data zote kwenye diski lengwa zitafutwa.</translation>
+	<translation id="5725593226060700263">Hakuna diski ya USB inayopatikana</translation>
+	<translation id="4357040841587078287">Tumegundua kuwa unaendesha nakala hii ya JemaOS kutoka kwa faili ya picha iliyopakuliwa. Ili kutumia vipengele vya kina zaidi vya usaidizi (ikiwa ni pamoja na masasisho ya Over-The-Air) ambayo JemaOS inaweza kutoa, tunapendekeza sana uanzishe kipengele cha "Kisakinishi" ili kutekeleza usakinishaji wa diski kamili wa JemaOS kwenye kifaa tofauti cha kuhifadhi.</translation>
+	<translation id="1246398339704431302">Unaweza <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>kuendelea kutumia nakala hii ya JemaOS kwa vyovyote vile<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, mchakato wa usakinishaji unaweza kutekelezwa katika hatua ya baadaye katika mfumo, hata hivyo, data yako yote itafutwa baada ya usakinishaji tena na utaanza tena.</translation>
+	<translation id="3654532222088291133">Badala ya kuweka nenosiri la akaunti yako ya JemaOS ili kuingia, unaweza kuunda <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> nenosiri la kifaa hiki.</translation>
+	<translation id="8377684629839541977">Tumia nenosiri la akaunti ya JemaOS</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">Weka <ph name="DEVICE_OS" /> imesasishwa kiotomatiki</translation>
+<translation id="2347352406101856238">Usasishaji wa <ph name="DEVICE_OS" /> umewashwa</translation>
+<translation id="185834232609012804">Usasishaji wa <ph name="DEVICE_OS" /> umezimwa</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Jukwaa <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Eneo-kazi la Mbali</translation>
+<translation id="6898090158927982244">Linux yako iko kisasa</translation>
+<translation id="4886703929102211360">Usasishaji muhimu unapatikana kwa kijenzi cha Linux (beta). Inashauriwa sana kusakinisha usasishaji huu haraka iwezekanavyo, vinginevyo Linux (beta) yako inaweza kuacha kufanya kazi.</translation>
+<translation id="6694016202036959050">Mipangilio ya <ph name="DEVICE_OS" /></translation>
+<translation id="8362858344151826493">Akaunti ya JemaOS, hifadhi, mengineyo</translation>
+<translation id="9150429437595727962">Mipangilio ya Wi-Fi</translation>
+<translation id="4938972461544498524">Mipangilio ya pedi ya kugusa</translation>
+<translation id="1210024513248363065">Huduma za mbali</translation>
+<translation id="2878862288885588535">Huduma ya uchunguzi wa mbali</translation>
+<translation id="7409197984340676806">Huduma ya uchunguzi wa mbali huwezesha wawakilishi rasmi wa usaidizi wa JemaOS kutambua matatizo ya mfumo. Kwa sasa, huduma ya uchunguzi wa mbali inaweza kuzinduliwa tu na wawakilishi rasmi wa usaidizi wa JemaOS.</translation>
+<translation id="1791028023086176332">Tafadhali shiriki nambari hii na wawakilishi rasmi wa usaidizi wa JemaOS</translation>
+<translation id="6279304275399437025">Inazindua huduma ya uchunguzi wa mbali...</translation>
+<translation id="1501882165699826662">Tafadhali simamisha huduma ya uchunguzi wa mbali na ujaribu tena</translation>
+<translation id="3100283258447375201">Maelezo zaidi</translation>
+<translation id="4070039109671307724">Mengineyo</translation>
+<translation id="7326893024940073254">Kitufe cha "Washa upya"</translation>
+<translation id="3002423764319968103">Onyesha kitufe cha "Washa upya" katika menyu ya mfumo</translation>
+<translation id="6243454903512423518">Kitufe cha "Geuza skrini"</translation>
+<translation id="6491049336868978729">Hauko katika hali ya kibao sasa hivi, kitufe cha "Geuza skrini" kimefichwa</translation>
+<translation id="5496012402277579695">Onyesha kitufe cha "Geuza skrini" katika menyu ya mfumo</translation>
+<translation id="5882838977344999606">Kibadilishaji cha hali ya kibao/kompyuta mpakato</translation>
+<translation id="472164133625585606">Onyesha kibadilishaji cha hali ya kibao/kompyuta mpakato katika menyu ya mfumo</translation>
+<translation id="1851103550468466960">Washa Widevine</translation>
+<translation id="4058176713282795846">Washa Widevine ili kutiririsha maudhui ya kipekee yaliyolindwa. <ph name="BEGIN_LINK_LEARN_MORE" />Pata maelezo zaidi<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">Chagua "libwidevine.so"</translation>
+<translation id="4838463656205005584">Imeshindwa kuwasha Widevine...</translation>
+<translation id="2164041826798266548">Usakinishaji wa moduli ya Widevine CDM umeshindwa. Tafadhali angalia muunganisho wako na ujaribu tena.</translation>
+<translation id="4106982328079440606">Mipangilio ya akaunti ya JemaOS</translation>
+<translation id="6468776556018764845">Vipengele vya majaribio</translation>
+<translation id="3487615413425326553">Puuza ukaguzi wa Trusted Platform Module (TPM)</translation>
+<translation id="4817176087932811573">Baadhi ya vipengele vinaweza kushindwa kutokana na chipu ya TPM isiyooana katika kifaa chako; unaweza kupuuza ukaguzi wa TPM kama suluhisho la muda.</translation>
+<translation id="3356003366173774486">Kuingia kiotomatiki</translation>
+<translation id="6218459410891191693">Ruhusu akaunti ya sasa kuingia kiotomatiki kwenye eneo-kazi kifaa kinapowashwa upya</translation>
+<translation id="6620839363422062843">Haiwezi kuwashwa kwa akaunti hii; kuingia kiotomatiki tayari kunatumika kwa akaunti zingine kwenye kifaa hiki</translation>
+<translation id="6734500226490446035">Haiwezi kuwashwa kwa akaunti hii; hitilafu isiyojulikana imetokea wakati wa kuanzisha mifumo ya faili kwa akaunti hii. Tafadhali jaribu kuwasha upya au kuunda akaunti mpya</translation>
+<translation id="5464880042146818691">Haiwezi kuwashwa kwa akaunti hii; chaguo la kuingia kiotomatiki linapatikana tu kwa aina ya "Akaunti ya ndani".</translation>
+<translation id="3335654854106476749">Tafadhali ongeza nenosiri la kuingia katika mipangilio ya <ph name="BEGIN_LINK" />Faragha na usalama<ph name="END_LINK" /> kabla ya kuwasha kuingia kiotomatiki.</translation>
+<translation id="5586831602198585601">Toleo jipya la JemaOS linapatikana kwa usasishaji sasa. Hata hivyo, usajili wako wa JemaOS for You umeisha muda wake; unahitaji usajili unaoendelea ili kusasisha JemaOS yako.</translation>
+<translation id="3869860597719956574">Toleo kuu jipya la JemaOS linapatikana kwa usasishaji sasa. Lazima ulipe ada ya mara moja ili kuendelea na usasishaji huu.</translation>
+<translation id="6523879681771260760">Tafadhali bainisha njia ya kuhifadhi faili ya hifadhi</translation>
+<translation id="2036152819788683293">Unda faili ya hifadhi kwa akaunti hii (beta). <ph name="BEGIN_LINK_LEARN_MORE" />Pata maelezo zaidi<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Hifadhi</translation>
+<translation id="4267347174163690295">Unda faili ya hifadhi kwa akaunti hii (beta).</translation>
+<translation id="8112950994208888917">Operesheni hii huunda hifadhi kamili ya diski kwa akaunti hii, ikirahisisha kurejesha JemaOS yako kwa hali ilivyokuwa wakati hifadhi ilipoundwa, ikijumuisha mipangilio, viendelezi vya kivinjari vilivyosakinishwa na programu za mfumo mdogo. Kulingana na programu zako na yaliyomo kwenye folda yako kuu, faili ya hifadhi inaweza kuwa kubwa; inashauriwa kuhifadhi faili ya hifadhi kwenye kifaa cha kuhifadhia cha nje. Ikiwa una kiendeshi cha USB cha kubebeka, tafadhali kiuunganishe sasa. <ph name="BEGIN_LINK_LEARN_MORE" />Pata maelezo zaidi<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Tafadhali ingiza nenosiri la kuingia kwa akaunti hii</translation>
+<translation id="8663988871299316062">Tafadhali kumbuka nenosiri hili, kwani litahitajika unaporejesha faili hii ya hifadhi</translation>
+<translation id="6408904153044317846">Chagua faili ya hifadhi ya kurejesha</translation>
+<translation id="8062988348127771021">Rejesha data yako ya JemaOS kutoka kwenye faili ya hifadhi</translation>
+<translation id="7309192418866543730">Ingiza nenosiri la hifadhi</translation>
+<translation id="3642408376366598984">Ingiza nenosiri lililotumika kusimba faili hii ya hifadhi</translation>
+<translation id="7783974937157985523">Nenosiri la hifadhi</translation>
+<translation id="6583780301401541007">Urejeshaji umefanikiwa</translation>
+<translation id="3514011352559420398">Urejeshaji umeshindwa</translation>
+<translation id="7535980903266533458">Hifadhi nakala kwenye kifaa chako au hifadhi ya nje</translation>
+<translation id="604001903249547235">Hifadhi ya wingu</translation>
+<translation id="8885702701336541611">Pakia hifadhi kwenye hifadhi ya wingu ya JemaOS</translation>
+<translation id="3939744430096549862">Hifadhi kwenye wingu</translation>
+<translation id="619129431573254316">Rejesha kutoka kwenye faili ya hifadhi ya ndani</translation>
+<translation id="1859592711955106569">Urejeshaji wa wingu</translation>
+<translation id="38222223336741457">Pakua na urejeshe kutoka kwenye wingu la JemaOS</translation>
+<translation id="1241089811244416179">Rejesha kutoka kwenye wingu</translation>
+<translation id="652479689372703360">Hifadhi inaendelea</translation>
+<translation id="3655220146274872918">Hifadhi imekamilika</translation>
+<translation id="4243579853635792694">Hifadhi yako imeundwa kwa mafanikio</translation>
+<translation id="6337433855796857931">Hifadhi imeshindwa</translation>
+<translation id="4854179463174744546">Hitilafu imetokea wakati wa mchakato wa hifadhi</translation>
+<translation id="2410668771600309999">Taarifa za mtumiaji wa Connect API</translation>
+<translation id="2223892939866251845">Kitambulisho cha mtumiaji</translation>
+<translation id="3850846286480935456">Uchambuzi wa hifadhi ya kuhifadhia</translation>
+<translation id="6244494465581273970">Kitambulisho cha mtumiaji kinahitajika</translation>
+<translation id="9204006549413740506">Imesasishwa mara ya mwisho</translation>
+<translation id="476642412165431515">Vifaa vya maunzi</translation>
+<translation id="3386337985825120901">Hakuna data ya hifadhi inayopatikana</translation>
+<translation id="8490990067870590760">Inapakia faili za hifadhi...</translation>
+<translation id="2955409026764742995">Chagua faili ya hifadhi ya kurejesha:</translation>
+<translation id="7414629348005657242">-- Chagua faili ya hifadhi --</translation>
+<translation id="918246516374174381">Hakuna faili za hifadhi zilizopatikana. Tafadhali unda hifadhi kwanza.</translation>
+<translation id="77997252117517973">Inakuja hivi karibuni</translation>
+<translation id="1930692852800776096">Ongeza kamusi</translation>
+<translation id="8793060353848771694">Picha ya earbud ya kushoto</translation>
+<translation id="6257440204887306255">Picha ya kisanduku cha kuchaji</translation>
+<translation id="2754700616124958693">Picha ya earbud ya kulia</translation>
+<translation id="1068676292264983586">Picha ya kifaa chaguomsingi</translation>
+<translation id="6364075396486660405">Zima uchanganuzi kiotomatiki wa faili za media kwa sehemu zote ili kuboresha maisha ya betri. <ph name="BEGIN_LINK_LEARN_MORE" />Pata maelezo zaidi<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Chaguzi za usalama</translation>
+<translation id="5618366106086725045">Washa "Hali ya Msanidi" kwa usakinishaji huu wa <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> ukiwa na vipengele zaidi vya wasanidi. <ph name="BEGIN_LINK_LEARN_MORE" />Pata maelezo zaidi<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Tayari uko katika "Hali ya Msanidi"</translation>
+<translation id="6074549317340202195">Washa "Hali ya Msanidi"</translation>
+<translation id="418781258674176053">Onyo! Kuwasha "Hali ya Msanidi" ni operesheni isiyoweza kubadilishwa. Ikiwa unataka kuzima "Hali ya Msanidi", lazima usakinishe upya JemaOS, jambo litakalofuta data zote. Tafadhali hifadhi data yako na uendelee kwa hatari yako mwenyewe.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Jukwaa <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Hauko mtandaoni kwa sasa</translation>
+<translation id="2590678769628709242">Angalia usajili wako wa JemaOS mtandaoni</translation>
+<translation id="4701836089682883918">Taarifa za usajili wa JemaOS</translation>
+<translation id="5891566673089952188">Hitilafu imetokea wakati wa kupata kitambulisho cha kifaa chako</translation>
+<translation id="4685086787606104322">Mwisho wa usajili</translation>
+<translation id="3354919960795782984">Kitambulisho cha kifaa</translation>
+<translation id="5758632069869992306">Angalia usajili wako mtandaoni</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Jukwaa <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Usajili wa majaribio</translation>
+<translation id="4362781408813685579">Usajili unaoendelea</translation>
+<translation id="1141274201089997510">Usajili uliokwisha muda</translation>
+<translation id="2553683254139782404">Toleo lisilo la kibiashara</translation>
+<translation id="8466048683756385518">Toleo lenye leseni ya Enterprise (majaribio)</translation>
+<translation id="2853871047705932424">Toleo lenye leseni ya Enterprise</translation>
+<translation id="5239675900317881945">Toleo lenye leseni ya Enterprise (limekwisha muda)</translation>
+<translation id="189101945990408398">Intel ya zamani</translation>
+<translation id="6816405236809604904">Intel ya kisasa</translation>
+<translation id="6169452478137972655">Grafiki za AMD</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="2747689477259164256">AI ya JemaOS</translation>
+<translation id="1270291881045478104">Washa AI ya JemaOS</translation>
+<translation id="2013780539677437932">Washa au uzime vipengele vyote vinavyohusiana na AI ya JemaOS</translation>
+<translation id="3398637633218757480">Washa Wito wa Haraka wa AI ya JemaOS</translation>
+<translation id="8986197796475507452">Fikia haraka chaguzi za AI ya JemaOS kwa maudhui yaliyoangaziwa kwa kubonyeza Ctrl + C + C</translation>
+<translation id="6407628130593274137">Mipangilio na chaguzi zingine kwa AI ya JemaOS</translation>
+<translation id="4005574560653331142">Ili kubadilisha PIN au nenosiri la kuingia la akaunti hii ya ndani, nenda kwenye mipangilio ya <ph name="BEGIN_LINK" />Faragha na usalama<ph name="END_LINK" />.</translation>
+
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">Unaweza <ph name="LINK_START" />kuingia kwa akaunti ya ndani ya JemaOS<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">Barua pepe <ph name="EMAIL_ADDRESS" /> tayari ipo. Tafadhali jaribu tena kwa barua pepe nyingine.</translation>
+<translation id="4519800823932975782">Kituo cha Msaada cha JemaOS</translation>
+<translation id="4737474693231655139">Tafuta makala za msaada na majibu ya maswali ya kawaida kuhusu JemaOS</translation>
+</translationbundle>

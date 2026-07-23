@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="hu">
+
+
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">A JemaOS még nem fejezte be a kezdeti beállítást.</translation>
+<translation id="4257170804800372451">A JemaOS-t és a Thotot a <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> nyílt forráskódú projekt és más <ph name="BEGIN_LINK_OSS" />nyílt forráskódú szoftverek<ph name="END_LINK_OSS" /> teszik lehetővé.</translation>
+</translationbundle>

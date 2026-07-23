@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="gl">
+	<translation id="7386402409475121504">Crea a túa conta local de JemaOS</translation>
+	<translation id="3760308806144055927">Inicia sesión na túa conta local de JemaOS</translation>
+	<translation id="3325117507482096812">Introduza un contrasinal</translation>
+	<translation id="1838206877831947154">Os teus contrasinais non coinciden</translation>
+	<translation id="2158276988029582286">Crea unha nova conta local</translation>
+	<translation id="8592849747346274067">Inicia sesión nunha conta existente</translation>
+	<translation id="482190417986201746">O nome de usuario ou contrasinal que introduciu non é correcto</translation>
+	<translation id="6603987686259425085">Podes <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>iniciar sesión cunha conta local de JemaOS<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">O correo electrónico <ph name="EMAIL_ADDRESS">$1</ph> xa existe. Téntao de novo con outro correo electrónico.</translation>
+	<translation id="7215016743510876720">Usa unha conta local</translation>
+	<translation id="6657635042185516718">Continúa usando a conta en liña</translation>
+	<translation id="6867476688065565618">Cambiar á conta local?</translation>
+	<translation id="4840454774882557974">Se optas por usar unha conta local, as funcións útiles inclúen sincronizar os teus datos e preferencias en varios dispositivos e iniciar sesión automaticamente en aplicacións web usando a túa conta JemaOS non funcionará.</translation>
+	<translation id="8951507920859729424">Recomendamos usar unha conta en liña para utilizar JemaOS ao máximo.</translation>
+	<translation id="479773200536372215">Non poderás engadir contas de Google porque faltan as claves da API de Google. Consulta <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> para obter máis información.</translation>
+	<translation id="1198491307547164157">Non poderás engadir contas de JemaOS porque faltan as claves da API de JemaOS. Consulta <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> para obter máis información.</translation>
+	<translation id="5042404702659901995">Declaración de privacidade</translation>
+	<translation id="4907736162587268100">Contido da declaración de privacidade</translation>
+	<translation id="5988344732274877691">Rexístrese no boletín informativo (moi pouco frecuente, prometido) de JemaOS</translation>
+	<translation id="1706203008474708805">Únete ao plan de mellora da experiencia do usuario de JemaOS</translation>
+	<translation id="1147139514756087229">Inicia sesión cunha conta local</translation>
+	<translation id="2054784944085654098">Creando o ficheiro de copia de seguranza agora. Isto pode levar un tempo; por favor agarde...</translation>
+	<translation id="3554401467586751874">O ficheiro de copia de seguranza creouse correctamente</translation>
+	<translation id="2349211327705667074">Ver ficheiro de copia de seguridade</translation>
+	<translation id="3049367131589710124">Ver rexistro de erros</translation>
+	<translation id="1079017345574916945">Escritorio remoto</translation>
+	<translation id="3064478898280877715">Tenda de aplicacións</translation>
+	<translation id="5890206344045530832">Instalador</translation>
+	<translation id="2173278076276376488">Esta utilidade axudarache a instalar <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> no almacenamento interno deste dispositivo.</translation>
+	<translation id="5323182426977498659">Aviso! Este procedemento é destrutivo e non se pode desfacer. Teña en conta que non asumiremos ningunha responsabilidade pola súa posible perda de datos nin proporcionaremos ningún tipo de asistencia técnica urxente, proceda baixo o seu propio risco.</translation>
+	<translation id="8517836015601969896">Instalación de disco completo</translation>
+	<translation id="7300045760790370189">Instala <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> para ocupar un disco duro enteiro, borraranse todos os datos do disco duro de destino.</translation>
+	<translation id="8762511733918256595">Instalación de arranque múltiple</translation>
+	<translation id="248900698427753678">Instala <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> nunha partición existente dun disco duro, onde <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> pode existir en paralelo con outro SO. Borraranse todos os datos da partición de destino.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> instalarase no disco duro seleccionado; borraranse todos os datos do disco de destino.</translation>
+	<translation id="4039091757234555415">Disco</translation>
+	<translation id="7783580523889684697">Non hai disco dispoñible</translation>
+	<translation id="8217653566575018388">Instalación completada</translation>
+	<translation id="8846746259444262774">Produciuse un erro na instalación</translation>
+	<translation id="7263815009235541549">A instalación rematou correctamente. Apague primeiro o dispositivo, despois elimine calquera medio de instalación e acéndeo de novo para iniciar <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>.</translation>
+	<translation id="3380151284134965398">Vaia, algo fallou e a instalación non se completou. Tenta de novo o proceso. Se o mesmo erro persiste, póñase en contacto co soporte de JemaOS co rexistro anterior.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> instalarase na partición seleccionada do teu disco duro. Segundo o esquema de arranque múltiple actual, isto só podería continuar se o teu dispositivo admite UEFI e os teus discos duros están formateados con GPT.</translation>
+	<translation id="7831363758161884243">A partición de destino borrarase; tamén precisa especificar a súa partición EFI activa (normalmente faise automaticamente) xa que o instalador necesita modificar as configuracións de inicio do sistema.</translation>
+	<translation id="5670799238446305550">Seleccione a partición de destino <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph></translation>
+	<translation id="3695537760133394753">Partición</translation>
+	<translation id="5610519566593708119">Seleccione a partición EFI</translation>
+	<translation id="3367650349940010965">Non hai particións dispoñibles para o disco seleccionado</translation>
+	<translation id="7453223384507098390">Non hai particións EFI dispoñibles para o disco seleccionado</translation>
+	<translation id="1854532683465500847">O tamaño da partición seleccionada é inferior a 20 GB, a instalación pode fallar</translation>
+	<translation id="4144613075340468247">A partición seleccionada montouse no arranque múltiple <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>, pode fallar a instalación de novo nela</translation>
+	<translation id="5793361052649920836">Despois da instalación, como queres iniciar <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>?</translation>
+	<translation id="4273235330352963866">Instala e configura rEFInd para min (recomendado)</translation>
+	<translation id="1858708492548921044">rEFInd é un programa de xestor de arranque que ofrece unha boa interface gráfica para as opcións de inicio do sistema operativo cando se inicia o seu PC, poderás escoller o sistema operativo desexado para iniciar con el. Para obter máis información sobre rEFInd, consulte a súa páxina de inicio.</translation>
+	<translation id="3861924051442564602">Engade unha opción de menú de arranque UEFI para min</translation>
+	<translation id="8622370666798589804">Cando o teu PC se inicie, podes acceder ao menú de opcións de arranque UEFI (probablemente premendo unha tecla de acceso rápido), esta opción engade <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> como entrada a ese menú. (Só admite algúns modelos de firmware BIOS e UEFI).</translation>
+	<translation id="1569398690544416170">Non fagas nada aquí, configurarei eu</translation>
+	<translation id="3554866444001249532">Este script de instalación só colocará os ficheiros .efi necesarios para iniciar <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> na súa partición EFI, terá que configurar como inicialo por si mesmo.</translation>
+	<translation id="7492832751164189534">Forzar a saída</translation>
+	<translation id="5159534860632584026">O proceso de instalación rematou</translation>
+	<translation id="8686749782014838344">Produciuse un erro ao obter a información do disco</translation>
+	<translation id="5688543378771259173">A instalación está a finalizar...</translation>
+	<translation id="5350452134936384991">Instalar en USB</translation>
+	<translation id="8008470485414925603">Instala <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> nun disco USB; borraranse todos os datos do disco USB de destino.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> instalarase no disco USB seleccionado; borraranse todos os datos do disco de destino.</translation>
+	<translation id="5725593226060700263">Non hai disco USB dispoñible</translation>
+	<translation id="4357040841587078287">Detectamos que estás executando esta copia de JemaOS desde un ficheiro de imaxe descargado. Para utilizar as funcións de soporte máis completas (incluídas as actualizacións Over-The-Air) que pode ofrecer JemaOS, recomendámosche encarecidamente que inicies a función "Instalador" para realizar unha instalación de JemaOS en disco completo nun dispositivo de almacenamento separado.</translation>
+	<translation id="1246398339704431302">Podes <ph name="LINK_BEGIN">&amp;lt;span id="continuar-de todos os xeitos"&amp;gt;</ph>continuar usando esta copia de JemaOS de todos os xeitos<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, o proceso de instalación pódese executar nunha fase posterior no sistema; non obstante, todos os teus datos borraranse de novo despois da instalación e comezarás a instalar.</translation>
+	<translation id="3654532222088291133">En lugar de introducir o contrasinal da túa conta de JemaOS para iniciar sesión, podes crear un contrasinal de <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> para este dispositivo</translation>
+	<translation id="8377684629839541977">Use o contrasinal da conta de JemaOS</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">Manter o <ph name="DEVICE_OS" /> actualizado automaticamente</translation>
+<translation id="2347352406101856238">Actualización do <ph name="DEVICE_OS" /> activada</translation>
+<translation id="185834232609012804">Actualización do <ph name="DEVICE_OS" /> desactivada</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Plataforma <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Escritorio remoto</translation>
+<translation id="6898090158927982244">O teu Linux está actualizado</translation>
+<translation id="4886703929102211360">Hai unha actualización crítica dispoñible para o compoñente Linux (beta). Recoméndase encarecidamente instalala canto antes; en caso contrario, o Linux (beta) pode deixar de funcionar.</translation>
+<translation id="6694016202036959050">Configuración do <ph name="DEVICE_OS" /></translation>
+<translation id="8362858344151826493">Conta de JemaOS, copia de seguranza, varios</translation>
+<translation id="9150429437595727962">Configuración do wifi</translation>
+<translation id="4938972461544498524">Configuración do panel táctil</translation>
+<translation id="1210024513248363065">Servizos remotos</translation>
+<translation id="2878862288885588535">Servizo de diagnóstico remoto</translation>
+<translation id="7409197984340676806">O servizo de diagnóstico remoto permite que os representantes oficiais da asistencia de JemaOS identifiquen problemas do sistema. Actualmente, o servizo de diagnóstico remoto só o poden iniciar os representantes oficiais da asistencia de JemaOS.</translation>
+<translation id="1791028023086176332">Comparte este número cos representantes oficiais da asistencia de JemaOS</translation>
+<translation id="6279304275399437025">Iniciando o servizo de diagnóstico remoto...</translation>
+<translation id="1501882165699826662">Detén o servizo de diagnóstico remoto e téntao de novo</translation>
+<translation id="3100283258447375201">Máis información</translation>
+<translation id="4070039109671307724">Varios</translation>
+<translation id="7326893024940073254">Botón "Reiniciar"</translation>
+<translation id="3002423764319968103">Mostrar un botón "Reiniciar" no menú do sistema</translation>
+<translation id="6243454903512423518">Botón "Xirar pantalla"</translation>
+<translation id="6491049336868978729">Non estás no modo tableta neste momento; o botón "Xirar pantalla" está agochado</translation>
+<translation id="5496012402277579695">Mostrar un botón "Xirar pantalla" no menú do sistema</translation>
+<translation id="5882838977344999606">Selector de modo tableta/portátil</translation>
+<translation id="472164133625585606">Mostrar un selector de modo tableta/portátil no menú do sistema</translation>
+<translation id="1851103550468466960">Activar o Widevine</translation>
+<translation id="4058176713282795846">Activar o Widevine para transmitir contido premium protexido. <ph name="BEGIN_LINK_LEARN_MORE" />Máis información<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">Selecciona "libwidevine.so"</translation>
+<translation id="4838463656205005584">Produciuse un erro ao activar o Widevine...</translation>
+<translation id="2164041826798266548">Produciuse un erro na instalación do módulo Widevine CDM. Comproba a túa conexión e téntao de novo.</translation>
+<translation id="4106982328079440606">Configuración da conta de JemaOS</translation>
+<translation id="6468776556018764845">Funcións experimentais</translation>
+<translation id="3487615413425326553">Omitir as comprobacións do Trusted Platform Module (TPM)</translation>
+<translation id="4817176087932811573">Algunhas funcións poden fallar por mor dun chip TPM incompatible no teu dispositivo; como solución alternativa, podes omitir as comprobacións do TPM.</translation>
+<translation id="3356003366173774486">Inicio de sesión automático</translation>
+<translation id="6218459410891191693">Permitir que a conta actual inicie sesión automaticamente no escritorio cando o dispositivo se reinicie</translation>
+<translation id="6620839363422062843">Non se pode activar para esta conta; o inicio de sesión automático xa está activo para outras contas neste dispositivo</translation>
+<translation id="6734500226490446035">Non se pode activar para esta conta; produciuse un erro descoñecido ao inicializar os sistemas de ficheiros desta conta. Tenta reiniciar ou crear unha conta nova</translation>
+<translation id="5464880042146818691">Non se pode activar para esta conta; a opción de inicio de sesión automático só está dispoñible para o tipo "Conta local".</translation>
+<translation id="3335654854106476749">Engade un contrasinal de inicio de sesión na configuración de <ph name="BEGIN_LINK" />Privacidade e seguranza<ph name="END_LINK" /> antes de activar o inicio de sesión automático.</translation>
+<translation id="5586831602198585601">Xa hai dispoñible unha versión máis recente do JemaOS para actualizar. Non obstante, a túa subscrición ao JemaOS for You caducou; necesitas unha subscrición activa para actualizar o JemaOS.</translation>
+<translation id="3869860597719956574">Xa hai dispoñible unha nova versión principal do JemaOS para actualizar. Debes pagar unha tarifa única para continuar con esta actualización.</translation>
+<translation id="6523879681771260760">Especifica a ruta onde gardar o ficheiro de copia de seguranza</translation>
+<translation id="2036152819788683293">Crear un ficheiro de copia de seguranza para esta conta (beta). <ph name="BEGIN_LINK_LEARN_MORE" />Máis información<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Crear copia de seguranza</translation>
+<translation id="4267347174163690295">Crea un ficheiro de copia de seguranza para esta conta (beta).</translation>
+<translation id="8112950994208888917">Esta operación crea unha copia de seguranza completa do disco para esta conta, o que facilita restaurar o JemaOS ao estado no que estaba cando se creou a copia, incluíndo a configuración, as extensións de navegador instaladas e as aplicacións do subsistema. Segundo as túas aplicacións e o contido do teu cartafol persoal, o ficheiro de copia de seguranza pode ser grande; recoméndase gardalo nun dispositivo de almacenamento externo. Se tes unha unidade USB portátil, conéctaa agora. <ph name="BEGIN_LINK_LEARN_MORE" />Máis información<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Introduce o contrasinal de inicio de sesión desta conta</translation>
+<translation id="8663988871299316062">Lembra este contrasinal, xa que será necesario ao restaurar este ficheiro de copia de seguranza</translation>
+<translation id="6408904153044317846">Selecciona o ficheiro de copia de seguranza que queres restaurar</translation>
+<translation id="8062988348127771021">Restaurar os teus datos do JemaOS desde un ficheiro de copia de seguranza</translation>
+<translation id="7309192418866543730">Introduce o contrasinal da copia de seguranza</translation>
+<translation id="3642408376366598984">Introduce o contrasinal utilizado para cifrar este ficheiro de copia de seguranza</translation>
+<translation id="7783974937157985523">Contrasinal da copia de seguranza</translation>
+<translation id="6583780301401541007">Restauración completada correctamente</translation>
+<translation id="3514011352559420398">Produciuse un erro na restauración</translation>
+<translation id="7535980903266533458">Gardar a copia de seguranza no teu dispositivo ou nun almacenamento externo</translation>
+<translation id="604001903249547235">Copia de seguranza na nube</translation>
+<translation id="8885702701336541611">Subir a copia de seguranza ao almacenamento na nube do JemaOS</translation>
+<translation id="3939744430096549862">Crear copia de seguranza na nube</translation>
+<translation id="619129431573254316">Restaurar desde un ficheiro de copia de seguranza local</translation>
+<translation id="1859592711955106569">Restauración desde a nube</translation>
+<translation id="38222223336741457">Descargar e restaurar desde a nube do JemaOS</translation>
+<translation id="1241089811244416179">Restaurar desde a nube</translation>
+<translation id="652479689372703360">Copia de seguranza en curso</translation>
+<translation id="3655220146274872918">Copia de seguranza finalizada</translation>
+<translation id="4243579853635792694">A túa copia de seguranza creouse correctamente</translation>
+<translation id="6337433855796857931">Produciuse un erro na copia de seguranza</translation>
+<translation id="4854179463174744546">Produciuse un erro durante o proceso de copia de seguranza</translation>
+<translation id="2410668771600309999">Información do usuario da Connect API</translation>
+<translation id="2223892939866251845">ID de usuario</translation>
+<translation id="3850846286480935456">Análise do almacenamento de copias de seguranza</translation>
+<translation id="6244494465581273970">Requírese o ID de usuario</translation>
+<translation id="9204006549413740506">Última actualización</translation>
+<translation id="476642412165431515">Dispositivos de hardware</translation>
+<translation id="3386337985825120901">Non hai datos de copia de seguranza dispoñibles</translation>
+<translation id="8490990067870590760">Cargando ficheiros de copia de seguranza...</translation>
+<translation id="2955409026764742995">Selecciona o ficheiro de copia de seguranza que queres restaurar:</translation>
+<translation id="7414629348005657242">-- Selecciona un ficheiro de copia de seguranza --</translation>
+<translation id="918246516374174381">Non se atopou ningún ficheiro de copia de seguranza. Crea primeiro unha copia de seguranza.</translation>
+<translation id="77997252117517973">Proximamente</translation>
+<translation id="1930692852800776096">Engadir un dicionario</translation>
+<translation id="8793060353848771694">Imaxe do auricular esquerdo</translation>
+<translation id="6257440204887306255">Imaxe do estuche de carga</translation>
+<translation id="2754700616124958693">Imaxe do auricular dereito</translation>
+<translation id="1068676292264983586">Imaxe predeterminada do dispositivo</translation>
+<translation id="6364075396486660405">Desactivar a análise automática de ficheiros multimedia en todas as particións para optimizar a duración da batería. <ph name="BEGIN_LINK_LEARN_MORE" />Máis información<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Opcións de seguranza</translation>
+<translation id="5618366106086725045">Activar o "Modo de desenvolvedor" nesta instalación do <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> para obter máis funcións para desenvolvedores. <ph name="BEGIN_LINK_LEARN_MORE" />Máis información<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Xa estás no "Modo de desenvolvedor"</translation>
+<translation id="6074549317340202195">Activar o "Modo de desenvolvedor"</translation>
+<translation id="418781258674176053">Aviso! Activar o "Modo de desenvolvedor" é unha operación irreversible. Se queres desactivar o "Modo de desenvolvedor", debes reinstalar o JemaOS, o que borrará todos os datos. Fai unha copia de seguranza dos teus datos e continúa baixo a túa responsabilidade.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Plataforma <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Actualmente sen conexión</translation>
+<translation id="2590678769628709242">Comproba a túa subscrición do JemaOS en liña</translation>
+<translation id="4701836089682883918">Información da subscrición do JemaOS</translation>
+<translation id="5891566673089952188">Produciuse un erro ao obter o ID do teu dispositivo</translation>
+<translation id="4685086787606104322">Fin da subscrición</translation>
+<translation id="3354919960795782984">ID do dispositivo</translation>
+<translation id="5758632069869992306">Comproba a túa subscrición en liña</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Plataforma <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Subscrición de proba</translation>
+<translation id="4362781408813685579">Subscrición activa</translation>
+<translation id="1141274201089997510">Subscrición caducada</translation>
+<translation id="2553683254139782404">Edición non comercial</translation>
+<translation id="8466048683756385518">Versión con licenza Enterprise (proba)</translation>
+<translation id="2853871047705932424">Versión con licenza Enterprise</translation>
+<translation id="5239675900317881945">Versión con licenza Enterprise (caducada)</translation>
+<translation id="189101945990408398">Intel antigo</translation>
+<translation id="6816405236809604904">Intel moderno</translation>
+<translation id="6169452478137972655">Gráficos AMD</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="2747689477259164256">JemaOS AI</translation>
+<translation id="1270291881045478104">Activar o JemaOS AI</translation>
+<translation id="2013780539677437932">Activar ou desactivar todas as funcións relacionadas co JemaOS AI</translation>
+<translation id="3398637633218757480">Activar a Chamada Rápida do JemaOS AI</translation>
+<translation id="8986197796475507452">Mostrar rapidamente as opcións do JemaOS AI para o contido resaltado premendo Ctrl + C + C</translation>
+<translation id="6407628130593274137">Outras opcións e axustes de configuración do JemaOS AI</translation>
+<translation id="4005574560653331142">Para cambiar o PIN ou o contrasinal de inicio de sesión desta conta local, vai á configuración de <ph name="BEGIN_LINK" />Privacidade e seguranza<ph name="END_LINK" />.</translation>
+
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">Podes <ph name="LINK_START" />iniciar sesión cunha conta local de JemaOS<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">O correo electrónico <ph name="EMAIL_ADDRESS" /> xa existe. Téntao de novo con outro correo electrónico.</translation>
+<translation id="4519800823932975782">Centro de axuda de JemaOS</translation>
+<translation id="4737474693231655139">Atopa artigos de axuda e respostas ás preguntas comúns sobre o JemaOS</translation>
+</translationbundle>

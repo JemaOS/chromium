@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="ca">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">Registreu-vos al Nutstore per sincronitzar els vostres fitxers al núvol al JemaOS.</translation>
+<translation id="8672291834743661083">Registreu-vos al Nutstore</translation>
+<translation id="5103639294476249880">Feu clic al botó "Afegeix una aplicació" a la configuració de seguretat</translation>
+<translation id="8371020157576651120">Genereu i copieu la contrasenya de l'aplicació</translation>
+<translation id="3855250998276979579">Obriu l'aplicació Nutstore</translation>
+<translation id="6565655783894300125">i connecteu el vostre compte de Nutstore al JemaOS amb el vostre correu electrònic i la contrasenya de l'aplicació</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Properament</translation>
+<translation id="4928968570611226525">Per continuar amb aquesta acció, haureu d'<ph name="BEGIN_LINK_ARC_APP" />&gt;activar el subsistema Android<ph name="END_LINK_ARC_APP" /> al vostre dispositiu JemaOS; a més, el vostre dispositiu JemaOS ha d'estar <ph name="BEGIN_LINK_HELP" />en mode de desenvolupador<ph name="END_LINK_HELP" />.</translation>
+<translation id="7395250550107972941">No es poden instal·lar fitxers .apk per càrrega lateral. Assegureu-vos que el subsistema Android estigui activat i que el dispositiu JemaOS estigui en mode de desenvolupador.</translation>
+<translation id="5690820326685091783">Obre amb JemaOS AI</translation>
+</translationbundle>

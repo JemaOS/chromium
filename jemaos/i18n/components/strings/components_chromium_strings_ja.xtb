@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="ja">
+
+
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">JemaOS の初期セットアップが完了していません。</translation>
+<translation id="4257170804800372451">JemaOS と Thot は、<ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> オープンソース プロジェクトとその他の<ph name="BEGIN_LINK_OSS" />オープンソース ソフトウェア<ph name="END_LINK_OSS" />によって実現しました。</translation>
+</translationbundle>

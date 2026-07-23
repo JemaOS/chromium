@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="ar">
+	<translation id="7386402409475121504">قم بإنشاء حساب JemaOS المحلي الخاص بك</translation>
+	<translation id="3760308806144055927">قم بتسجيل الدخول إلى حساب JemaOS المحلي الخاص بك</translation>
+	<translation id="3325117507482096812">الرجاء إدخال كلمة المرور</translation>
+	<translation id="1838206877831947154">كلمات المرور الخاصة بك غير متطابقة</translation>
+	<translation id="2158276988029582286">إنشاء حساب محلي جديد</translation>
+	<translation id="8592849747346274067">قم بتسجيل الدخول إلى حساب موجود</translation>
+	<translation id="482190417986201746">اسم المستخدم أو كلمة المرور التي أدخلتها غير صحيحة</translation>
+	<translation id="6603987686259425085">يمكنك <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>تسجيل الدخول باستخدام حساب JemaOS المحلي<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">البريد الإلكتروني <ph name="EMAIL_ADDRESS">$1</ph> موجود بالفعل. يرجى إعادة المحاولة باستخدام بريد إلكتروني آخر.</translation>
+	<translation id="7215016743510876720">استخدام الحساب المحلي</translation>
+	<translation id="6657635042185516718">الاستمرار في استخدام الحساب عبر الإنترنت</translation>
+	<translation id="6867476688065565618">التبديل إلى الحساب المحلي؟</translation>
+	<translation id="4840454774882557974">إذا اخترت استخدام حساب محلي، فإن الميزات المفيدة تتضمن مزامنة بياناتك وتفضيلاتك عبر أجهزة متعددة وتسجيل الدخول تلقائيًا إلى تطبيقات الويب باستخدام حساب JemaOS الخاص بك لن يعمل.</translation>
+	<translation id="8951507920859729424">نوصي باستخدام حساب عبر الإنترنت للاستفادة من JemaOS إلى أقصى حد.</translation>
+	<translation id="479773200536372215">لن تتمكن من إضافة حسابات Google لأن مفاتيح Google API مفقودة. راجع <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> للحصول على التفاصيل.</translation>
+	<translation id="1198491307547164157">لن تتمكن من إضافة حسابات JemaOS لأن مفاتيح JemaOS API مفقودة. راجع <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> للحصول على التفاصيل.</translation>
+	<translation id="5042404702659901995">بيان الخصوصية</translation>
+	<translation id="4907736162587268100">محتويات بيان الخصوصية</translation>
+	<translation id="5988344732274877691">قم بالتسجيل في النشرة الإخبارية (النادرة جدًا والموعودة) لنظام JemaOS</translation>
+	<translation id="1706203008474708805">انضم إلى خطة تحسين تجربة مستخدم JemaOS</translation>
+	<translation id="1147139514756087229">قم بتسجيل الدخول باستخدام حساب محلي</translation>
+	<translation id="2054784944085654098">إنشاء ملف النسخ الاحتياطي الآن. قد يستغرق هذا بعض الوقت؛ من فضلك انتظر...</translation>
+	<translation id="3554401467586751874">تم إنشاء ملف النسخ الاحتياطي بنجاح</translation>
+	<translation id="2349211327705667074">عرض ملف النسخ الاحتياطي</translation>
+	<translation id="3049367131589710124">عرض سجل الأخطاء</translation>
+	<translation id="1079017345574916945">سطح المكتب البعيد</translation>
+	<translation id="3064478898280877715">متجر التطبيقات</translation>
+	<translation id="5890206344045530832">المثبت</translation>
+	<translation id="2173278076276376488">ستساعدك هذه الأداة المساعدة على تثبيت <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> على وحدة التخزين الداخلية لهذا الجهاز.</translation>
+	<translation id="5323182426977498659">تحذير! هذا الإجراء مدمر ولا يمكن التراجع عنه. يرجى ملاحظة أننا لن نتحمل أي مسؤولية عن فقدان بياناتك المحتمل ولن نقدم أي دعم فني عاجل، تابع على مسؤوليتك الخاصة.</translation>
+	<translation id="8517836015601969896">تركيب القرص كاملا</translation>
+	<translation id="7300045760790370189">قم بتثبيت <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> لشغل القرص الصلب بالكامل، وسيتم مسح جميع بيانات القرص الصلب المستهدف.</translation>
+	<translation id="8762511733918256595">تثبيت متعدد التمهيد</translation>
+	<translation id="248900698427753678">قم بتثبيت <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> على قسم موجود من القرص الصلب، حيث يمكن أن يتواجد <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> بالتوازي مع أنظمة تشغيل أخرى. سيتم مسح كافة البيانات الموجودة على القسم الهدف.</translation>
+	<translation id="8445241586733258838">سيتم تثبيت <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> على محرك الأقراص الثابتة الذي حددته؛ سيتم مسح جميع البيانات الموجودة على القرص الهدف.</translation>
+	<translation id="4039091757234555415">القرص</translation>
+	<translation id="7783580523889684697">لا يوجد قرص متاح</translation>
+	<translation id="8217653566575018388">اكتمل التثبيت</translation>
+	<translation id="8846746259444262774">فشل التثبيت</translation>
+	<translation id="7263815009235541549">انتهى التثبيت بنجاح. الرجاء إيقاف تشغيل جهازك أولاً، ثم إزالة أي وسائط تثبيت، وتشغيله مرة أخرى لتشغيل <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>.</translation>
+	<translation id="3380151284134965398">عفوًا، حدث خطأ ما ولم يكتمل التثبيت. يرجى إعادة محاولة العملية. إذا استمر الخطأ نفسه، فيرجى التواصل مع دعم JemaOS باستخدام السجل أعلاه.</translation>
+	<translation id="4683944976188707627">سيتم تثبيت <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> على القسم المحدد من محرك الأقراص الثابتة لديك. بموجب نظام التشغيل المتعدد الحالي، لا يمكن تنفيذ ذلك إلا إذا كان جهازك يدعم UEFI وكانت الأقراص الثابتة لديك مهيأة باستخدام GPT.</translation>
+	<translation id="7831363758161884243">سيتم مسح القسم الهدف؛ تحتاج أيضًا إلى تحديد قسم EFI النشط الخاص بك (يتم ذلك عادةً تلقائيًا) حيث يحتاج المثبت إلى تعديل تكوينات تمهيد النظام.</translation>
+	<translation id="5670799238446305550">حدد <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> القسم المستهدف</translation>
+	<translation id="3695537760133394753">التقسيم</translation>
+	<translation id="5610519566593708119">حدد قسم EFI</translation>
+	<translation id="3367650349940010965">لا توجد أقسام متوفرة للقرص المحدد</translation>
+	<translation id="7453223384507098390">لا توجد أقسام EFI متاحة للقرص المحدد</translation>
+	<translation id="1854532683465500847">حجم القسم المحدد أقل من 20 جيجابايت، وقد يفشل التثبيت</translation>
+	<translation id="4144613075340468247">تم تثبيت القسم المحدد على نظام التشغيل المتعدد <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>، وقد يفشل التثبيت عليه مرة أخرى</translation>
+	<translation id="5793361052649920836">بعد التثبيت، كيف تريد تشغيل <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>؟</translation>
+	<translation id="4273235330352963866">تثبيت المرجع وتكوينه لي (مستحسن)</translation>
+	<translation id="1858708492548921044">rEFInd هو برنامج لإدارة التمهيد يوفر واجهة رسومية رائعة لخيارات تمهيد نظام التشغيل عند بدء تشغيل جهاز الكمبيوتر الخاص بك، وستكون قادرًا على اختيار نظام التشغيل المطلوب للتمهيد به. لمزيد من المعلومات حول المرجع، يرجى الرجوع إلى صفحته الرئيسية.</translation>
+	<translation id="3861924051442564602">أضف خيار قائمة تمهيد UEFI لي</translation>
+	<translation id="8622370666798589804">عند بدء تشغيل جهاز الكمبيوتر الخاص بك، قد تتمكن من الدخول إلى قائمة خيارات تمهيد UEFI (على الأرجح عن طريق الضغط على مفتاح التشغيل السريع)، ويضيف هذا الخيار <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> كمدخل إلى تلك القائمة. (يدعم فقط بعض طرز BIOS وUEFI الثابتة).</translation>
+	<translation id="1569398690544416170">لا تفعل شيئًا هنا، سأقوم بتكوينه بنفسي</translation>
+	<translation id="3554866444001249532">سيضع برنامج التثبيت هذا فقط ملفات .efi الضرورية لتشغيل <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> إلى قسم EFI، وستحتاج إلى تهيئة كيفية تشغيله بنفسك.</translation>
+	<translation id="7492832751164189534">فرض الإقلاع عن التدخين</translation>
+	<translation id="5159534860632584026">تم إنهاء عملية التثبيت</translation>
+	<translation id="8686749782014838344">فشل في الحصول على معلومات القرص</translation>
+	<translation id="5688543378771259173">جاري إنهاء التثبيت...</translation>
+	<translation id="5350452134936384991">تثبيت في USB</translation>
+	<translation id="8008470485414925603">قم بتثبيت <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> على قرص USB؛ سيتم مسح جميع البيانات الموجودة على قرص USB الهدف.</translation>
+	<translation id="1270668145107456127">سيتم تثبيت <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> على قرص USB الذي حددته؛ سيتم مسح جميع البيانات الموجودة على القرص الهدف.</translation>
+	<translation id="5725593226060700263">لا يتوفر قرص USB</translation>
+	<translation id="4357040841587078287">لقد اكتشفنا أنك تقوم بتشغيل هذه النسخة من JemaOS من ملف صورة تم تنزيله. للاستفادة من ميزات الدعم الأكثر شمولاً (بما في ذلك التحديثات عبر الأثير) التي يمكن أن يقدمها JemaOS، نوصي بشدة بتشغيل وظيفة "المثبت" لإجراء تثبيت كامل القرص لنظام JemaOS على جهاز تخزين منفصل.</translation>
+	<translation id="1246398339704431302">يمكنك <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>الاستمرار في استخدام هذه النسخة من JemaOS على أي حال<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>، ويمكن تنفيذ عملية التثبيت في مرحلة لاحقة في النظام، ومع ذلك، سيتم مسح جميع بياناتك بعد التثبيت وستبدأ مرة أخرى من هذه الصفحة.</translation>
+	<translation id="3654532222088291133">بدلاً من إدخال كلمة مرور حساب JemaOS لتسجيل الدخول، يمكنك إنشاء كلمة مرور <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> لهذا الجهاز</translation>
+	<translation id="8377684629839541977">استخدم كلمة مرور حساب JemaOS</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">الحفاظ على تحديث <ph name="DEVICE_OS" /> تلقائيًا</translation>
+<translation id="2347352406101856238">تم تفعيل تحديث <ph name="DEVICE_OS" /></translation>
+<translation id="185834232609012804">تم إيقاف تحديث <ph name="DEVICE_OS" /></translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) النظام الأساسي <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">سطح المكتب البعيد</translation>
+<translation id="6898090158927982244">نظام Linux لديك محدّث</translation>
+<translation id="4886703929102211360">يتوفر تحديث هام لمكوّن Linux (التجريبي). يُنصح بشدة بتثبيت هذا التحديث في أقرب وقت ممكن، وإلا فقد يتوقف Linux (التجريبي) عن العمل.</translation>
+<translation id="6694016202036959050">إعدادات <ph name="DEVICE_OS" /></translation>
+<translation id="8362858344151826493">حساب JemaOS والنسخ الاحتياطي ومتفرقات</translation>
+<translation id="9150429437595727962">إعدادات Wi-Fi</translation>
+<translation id="4938972461544498524">إعدادات لوحة اللمس</translation>
+<translation id="1210024513248363065">الخدمات عن بُعد</translation>
+<translation id="2878862288885588535">خدمة التشخيص عن بُعد</translation>
+<translation id="7409197984340676806">تتيح خدمة التشخيص عن بُعد لممثلي دعم JemaOS الرسميين تحديد مشكلات النظام. حاليًا، لا يمكن بدء خدمة التشخيص عن بُعد إلا بواسطة ممثلي دعم JemaOS الرسميين.</translation>
+<translation id="1791028023086176332">يُرجى مشاركة هذا الرقم مع ممثلي دعم JemaOS الرسميين</translation>
+<translation id="6279304275399437025">جارٍ بدء خدمة التشخيص عن بُعد...</translation>
+<translation id="1501882165699826662">يُرجى إيقاف خدمة التشخيص عن بُعد والمحاولة مرة أخرى</translation>
+<translation id="3100283258447375201">مزيد من المعلومات</translation>
+<translation id="4070039109671307724">متفرقات</translation>
+<translation id="7326893024940073254">زر "إعادة التشغيل"</translation>
+<translation id="3002423764319968103">إظهار زر "إعادة التشغيل" في قائمة النظام</translation>
+<translation id="6243454903512423518">زر "تدوير الشاشة"</translation>
+<translation id="6491049336868978729">أنت لست في وضع الجهاز اللوحي الآن، زر "تدوير الشاشة" مخفي</translation>
+<translation id="5496012402277579695">إظهار زر "تدوير الشاشة" في قائمة النظام</translation>
+<translation id="5882838977344999606">مفتاح التبديل بين وضعَي الجهاز اللوحي والكمبيوتر المحمول</translation>
+<translation id="472164133625585606">إظهار مفتاح التبديل بين وضعَي الجهاز اللوحي والكمبيوتر المحمول في قائمة النظام</translation>
+<translation id="1851103550468466960">تفعيل Widevine</translation>
+<translation id="4058176713282795846">فعّل Widevine لبث المحتوى المميز المحمي. <ph name="BEGIN_LINK_LEARN_MORE" />مزيد من المعلومات<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">اختر "libwidevine.so"</translation>
+<translation id="4838463656205005584">فشل تفعيل Widevine...</translation>
+<translation id="2164041826798266548">فشل تثبيت وحدة Widevine CDM. يُرجى التحقق من اتصالك والمحاولة مرة أخرى.</translation>
+<translation id="4106982328079440606">إعدادات حساب JemaOS</translation>
+<translation id="6468776556018764845">الميزات التجريبية</translation>
+<translation id="3487615413425326553">تجاوز فحوصات وحدة النظام الأساسي الموثوق به (TPM)</translation>
+<translation id="4817176087932811573">قد تفشل بعض الميزات بسبب شريحة TPM غير المتوافقة في جهازك؛ يمكنك تجاوز فحوصات TPM كحل بديل.</translation>
+<translation id="3356003366173774486">تسجيل الدخول التلقائي</translation>
+<translation id="6218459410891191693">السماح للحساب الحالي بتسجيل الدخول تلقائيًا إلى سطح المكتب عند إعادة تشغيل الجهاز</translation>
+<translation id="6620839363422062843">لا يمكن التفعيل لهذا الحساب؛ تسجيل الدخول التلقائي نشط بالفعل لحسابات أخرى على هذا الجهاز</translation>
+<translation id="6734500226490446035">لا يمكن التفعيل لهذا الحساب؛ حدث خطأ غير معروف أثناء تهيئة أنظمة الملفات لهذا الحساب. يُرجى محاولة إعادة التشغيل أو إنشاء حساب جديد</translation>
+<translation id="5464880042146818691">لا يمكن التفعيل لهذا الحساب؛ خيار تسجيل الدخول التلقائي متاح فقط لنوع "الحساب المحلي".</translation>
+<translation id="3335654854106476749">يُرجى إضافة كلمة مرور لتسجيل الدخول في إعدادات <ph name="BEGIN_LINK" />الخصوصية والأمان<ph name="END_LINK" /> قبل تفعيل تسجيل الدخول التلقائي.</translation>
+<translation id="5586831602198585601">يتوفر إصدار أحدث من JemaOS للتحديث الآن. ومع ذلك، انتهت صلاحية اشتراكك في JemaOS for You؛ تحتاج إلى اشتراك نشط لتحديث JemaOS.</translation>
+<translation id="3869860597719956574">يتوفر إصدار رئيسي جديد من JemaOS للتحديث الآن. يجب دفع رسوم لمرة واحدة للمتابعة مع هذا التحديث.</translation>
+<translation id="6523879681771260760">يُرجى تحديد المسار لتخزين ملف النسخة الاحتياطية</translation>
+<translation id="2036152819788683293">إنشاء ملف نسخة احتياطية لهذا الحساب (تجريبي). <ph name="BEGIN_LINK_LEARN_MORE" />مزيد من المعلومات<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">نسخ احتياطي</translation>
+<translation id="4267347174163690295">إنشاء ملف نسخة احتياطية لهذا الحساب (تجريبي).</translation>
+<translation id="8112950994208888917">تُنشئ هذه العملية نسخة احتياطية كاملة للقرص لهذا الحساب، مما يسهّل استعادة JemaOS إلى الحالة التي كان عليها عند إنشاء النسخة الاحتياطية، بما في ذلك الإعدادات وإضافات المتصفح المثبتة وتطبيقات الأنظمة الفرعية. استنادًا إلى تطبيقاتك ومحتويات مجلدك الرئيسي، قد يكون ملف النسخة الاحتياطية كبيرًا؛ يُنصح بتخزين ملف النسخة الاحتياطية على جهاز تخزين خارجي. إذا كان لديك محرك أقراص USB محمول، يُرجى توصيله الآن. <ph name="BEGIN_LINK_LEARN_MORE" />مزيد من المعلومات<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">يُرجى إدخال كلمة مرور تسجيل الدخول لهذا الحساب</translation>
+<translation id="8663988871299316062">يُرجى تذكر كلمة المرور هذه، إذ ستكون مطلوبة عند استعادة ملف النسخة الاحتياطية هذا</translation>
+<translation id="6408904153044317846">اختر ملف النسخة الاحتياطية المراد استعادته</translation>
+<translation id="8062988348127771021">استعادة بيانات JemaOS من ملف نسخة احتياطية</translation>
+<translation id="7309192418866543730">أدخل كلمة مرور النسخة الاحتياطية</translation>
+<translation id="3642408376366598984">أدخل كلمة المرور المستخدمة لتشفير ملف النسخة الاحتياطية هذا</translation>
+<translation id="7783974937157985523">كلمة مرور النسخة الاحتياطية</translation>
+<translation id="6583780301401541007">تمت الاستعادة بنجاح</translation>
+<translation id="3514011352559420398">فشلت الاستعادة</translation>
+<translation id="7535980903266533458">حفظ النسخة الاحتياطية على جهازك أو على وحدة تخزين خارجية</translation>
+<translation id="604001903249547235">النسخ الاحتياطي السحابي</translation>
+<translation id="8885702701336541611">تحميل النسخة الاحتياطية إلى التخزين السحابي لـ JemaOS</translation>
+<translation id="3939744430096549862">النسخ الاحتياطي إلى السحابة</translation>
+<translation id="619129431573254316">الاستعادة من ملف نسخة احتياطية محلي</translation>
+<translation id="1859592711955106569">الاستعادة السحابية</translation>
+<translation id="38222223336741457">التنزيل والاستعادة من سحابة JemaOS</translation>
+<translation id="1241089811244416179">الاستعادة من السحابة</translation>
+<translation id="652479689372703360">النسخ الاحتياطي قيد التقدم</translation>
+<translation id="3655220146274872918">اكتمل النسخ الاحتياطي</translation>
+<translation id="4243579853635792694">تم إنشاء نسختك الاحتياطية بنجاح</translation>
+<translation id="6337433855796857931">فشل النسخ الاحتياطي</translation>
+<translation id="4854179463174744546">حدث خطأ أثناء عملية النسخ الاحتياطي</translation>
+<translation id="2410668771600309999">معلومات مستخدم Connect API</translation>
+<translation id="2223892939866251845">معرّف المستخدم</translation>
+<translation id="3850846286480935456">تحليل مساحة تخزين النسخ الاحتياطي</translation>
+<translation id="6244494465581273970">معرّف المستخدم مطلوب</translation>
+<translation id="9204006549413740506">آخر تحديث</translation>
+<translation id="476642412165431515">الأجهزة</translation>
+<translation id="3386337985825120901">لا تتوفر بيانات نسخ احتياطي</translation>
+<translation id="8490990067870590760">جارٍ تحميل ملفات النسخ الاحتياطي...</translation>
+<translation id="2955409026764742995">اختر ملف النسخة الاحتياطية المراد استعادته:</translation>
+<translation id="7414629348005657242">-- اختر ملف نسخة احتياطية --</translation>
+<translation id="918246516374174381">لم يتم العثور على ملفات نسخ احتياطي. يُرجى إنشاء نسخة احتياطية أولًا.</translation>
+<translation id="77997252117517973">قريبًا</translation>
+<translation id="1930692852800776096">إضافة قاموس</translation>
+<translation id="8793060353848771694">صورة سماعة الأذن اليسرى</translation>
+<translation id="6257440204887306255">صورة علبة الشحن</translation>
+<translation id="2754700616124958693">صورة سماعة الأذن اليمنى</translation>
+<translation id="1068676292264983586">صورة الجهاز الافتراضية</translation>
+<translation id="6364075396486660405">إيقاف الفحص التلقائي لملفات الوسائط لجميع الأقسام لتحسين عمر البطارية. <ph name="BEGIN_LINK_LEARN_MORE" />مزيد من المعلومات<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">خيارات الأمان</translation>
+<translation id="5618366106086725045">تفعيل "وضع المطوّر" لهذا التثبيت من <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> مع ميزات مطوّر إضافية. <ph name="BEGIN_LINK_LEARN_MORE" />مزيد من المعلومات<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">أنت بالفعل في "وضع المطوّر"</translation>
+<translation id="6074549317340202195">تفعيل "وضع المطوّر"</translation>
+<translation id="418781258674176053">تحذير! تفعيل "وضع المطوّر" عملية لا رجعة فيها. إذا أردت إيقاف "وضع المطوّر"، يجب إعادة تثبيت JemaOS، مما سيؤدي إلى محو جميع البيانات. يُرجى نسخ بياناتك احتياطيًا والمتابعة على مسؤوليتك الخاصة.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />، <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    النظام الأساسي <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">غير متصل حاليًا</translation>
+<translation id="2590678769628709242">تحقق من اشتراك JemaOS عبر الإنترنت</translation>
+<translation id="4701836089682883918">معلومات اشتراك JemaOS</translation>
+<translation id="5891566673089952188">حدث خطأ أثناء الحصول على معرّف جهازك</translation>
+<translation id="4685086787606104322">انتهاء الاشتراك</translation>
+<translation id="3354919960795782984">معرّف الجهاز</translation>
+<translation id="5758632069869992306">تحقق من اشتراكك عبر الإنترنت</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />، <ph name="JEMAOS_MAJOR_VERSION" />، <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     النظام الأساسي <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">اشتراك تجريبي</translation>
+<translation id="4362781408813685579">اشتراك نشط</translation>
+<translation id="1141274201089997510">اشتراك منتهي الصلاحية</translation>
+<translation id="2553683254139782404">إصدار غير تجاري</translation>
+<translation id="8466048683756385518">إصدار مرخّص للمؤسسات (تجريبي)</translation>
+<translation id="2853871047705932424">إصدار مرخّص للمؤسسات</translation>
+<translation id="5239675900317881945">إصدار مرخّص للمؤسسات (منتهي الصلاحية)</translation>
+<translation id="189101945990408398">Intel قديم</translation>
+<translation id="6816405236809604904">Intel حديث</translation>
+<translation id="6169452478137972655">رسومات AMD</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="2747689477259164256">ذكاء JemaOS الاصطناعي</translation>
+<translation id="1270291881045478104">تفعيل ذكاء JemaOS الاصطناعي</translation>
+<translation id="2013780539677437932">تفعيل أو إيقاف جميع الميزات المتعلقة بذكاء JemaOS الاصطناعي</translation>
+<translation id="3398637633218757480">تفعيل الاستدعاء السريع لذكاء JemaOS الاصطناعي</translation>
+<translation id="8986197796475507452">إظهار خيارات ذكاء JemaOS الاصطناعي بسرعة للمحتوى المحدد بالضغط على Ctrl + C + C</translation>
+<translation id="6407628130593274137">إعدادات وخيارات أخرى لذكاء JemaOS الاصطناعي</translation>
+<translation id="4005574560653331142">لتغيير رمز PIN أو كلمة مرور تسجيل الدخول لهذا الحساب المحلي، انتقل إلى إعدادات <ph name="BEGIN_LINK" />الخصوصية والأمان<ph name="END_LINK" />.</translation>
+
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">يمكنك <ph name="LINK_START" />تسجيل الدخول باستخدام حساب JemaOS محلي<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">البريد الإلكتروني <ph name="EMAIL_ADDRESS" /> موجود بالفعل. يُرجى إعادة المحاولة باستخدام بريد إلكتروني آخر.</translation>
+<translation id="4519800823932975782">مركز مساعدة JemaOS</translation>
+<translation id="4737474693231655139">اعثر على مقالات المساعدة وإجابات عن أسئلة JemaOS الشائعة</translation>
+</translationbundle>

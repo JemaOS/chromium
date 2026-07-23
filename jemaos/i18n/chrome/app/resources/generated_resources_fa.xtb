@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="fa">
+	<translation id="7386402409475121504">حساب محلی JemaOS خود را ایجاد کنید</translation>
+	<translation id="3760308806144055927">به حساب JemaOS محلی خود وارد شوید</translation>
+	<translation id="3325117507482096812">لطفا یک رمز عبور وارد کنید</translation>
+	<translation id="1838206877831947154">رمزهای عبور شما مطابقت ندارند</translation>
+	<translation id="2158276988029582286">یک حساب محلی جدید ایجاد کنید</translation>
+	<translation id="8592849747346274067">به یک حساب موجود وارد شوید</translation>
+	<translation id="482190417986201746">نام کاربری یا رمز عبوری که وارد کردید نادرست است</translation>
+	<translation id="6603987686259425085">می‌توانید <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>با یک حساب محلی JemaOS وارد شوید<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">ایمیل <ph name="EMAIL_ADDRESS">$1</ph> از قبل وجود دارد. لطفا با ایمیل دیگری دوباره امتحان کنید.</translation>
+	<translation id="7215016743510876720">از حساب محلی استفاده کنید</translation>
+	<translation id="6657635042185516718">به استفاده از حساب آنلاین ادامه دهید</translation>
+	<translation id="6867476688065565618">تغییر به حساب محلی؟</translation>
+	<translation id="4840454774882557974">اگر استفاده از یک حساب محلی را انتخاب کنید، ویژگی‌های مفید شامل همگام‌سازی داده‌ها و تنظیمات برگزیده شما در چندین دستگاه و ورود خودکار به برنامه‌های وب با استفاده از حساب JemaOS شما کار نخواهد کرد.</translation>
+	<translation id="8951507920859729424">توصیه می کنیم از یک حساب آنلاین برای استفاده کامل از JemaOS استفاده کنید.</translation>
+	<translation id="479773200536372215">نمی‌توانید حساب‌های Google را اضافه کنید زیرا کلیدهای Google API وجود ندارد. برای جزئیات به <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> مراجعه کنید.</translation>
+	<translation id="1198491307547164157">نمی‌توانید حساب‌های JemaOS را اضافه کنید زیرا کلیدهای JemaOS API وجود ندارد. برای جزئیات به <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> مراجعه کنید.</translation>
+	<translation id="5042404702659901995">بیانیه حریم خصوصی</translation>
+	<translation id="4907736162587268100">محتویات بیانیه حریم خصوصی</translation>
+	<translation id="5988344732274877691">برای خبرنامه (بسیار نادر، وعده داده شده) برای JemaOS ثبت نام کنید</translation>
+	<translation id="1706203008474708805">به طرح بهبود تجربه کاربری JemaOS بپیوندید</translation>
+	<translation id="1147139514756087229">با یک حساب محلی وارد شوید</translation>
+	<translation id="2054784944085654098">در حال ایجاد فایل پشتیبان این ممکن است کمی طول بکشد. لطفا صبر کنید…</translation>
+	<translation id="3554401467586751874">فایل پشتیبان با موفقیت ایجاد شد</translation>
+	<translation id="2349211327705667074">مشاهده فایل پشتیبان</translation>
+	<translation id="6337433855796857931">پشتیبان گیری انجام نشد</translation>
+	<translation id="3049367131589710124">مشاهده گزارش خطا</translation>
+	<translation id="1079017345574916945">دسکتاپ از راه دور</translation>
+	<translation id="3064478898280877715">فروشگاه اپلیکیشن</translation>
+	<translation id="2747689477259164256">JemaOS AI</translation>
+	<translation id="5890206344045530832">نصب کننده</translation>
+	<translation id="2173278076276376488">این ابزار به شما کمک می کند <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> را در حافظه داخلی این دستگاه نصب کنید.</translation>
+	<translation id="5323182426977498659">هشدار! این روش مخرب است و قابل بازگرداندن نیست. لطفاً توجه داشته باشید که ما هیچ مسئولیتی در قبال از دست دادن داده های احتمالی شما نخواهیم داشت و هیچ پشتیبانی فنی فوری ارائه نمی دهیم، با مسئولیت خود ادامه دهید.</translation>
+	<translation id="8517836015601969896">نصب کامل دیسک</translation>
+	<translation id="7300045760790370189">برای اشغال کل هارد دیسک، <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> را نصب کنید، تمام داده‌های هارد دیسک مورد نظر پاک می‌شوند.</translation>
+	<translation id="8762511733918256595">نصب چند بوت</translation>
+	<translation id="248900698427753678"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> را روی یک پارتیشن موجود از یک دیسک سخت نصب کنید، جایی که <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> می‌تواند به موازات سایر سیستم‌عامل‌ها وجود داشته باشد. تمام داده های پارتیشن هدف پاک می شود.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> روی هارد دیسک انتخابی شما نصب خواهد شد. تمام داده های روی دیسک مورد نظر پاک می شوند.</translation>
+	<translation id="4039091757234555415">دیسک</translation>
+	<translation id="7783580523889684697">دیسکی در دسترس نیست</translation>
+	<translation id="8217653566575018388">نصب به پایان رسید</translation>
+	<translation id="8846746259444262774">نصب انجام نشد</translation>
+	<translation id="7263815009235541549">نصب با موفقیت به پایان رسید. لطفاً ابتدا دستگاه خود را خاموش کنید، سپس هر رسانه نصبی را بردارید و دوباره آن را روشن کنید تا <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> بوت شود.</translation>
+	<translation id="3380151284134965398">اوه، مشکلی پیش آمده است و نصب کامل نشد. لطفاً روند را دوباره امتحان کنید. اگر همان خطا ادامه داشت، لطفاً با گزارش بالا برای پشتیبانی JemaOS تماس بگیرید.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> روی پارتیشن انتخابی هارد دیسک شما نصب خواهد شد. تحت طرح چند بوت فعلی، این کار تنها در صورتی می‌تواند ادامه یابد که دستگاه شما از UEFI پشتیبانی کند و دیسک‌های سخت شما با GPT فرمت شده باشند.</translation>
+	<translation id="7831363758161884243">پارتیشن هدف پاک خواهد شد. همچنین باید پارتیشن EFI فعال خود را مشخص کنید (معمولاً به صورت خودکار انجام می شود) زیرا نصب کننده باید تنظیمات بوت سیستم را تغییر دهد.</translation>
+	<translation id="5670799238446305550">پارتیشن هدف <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> را انتخاب کنید</translation>
+	<translation id="3695537760133394753">پارتیشن</translation>
+	<translation id="5610519566593708119">پارتیشن EFI را انتخاب کنید</translation>
+	<translation id="3367650349940010965">هیچ پارتیشنی برای دیسک انتخابی موجود نیست</translation>
+	<translation id="7453223384507098390">هیچ پارتیشن EFI برای دیسک انتخابی موجود نیست</translation>
+	<translation id="1854532683465500847">اندازه پارتیشن انتخابی کمتر از 20 گیگابایت است، ممکن است نصب انجام نشود</translation>
+	<translation id="4144613075340468247">پارتیشن انتخابی به راه‌اندازی چندگانه <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> سوار شده است، ممکن است نصب مجدد روی آن انجام نشود</translation>
+	<translation id="5793361052649920836">پس از نصب، چگونه می‌خواهید <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> را بوت کنید؟</translation>
+	<translation id="4273235330352963866">نصب و پیکربندی rEFInd برای من (توصیه می شود)</translation>
+	<translation id="1858708492548921044">rEFInd یک برنامه مدیریت بوت است که یک رابط گرافیکی خوب برای گزینه های بوت سیستم عامل ارائه می دهد که هنگام راه اندازی رایانه شخصی شما می توانید سیستم عامل مورد نظر خود را برای بوت شدن با آن انتخاب کنید. برای اطلاعات بیشتر در مورد REFInd، لطفاً به صفحه اصلی آن مراجعه کنید.</translation>
+	<translation id="3861924051442564602">یک گزینه منوی بوت UEFI برای من اضافه کنید</translation>
+	<translation id="8622370666798589804">هنگامی که رایانه شخصی شما راه اندازی می شود، ممکن است بتوانید وارد منوی گزینه های بوت UEFI شوید (به احتمال زیاد با فشار دادن یک کلید میانبر)، این گزینه <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> را به عنوان ورودی به آن منو اضافه می کند. (فقط برخی از مدل های بایوس و سیستم عامل UEFI را پشتیبانی می کند).</translation>
+	<translation id="1569398690544416170">هیچ کاری در اینجا انجام ندهید، من خودم آن را پیکربندی می کنم</translation>
+	<translation id="3554866444001249532">این اسکریپت نصب فقط فایل‌های .efi لازم را برای بوت کردن <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> در پارتیشن EFI شما قرار می‌دهد، باید خودتان نحوه بوت کردن آن را پیکربندی کنید.</translation>
+	<translation id="7492832751164189534">اجبارا ترک کن</translation>
+	<translation id="5159534860632584026">فرآیند نصب خاتمه یافته است</translation>
+	<translation id="8686749782014838344">اطلاعات دیسک دریافت نشد</translation>
+	<translation id="5688543378771259173">نصب در حال خاتمه است...</translation>
+	<translation id="5350452134936384991">در USB نصب کنید</translation>
+	<translation id="8008470485414925603"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> را روی دیسک USB نصب کنید. تمام داده های روی دیسک USB مورد نظر پاک می شوند.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> روی دیسک USB انتخابی شما نصب خواهد شد. تمام داده های روی دیسک مورد نظر پاک می شوند.</translation>
+	<translation id="5725593226060700263">دیسک USB در دسترس نیست</translation>
+	<translation id="4357040841587078287">ما متوجه شده ایم که شما این کپی از JemaOS را از یک فایل تصویری دانلود شده اجرا می کنید. برای استفاده از جامع‌ترین ویژگی‌های پشتیبانی (از جمله به‌روزرسانی‌های Over-The-Air) که JemaOS می‌تواند ارائه دهد، اکیداً توصیه می‌کنیم که عملکرد «Installer» را برای اجرای نصب کامل دیسک JemaOS در یک دستگاه ذخیره‌سازی جداگانه اجرا کنید.</translation>
+	<translation id="1246398339704431302">می‌توانید <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>به استفاده از این کپی از JemaOS به هر حال ادامه دهید<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>، فرآیند نصب را می‌توان در مرحله بعد در سیستم اجرا کرد، با این حال، پس از نصب مجدداً همه داده‌های شما از این صفحه شروع می‌شود.</translation>
+	<translation id="3654532222088291133">به جای وارد کردن گذرواژه حساب JemaOS خود برای ورود به سیستم، می‌توانید یک رمز ورود <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> برای این دستگاه ایجاد کنید.</translation>
+	<translation id="8377684629839541977">از رمز عبور حساب JemaOS استفاده کنید</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">به‌روز نگه داشتن خودکار <ph name="DEVICE_OS" /></translation>
+<translation id="2347352406101856238">به‌روزرسانی <ph name="DEVICE_OS" /> فعال است</translation>
+<translation id="185834232609012804">به‌روزرسانی <ph name="DEVICE_OS" /> غیرفعال است</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) پلتفرم <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">دسک‌تاپ از راه دور</translation>
+<translation id="6898090158927982244">Linux شما به‌روز است</translation>
+<translation id="4886703929102211360">یک به‌روزرسانی مهم برای مؤلفه Linux (بتا) در دسترس است. اکیداً توصیه می‌شود این به‌روزرسانی را هرچه سریع‌تر نصب کنید، در غیر این صورت Linux (بتا) شما ممکن است از کار بیفتد.</translation>
+<translation id="6694016202036959050">تنظیمات <ph name="DEVICE_OS" /></translation>
+<translation id="8362858344151826493">حساب JemaOS، پشتیبان‌گیری، موارد متفرقه</translation>
+<translation id="9150429437595727962">تنظیمات Wi-Fi</translation>
+<translation id="4938972461544498524">تنظیمات تاچ‌پد</translation>
+<translation id="1210024513248363065">خدمات از راه دور</translation>
+<translation id="2878862288885588535">خدمات تشخیص از راه دور</translation>
+<translation id="7409197984340676806">خدمات تشخیص از راه دور به نمایندگان رسمی پشتیبانی JemaOS امکان می‌دهد مشکلات سیستم را شناسایی کنند. در حال حاضر، خدمات تشخیص از راه دور فقط توسط نمایندگان رسمی پشتیبانی JemaOS قابل راه‌اندازی است.</translation>
+<translation id="1791028023086176332">لطفاً این شماره را با نمایندگان رسمی پشتیبانی JemaOS به اشتراک بگذارید</translation>
+<translation id="6279304275399437025">در حال راه‌اندازی خدمات تشخیص از راه دور...</translation>
+<translation id="1501882165699826662">لطفاً خدمات تشخیص از راه دور را متوقف کنید و دوباره تلاش کنید</translation>
+<translation id="3100283258447375201">اطلاعات بیشتر</translation>
+<translation id="4070039109671307724">متفرقه</translation>
+<translation id="7326893024940073254">دکمه «راه‌اندازی مجدد»</translation>
+<translation id="3002423764319968103">نمایش دکمه «راه‌اندازی مجدد» در منوی سیستم</translation>
+<translation id="6243454903512423518">دکمه «چرخش صفحه»</translation>
+<translation id="6491049336868978729">شما در حال حاضر در حالت تبلت نیستید، دکمه «چرخش صفحه» پنهان است</translation>
+<translation id="5496012402277579695">نمایش دکمه «چرخش صفحه» در منوی سیستم</translation>
+<translation id="5882838977344999606">کلید تغییر حالت تبلت/لپ‌تاپ</translation>
+<translation id="472164133625585606">نمایش کلید تغییر حالت تبلت/لپ‌تاپ در منوی سیستم</translation>
+<translation id="1851103550468466960">فعال کردن Widevine</translation>
+<translation id="4058176713282795846">برای پخش محتوای ویژه محافظت‌شده، Widevine را فعال کنید. <ph name="BEGIN_LINK_LEARN_MORE" />بیشتر بدانید<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">انتخاب «libwidevine.so»</translation>
+<translation id="4838463656205005584">فعال کردن Widevine ناموفق بود...</translation>
+<translation id="2164041826798266548">نصب ماژول Widevine CDM ناموفق بود. لطفاً اتصال خود را بررسی کنید و دوباره تلاش کنید.</translation>
+<translation id="4106982328079440606">تنظیمات حساب JemaOS</translation>
+<translation id="6468776556018764845">ویژگی‌های آزمایشی</translation>
+<translation id="3487615413425326553">عبور از بررسی‌های Trusted Platform Module (TPM)</translation>
+<translation id="4817176087932811573">برخی ویژگی‌ها ممکن است به دلیل تراشه TPM ناسازگار در دستگاه شما از کار بیفتند؛ می‌توانید به عنوان راه‌حل، بررسی‌های TPM را دور بزنید.</translation>
+<translation id="3356003366173774486">ورود خودکار</translation>
+<translation id="6218459410891191693">اجازه ورود خودکار حساب فعلی به دسک‌تاپ هنگام راه‌اندازی مجدد دستگاه</translation>
+<translation id="6620839363422062843">برای این حساب قابل فعال‌سازی نیست؛ ورود خودکار از قبل برای حساب‌های دیگر این دستگاه فعال است</translation>
+<translation id="6734500226490446035">برای این حساب قابل فعال‌سازی نیست؛ هنگام راه‌اندازی سیستم‌های فایل این حساب خطای ناشناخته‌ای رخ داد. لطفاً راه‌اندازی مجدد کنید یا حساب جدیدی ایجاد کنید</translation>
+<translation id="5464880042146818691">برای این حساب قابل فعال‌سازی نیست؛ گزینه ورود خودکار فقط برای نوع «حساب محلی» در دسترس است.</translation>
+<translation id="3335654854106476749">لطفاً قبل از فعال کردن ورود خودکار، در تنظیمات <ph name="BEGIN_LINK" />حریم خصوصی و امنیت<ph name="END_LINK" /> یک رمز عبور ورود اضافه کنید.</translation>
+<translation id="5586831602198585601">نسخه جدیدتری از JemaOS اکنون برای به‌روزرسانی در دسترس است. با این حال، اشتراک JemaOS for You شما منقضی شده است؛ برای به‌روزرسانی JemaOS خود به اشتراک فعال نیاز دارید.</translation>
+<translation id="3869860597719956574">نسخه اصلی جدیدی از JemaOS اکنون برای به‌روزرسانی در دسترس است. برای ادامه این به‌روزرسانی باید هزینه یک‌باره پرداخت کنید.</translation>
+<translation id="6523879681771260760">لطفاً مسیر ذخیره فایل پشتیبان را مشخص کنید</translation>
+<translation id="2036152819788683293">ایجاد فایل پشتیبان برای این حساب (بتا). <ph name="BEGIN_LINK_LEARN_MORE" />بیشتر بدانید<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">پشتیبان‌گیری</translation>
+<translation id="4267347174163690295">ایجاد فایل پشتیبان برای این حساب (بتا).</translation>
+<translation id="8112950994208888917">این عملیات یک نسخه پشتیبان کامل از دیسک برای این حساب ایجاد می‌کند و بازگردانی آسان JemaOS شما به حالتی که هنگام ایجاد نسخه پشتیبان داشت را ممکن می‌سازد، از جمله تنظیمات، افزونه‌های نصب‌شده مرورگر و برنامه‌های زیرسیستم. بسته به برنامه‌های شما و محتوای پوشه خانگی، فایل پشتیبان ممکن است بزرگ باشد؛ توصیه می‌شود فایل پشتیبان را روی دستگاه ذخیره‌سازی خارجی نگه دارید. اگر درایو USB قابل حمل دارید، لطفاً اکنون آن را متصل کنید. <ph name="BEGIN_LINK_LEARN_MORE" />بیشتر بدانید<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">لطفاً رمز عبور ورود این حساب را وارد کنید</translation>
+<translation id="8663988871299316062">لطفاً این رمز عبور را به خاطر بسپارید، زیرا هنگام بازیابی این فایل پشتیبان مورد نیاز خواهد بود</translation>
+<translation id="6408904153044317846">فایل پشتیبانی را که باید بازیابی شود انتخاب کنید</translation>
+<translation id="8062988348127771021">بازیابی داده‌های JemaOS از فایل پشتیبان</translation>
+<translation id="7309192418866543730">رمز عبور پشتیبان را وارد کنید</translation>
+<translation id="3642408376366598984">رمز عبوری را وارد کنید که برای رمزنگاری این فایل پشتیبان استفاده شده است</translation>
+<translation id="7783974937157985523">رمز عبور پشتیبان</translation>
+<translation id="6583780301401541007">بازیابی موفقیت‌آمیز بود</translation>
+<translation id="3514011352559420398">بازیابی ناموفق بود</translation>
+<translation id="7535980903266533458">ذخیره نسخه پشتیبان روی دستگاه یا حافظه خارجی</translation>
+<translation id="604001903249547235">پشتیبان‌گیری ابری</translation>
+<translation id="8885702701336541611">بارگذاری نسخه پشتیبان در فضای ابری JemaOS</translation>
+<translation id="3939744430096549862">پشتیبان‌گیری در فضای ابری</translation>
+<translation id="619129431573254316">بازیابی از فایل پشتیبان محلی</translation>
+<translation id="1859592711955106569">بازیابی ابری</translation>
+<translation id="38222223336741457">دانلود و بازیابی از فضای ابری JemaOS</translation>
+<translation id="1241089811244416179">بازیابی از فضای ابری</translation>
+<translation id="652479689372703360">پشتیبان‌گیری در حال انجام</translation>
+<translation id="3655220146274872918">پشتیبان‌گیری پایان یافت</translation>
+<translation id="4243579853635792694">نسخه پشتیبان شما با موفقیت ایجاد شد</translation>
+<translation id="4854179463174744546">هنگام پشتیبان‌گیری خطایی رخ داد</translation>
+<translation id="2410668771600309999">اطلاعات کاربر Connect API</translation>
+<translation id="2223892939866251845">شناسه کاربر</translation>
+<translation id="3850846286480935456">تجزیه و تحلیل فضای ذخیره‌سازی پشتیبان</translation>
+<translation id="6244494465581273970">شناسه کاربر الزامی است</translation>
+<translation id="9204006549413740506">آخرین به‌روزرسانی</translation>
+<translation id="476642412165431515">دستگاه‌های سخت‌افزاری</translation>
+<translation id="3386337985825120901">داده پشتیبانی در دسترس نیست</translation>
+<translation id="8490990067870590760">در حال بارگذاری فایل‌های پشتیبان...</translation>
+<translation id="2955409026764742995">فایل پشتیبانی را که باید بازیابی شود انتخاب کنید:</translation>
+<translation id="7414629348005657242">-- یک فایل پشتیبان انتخاب کنید --</translation>
+<translation id="918246516374174381">هیچ فایل پشتیبانی یافت نشد. لطفاً ابتدا یک نسخه پشتیبان ایجاد کنید.</translation>
+<translation id="77997252117517973">به‌زودی</translation>
+<translation id="1930692852800776096">افزودن فرهنگ لغت</translation>
+<translation id="8793060353848771694">تصویر ایرباد چپ</translation>
+<translation id="6257440204887306255">تصویر کیس شارژ</translation>
+<translation id="2754700616124958693">تصویر ایرباد راست</translation>
+<translation id="1068676292264983586">تصویر پیش‌فرض دستگاه</translation>
+<translation id="6364075396486660405">غیرفعال کردن اسکن خودکار فایل‌های رسانه‌ای برای همه پارتیشن‌ها برای بهینه‌سازی عمر باتری. <ph name="BEGIN_LINK_LEARN_MORE" />بیشتر بدانید<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">گزینه‌های امنیتی</translation>
+<translation id="5618366106086725045">فعال کردن «حالت توسعه‌دهنده» برای این نصب <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> با ویژگی‌های بیشتر توسعه‌دهنده. <ph name="BEGIN_LINK_LEARN_MORE" />بیشتر بدانید<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">شما از قبل در «حالت توسعه‌دهنده» هستید</translation>
+<translation id="6074549317340202195">فعال کردن «حالت توسعه‌دهنده»</translation>
+<translation id="418781258674176053">هشدار! فعال کردن «حالت توسعه‌دهنده» عملیاتی برگشت‌ناپذیر است. اگر می‌خواهید «حالت توسعه‌دهنده» را غیرفعال کنید، باید JemaOS را دوباره نصب کنید که همه داده‌ها را پاک می‌کند. لطفاً از داده‌های خود نسخه پشتیبان تهیه کنید و با مسئولیت خود ادامه دهید.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />، <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    پلتفرم <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">در حال حاضر آفلاین</translation>
+<translation id="2590678769628709242">اشتراک JemaOS خود را به صورت آنلاین بررسی کنید</translation>
+<translation id="4701836089682883918">اطلاعات اشتراک JemaOS</translation>
+<translation id="5891566673089952188">هنگام دریافت شناسه دستگاه خطایی رخ داد</translation>
+<translation id="4685086787606104322">پایان اشتراک</translation>
+<translation id="3354919960795782984">شناسه دستگاه</translation>
+<translation id="5758632069869992306">اشتراک خود را به صورت آنلاین بررسی کنید</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />، <ph name="JEMAOS_MAJOR_VERSION" />، <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     پلتفرم <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">اشتراک آزمایشی</translation>
+<translation id="4362781408813685579">اشتراک فعال</translation>
+<translation id="1141274201089997510">اشتراک منقضی</translation>
+<translation id="2553683254139782404">نسخه غیرتجاری</translation>
+<translation id="8466048683756385518">نسخه دارای مجوز سازمانی (آزمایشی)</translation>
+<translation id="2853871047705932424">نسخه دارای مجوز سازمانی</translation>
+<translation id="5239675900317881945">نسخه دارای مجوز سازمانی (منقضی)</translation>
+<translation id="189101945990408398">Intel قدیمی</translation>
+<translation id="6816405236809604904">Intel مدرن</translation>
+<translation id="6169452478137972655">گرافیک AMD</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="1270291881045478104">فعال کردن JemaOS AI</translation>
+<translation id="2013780539677437932">فعال یا غیرفعال کردن همه ویژگی‌های مرتبط با JemaOS AI</translation>
+<translation id="3398637633218757480">فعال کردن فراخوان سریع JemaOS AI</translation>
+<translation id="8986197796475507452">با فشردن Ctrl + C + C گزینه‌های JemaOS AI را برای محتوای برجسته به سرعت باز کنید</translation>
+<translation id="6407628130593274137">تنظیمات و گزینه‌های دیگر برای JemaOS AI</translation>
+<translation id="4005574560653331142">برای تغییر پین یا رمز عبور ورود این حساب محلی، به تنظیمات <ph name="BEGIN_LINK" />حریم خصوصی و امنیت<ph name="END_LINK" /> بروید.</translation>
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">می‌توانید <ph name="LINK_START" />با حساب محلی JemaOS وارد شوید<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">ایمیل <ph name="EMAIL_ADDRESS" /> از قبل وجود دارد. لطفاً با ایمیل دیگری دوباره تلاش کنید.</translation>
+<translation id="4519800823932975782">مرکز راهنمای JemaOS</translation>
+<translation id="4737474693231655139">مقالات راهنما و پاسخ سؤالات رایج JemaOS را بیابید</translation>
+</translationbundle>

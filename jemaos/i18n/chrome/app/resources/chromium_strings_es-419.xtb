@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="es-419">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Acerca de Thot</translation>
+<translation id="5639860668557220477">Obtener ayuda con el navegador Thot</translation>
+<translation id="1692689520561928457">Acerca de JemaOS</translation>
+<translation id="8692765844418174375">Versión de JemaOS</translation>
+<translation id="2943260250558374955">Obtener ayuda con JemaOS</translation>
+<translation id="713321354492170993">El navegador libera memoria de las pestañas inactivas. Esto les brinda a las pestañas activas y a otras apps más recursos informáticos y mantiene el navegador rápido. Tus pestañas inactivas se vuelven activas automáticamente cuando regresas a ellas.</translation>
+<translation id="1774190491044887444">El navegador ahorra batería al limitar la actividad en segundo plano y los efectos visuales, como el desplazamiento suave y las tasas de fotogramas de video.</translation>
+<translation id="180121268008059459">El navegador precarga páginas, lo que hace que la navegación y la búsqueda sean más rápidas.</translation>
+<translation id="7127093527178692287">Restaurar copia de seguridad (beta)</translation>
+<translation id="4439042171549201806">Para restaurar JemaOS desde un archivo de copia de seguridad, inserta ahora la unidad extraíble que contiene el archivo de copia de seguridad en tu dispositivo JemaOS y especifica qué archivo de copia de seguridad deseas restaurar. Ten en cuenta que el archivo de copia de seguridad debe estar en el directorio raíz de la unidad extraíble para que este asistente lo detecte.</translation>
+<translation id="2955409026764742995">Selecciona el archivo de copia de seguridad que deseas restaurar:</translation>
+<translation id="7040434808685140085">Lo sentimos, no se puede reconocer el archivo de copia de seguridad seleccionado. Selecciona uno nuevo.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />Para restaurar JemaOS desde el archivo de copia de seguridad seleccionado, es fundamental contar con información precisa sobre cuándo se creó la copia de seguridad. De lo contrario, el proceso de restauración fallará.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />El "nombre de la cuenta" es la credencial de acceso principal de la cuenta con la que se creó el archivo de copia de seguridad. Por lo general, es la dirección de correo electrónico que usaste para registrarte en tu cuenta de JemaOS/Google. Si fuera una cuenta local, sería el nombre de usuario seguido de "@jemaos.local".<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />La contraseña es la frase de contraseña que se te pidió ingresar cuando se creó la copia de seguridad. Por lo general, es la misma contraseña que usaste para acceder al escritorio de JemaOS con esta cuenta.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Nombre de la cuenta</translation>
+<translation id="5490570429039308155">Lo sentimos, ingresa el nombre de cuenta correcto</translation>
+<translation id="6657585470893396449">Contraseña</translation>
+<translation id="8200189938001188563">Lo sentimos, la contraseña no puede estar vacía</translation>
+<translation id="3157931365184549694">Restaurar</translation>
+<translation id="8556278756526311953">Restaurando copia de seguridad</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Estamos trabajando en la restauración de tu archivo de copia de seguridad. Esto puede tardar un poco, así que ten paciencia.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Ten en cuenta que la interfaz se reiniciará automáticamente cuando el proceso de restauración se complete correctamente.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">No se pudo restaurar la copia de seguridad</translation>
+<translation id="5003531399442003695">Para obtener más detalles, haz clic en el vínculo a continuación para ver los registros. Si este error persiste, ponte en contacto con los canales de asistencia técnica de JemaOS y proporciona los registros de errores.</translation>
+<translation id="6363786367719063276">Ver registros</translation>
+<translation id="8730621377337864115">Listo</translation>
+<translation id="975238173507911396">Los datos se restauraron correctamente</translation>
+<translation id="6276879052695618521">Registros de restauración de la copia de seguridad</translation>
+<translation id="4901207598072637766">JemaOS, proporcionado por <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS y sus servicios cumplen con el GDPR y las disposiciones de la legislación europea de protección de datos. Para obtener más información, consulta nuestra <ph name="BEGIN_LINK_PRIVACY" />Política de Privacidad<ph name="END_LINK_PRIVACY" /> y nuestras <ph name="BEGIN_LINK_TOS" />Condiciones del Servicio.<ph name="END_LINK_TOS" /></translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, todos los derechos reservados.</translation>
+<translation id="370679569376308836">JemaOS es una oferta comercial basada en el dispositivo Jema y su SaaS.</translation>
+<translation id="2773644194450163486">JemaOS es posible gracias al proyecto de código abierto <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" />.</translation>
+<translation id="2330680727776977160">Chromium también es posible gracias a otro <ph name="BEGIN_LINK_1" />software de código abierto<ph name="END_LINK_1" /> y a <ph name="BEGIN_LINK_2" />software de código abierto adicional<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Diseñado y fabricado por Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, todos los derechos reservados.</translation>
+<translation id="6168072053306020326">Jema Technology es el nombre comercial de Jema Technology LTD y Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD es una empresa registrada en Inglaterra y Gales con el número de empresa 12273803.</translation>
+<translation id="1251589813188467292">Información importante sobre la garantía y el servicio del dispositivo</translation>
+<translation id="4851115775198886021">Número de serie del dispositivo:</translation>
+</translationbundle>

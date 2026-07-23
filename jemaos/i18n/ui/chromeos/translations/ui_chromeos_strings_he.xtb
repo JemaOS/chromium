@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="he">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">נרשמים ל-Nutstore כדי לסנכרן את הקבצים בענן ב-JemaOS.</translation>
+<translation id="8672291834743661083">הרשמה ל-Nutstore</translation>
+<translation id="5103639294476249880">לוחצים על הלחצן "הוספת אפליקציה" בהגדרות האבטחה</translation>
+<translation id="8371020157576651120">יוצרים ומעתיקים את סיסמת האפליקציה</translation>
+<translation id="3855250998276979579">פותחים את אפליקציית Nutstore</translation>
+<translation id="6565655783894300125">ומחברים את חשבון Nutstore ל-JemaOS באמצעות האימייל וסיסמת האפליקציה</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">בקרוב</translation>
+<translation id="4928968570611226525">כדי להמשיך בפעולה זו, יש <ph name="BEGIN_LINK_ARC_APP" />&gt;להפעיל את מערכת המשנה של Android<ph name="END_LINK_ARC_APP" /> במכשיר ה-JemaOS; בנוסף, יש <ph name="BEGIN_LINK_HELP" />להעביר את מכשיר ה-JemaOS למצב מפתחים<ph name="END_LINK_HELP" />.</translation>
+<translation id="7395250550107972941">לא ניתן להתקין קובצי .apk בטעינת צד. יש לוודא שמערכת המשנה של Android הופעלה ושאתה במצב מפתחים של JemaOS.</translation>
+<translation id="5690820326685091783">פתיחה באמצעות JemaOS AI</translation>
+</translationbundle>

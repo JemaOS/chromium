@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="fil">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">Mag-sign up sa Nutstore para i-cloud-sync ang iyong mga file sa JemaOS.</translation>
+<translation id="8672291834743661083">Mag-sign up sa Nutstore</translation>
+<translation id="5103639294476249880">I-click ang button na "Magdagdag ng Application" sa mga setting ng Seguridad</translation>
+<translation id="8371020157576651120">Bumuo at kopyahin ang iyong application password</translation>
+<translation id="3855250998276979579">Buksan ang Nutstore App</translation>
+<translation id="6565655783894300125">at ikonekta ang Nutstore account sa JemaOS gamit ang iyong email at application password</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Malapit na</translation>
+<translation id="4928968570611226525">Upang magpatuloy sa aksyong ito, kakailanganin mong <ph name="BEGIN_LINK_ARC_APP" />&gt;i-activate ang Android subsystem<ph name="END_LINK_ARC_APP" /> sa iyong JemaOS device; kailangan ding <ph name="BEGIN_LINK_HELP" />i-switch sa Developer Mode<ph name="END_LINK_HELP" /> ang iyong JemaOS device.</translation>
+<translation id="7395250550107972941">Hindi ma-sideload ang mga .apk file. Pakitiyak na na-activate ang Android subsystem at nasa JemaOS Developer mode ka.</translation>
+<translation id="5690820326685091783">Buksan gamit ang JemaOS AI</translation>
+</translationbundle>

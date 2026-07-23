@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="sk">
+	<translation id="7386402409475121504">Vytvorte si svoj lokálny účet JemaOS</translation>
+	<translation id="3760308806144055927">Prihláste sa do svojho lokálneho účtu JemaOS</translation>
+	<translation id="3325117507482096812">Zadajte heslo</translation>
+	<translation id="1838206877831947154">Vaše heslá sa nezhodujú</translation>
+	<translation id="2158276988029582286">Vytvorte nový lokálny účet</translation>
+	<translation id="8592849747346274067">Prihláste sa do existujúceho účtu</translation>
+	<translation id="482190417986201746">Zadané používateľské meno alebo heslo je nesprávne</translation>
+	<translation id="6603987686259425085">Môžete sa <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>prihlásiť pomocou lokálneho účtu JemaOS<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">E-mail <ph name="EMAIL_ADDRESS">$1</ph> už existuje. Skúste to znova s ​​iným e-mailom.</translation>
+	<translation id="7215016743510876720">Použite lokálny účet</translation>
+	<translation id="6657635042185516718">Pokračujte v používaní online účtu</translation>
+	<translation id="6867476688065565618">Prepnúť na lokálny účet?</translation>
+	<translation id="4840454774882557974">Ak sa rozhodnete používať lokálny účet, užitočné funkcie zahŕňajú synchronizáciu vašich údajov a preferencií na viacerých zariadeniach a automatické prihlasovanie do webových aplikácií pomocou vášho účtu JemaOS nebude fungovať.</translation>
+	<translation id="8951507920859729424">Ak chcete naplno využívať JemaOS, odporúčame vám použiť online účet.</translation>
+	<translation id="479773200536372215">Nebudete môcť pridať účty Google, pretože chýbajú kľúče rozhrania Google API. Podrobnosti nájdete na stránke <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph>.</translation>
+	<translation id="1198491307547164157">Nebudete môcť pridať účty JemaOS, pretože chýbajú kľúče API JemaOS. Podrobnosti nájdete na stránke <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph>.</translation>
+	<translation id="5042404702659901995">Vyhlásenie o ochrane osobných údajov</translation>
+	<translation id="4907736162587268100">Obsah vyhlásenia o ochrane osobných údajov</translation>
+	<translation id="5988344732274877691">Prihláste sa na odber (veľmi zriedkavého, sľubovaného) newsletteru pre JemaOS</translation>
+	<translation id="1706203008474708805">Pripojte sa k plánu zlepšenia používateľského prostredia JemaOS</translation>
+	<translation id="1147139514756087229">Prihláste sa pomocou lokálneho účtu</translation>
+	<translation id="2054784944085654098">Teraz sa vytvára záložný súbor. Môže to chvíľu trvať; prosím počkajte…</translation>
+	<translation id="3554401467586751874">Záložný súbor bol úspešne vytvorený</translation>
+	<translation id="2349211327705667074">Zobraziť záložný súbor</translation>
+	<translation id="3049367131589710124">Zobraziť denník chýb</translation>
+	<translation id="1079017345574916945">Vzdialená plocha</translation>
+	<translation id="3064478898280877715">Obchod s aplikáciami</translation>
+	<translation id="5890206344045530832">Inštalátor</translation>
+	<translation id="2173278076276376488">Tento nástroj vám pomôže nainštalovať <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> do interného úložiska tohto zariadenia.</translation>
+	<translation id="5323182426977498659">POZOR! Tento postup je deštruktívny a nedá sa vrátiť späť. Upozorňujeme, že nenesieme žiadnu zodpovednosť za vašu potenciálnu stratu údajov ani neposkytujeme naliehavú technickú podporu, postupujeme na vlastné riziko.</translation>
+	<translation id="8517836015601969896">Kompletná inštalácia disku</translation>
+	<translation id="7300045760790370189">Nainštalujte <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>, aby ste zabrali celý pevný disk, všetky údaje cieľového pevného disku budú vymazané.</translation>
+	<translation id="8762511733918256595">Inštalácia s viacerými systémami</translation>
+	<translation id="248900698427753678">Nainštalujte <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> na existujúcu partíciu pevného disku, kde <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> môže existovať paralelne s iným OS. Všetky údaje na cieľovom oddiele budú vymazané.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> sa nainštaluje na vybratý pevný disk; všetky údaje na cieľovom disku budú vymazané.</translation>
+	<translation id="4039091757234555415">Disk</translation>
+	<translation id="7783580523889684697">Nie je k dispozícii žiadny disk</translation>
+	<translation id="8217653566575018388">Inštalácia dokončená</translation>
+	<translation id="8846746259444262774">Inštalácia zlyhala</translation>
+	<translation id="7263815009235541549">Inštalácia bola úspešne dokončená. Najprv vypnite svoje zariadenie, potom odstráňte všetky inštalačné médiá a znova ho zapnite, aby sa spustil <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>.</translation>
+	<translation id="3380151284134965398">Ojoj, niečo sa pokazilo a inštalácia sa nedokončila. Skúste proces zopakovať. Ak rovnaká chyba pretrváva, kontaktujte podporu JemaOS pomocou vyššie uvedeného denníka.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> sa nainštaluje na vybranú partíciu vášho pevného disku. Podľa aktuálnej schémy spustenia viacerých systémov by to mohlo pokračovať iba vtedy, ak vaše zariadenie podporuje UEFI a vaše pevné disky sú naformátované pomocou GPT.</translation>
+	<translation id="7831363758161884243">Cieľový oddiel bude vymazaný; musíte tiež špecifikovať váš aktívny oddiel EFI (zvyčajne sa to robí automaticky), pretože inštalačný program potrebuje upraviť konfigurácie zavádzania systému.</translation>
+	<translation id="5670799238446305550">Vyberte cieľový oddiel <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph></translation>
+	<translation id="3695537760133394753">Priečka</translation>
+	<translation id="5610519566593708119">Vyberte oblasť EFI</translation>
+	<translation id="3367650349940010965">Pre vybraný disk nie sú k dispozícii žiadne oddiely</translation>
+	<translation id="7453223384507098390">Pre vybratý disk nie sú k dispozícii žiadne oddiely EFI</translation>
+	<translation id="1854532683465500847">Veľkosť vybratého oddielu je menšia ako 20 GB, inštalácia môže zlyhať</translation>
+	<translation id="4144613075340468247">Vybraný oddiel bol pripojený k <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> multi-boot, opätovná inštalácia môže zlyhať</translation>
+	<translation id="5793361052649920836">Ako chcete po inštalácii spustiť systém <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>?</translation>
+	<translation id="4273235330352963866">Nainštalujte a nakonfigurujte rEFInd za mňa (odporúča sa)</translation>
+	<translation id="1858708492548921044">rEFInd je program na správu zavádzania, ktorý ponúka pekné grafické rozhranie pre možnosti zavádzania operačného systému, keď sa počítač spustí, budete si môcť vybrať požadovaný operačný systém, z ktorého sa má spustiť. Viac informácií o rEFInd nájdete na jeho domovskej stránke.</translation>
+	<translation id="3861924051442564602">Pridajte pre mňa možnosť zavádzacej ponuky UEFI</translation>
+	<translation id="8622370666798589804">Po spustení počítača možno budete môcť vstúpiť do ponuky možností zavádzania UEFI (najpravdepodobnejšie stlačením klávesovej skratky), táto možnosť pridá <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ako položku do tejto ponuky. (Podporuje len niektoré modely firmvéru BIOS a UEFI).</translation>
+	<translation id="1569398690544416170">Nerobte tu nič, nakonfigurujem si to sám</translation>
+	<translation id="3554866444001249532">Tento inštalačný skript vloží iba potrebné .efi súbory na zavedenie <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> do vašej EFI partície, budete si musieť sami nakonfigurovať, ako ho zaviesť.</translation>
+	<translation id="7492832751164189534">Vynútiť ukončenie</translation>
+	<translation id="5159534860632584026">Proces inštalácie bol ukončený</translation>
+	<translation id="8686749782014838344">Nepodarilo sa získať informácie o disku</translation>
+	<translation id="5688543378771259173">Inštalácia sa ukončuje...</translation>
+	<translation id="5350452134936384991">Nainštalujte do USB</translation>
+	<translation id="8008470485414925603">Nainštalujte <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> na USB disk; všetky dáta na cieľovom USB disku budú vymazané.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> sa nainštaluje na vybratý USB disk; všetky údaje na cieľovom disku budú vymazané.</translation>
+	<translation id="5725593226060700263">Nie je k dispozícii žiadny USB disk</translation>
+	<translation id="4357040841587078287">Zistili sme, že používate túto kópiu JemaOS zo prevzatého súboru s obrázkom. Ak chcete využiť najkomplexnejšie funkcie podpory (vrátane aktualizácií Over-The-Air), ktoré môže JemaOS ponúknuť, dôrazne odporúčame spustiť funkciu „Inštalátor“, aby ste vykonali inštaláciu JemaOS z celého disku na samostatné úložné zariadenie.</translation>
+	<translation id="1246398339704431302"><ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>aj tak môžete pokračovať v používaní tejto kópie JemaOS<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, proces inštalácie možno spustiť v neskoršej fáze systému, po inštalácii sa však všetky vaše údaje vymažú a začnete znova z tejto stránky.</translation>
+	<translation id="3654532222088291133">Namiesto zadávania hesla účtu JemaOS na prihlásenie si môžete pre toto zariadenie vytvoriť heslo <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph></translation>
+	<translation id="8377684629839541977">Použite heslo účtu JemaOS</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">Automaticky udržiavať <ph name="DEVICE_OS" /> aktuálny</translation>
+<translation id="2347352406101856238">Aktualizácia <ph name="DEVICE_OS" /> povolená</translation>
+<translation id="185834232609012804">Aktualizácia <ph name="DEVICE_OS" /> zakázaná</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Platforma <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Vzdialená plocha</translation>
+<translation id="6898090158927982244">Váš Linux je aktuálny</translation>
+<translation id="4886703929102211360">Pre komponent Linux (beta) je k dispozícii kritická aktualizácia. Dôrazne odporúčame nainštalovať túto aktualizáciu čo najskôr, inak môže Linux (beta) prestať fungovať.</translation>
+<translation id="6694016202036959050">Nastavenia <ph name="DEVICE_OS" /></translation>
+<translation id="8362858344151826493">Účet JemaOS, záloha, rôzne</translation>
+<translation id="9150429437595727962">Nastavenia Wi-Fi</translation>
+<translation id="4938972461544498524">Nastavenia touchpadu</translation>
+<translation id="1210024513248363065">Vzdialené služby</translation>
+<translation id="2878862288885588535">Vzdialená diagnostická služba</translation>
+<translation id="7409197984340676806">Vzdialená diagnostická služba umožňuje oficiálnym zástupcom podpory JemaOS identifikovať systémové problémy. V súčasnosti môžu vzdialenú diagnostickú službu spustiť iba oficiálni zástupcovia podpory JemaOS.</translation>
+<translation id="1791028023086176332">Podeľte sa o toto číslo s oficiálnymi zástupcami podpory JemaOS</translation>
+<translation id="6279304275399437025">Spúšťanie vzdialenej diagnostickej služby...</translation>
+<translation id="1501882165699826662">Zastavte vzdialenú diagnostickú službu a skúste to znova</translation>
+<translation id="3100283258447375201">Ďalšie informácie</translation>
+<translation id="4070039109671307724">Rôzne</translation>
+<translation id="7326893024940073254">Tlačidlo „Reštartovať“</translation>
+<translation id="3002423764319968103">Zobraziť tlačidlo „Reštartovať“ v systémovej ponuke</translation>
+<translation id="6243454903512423518">Tlačidlo „Otočiť obrazovku“</translation>
+<translation id="6491049336868978729">Momentálne nie ste v režime tabletu, tlačidlo „Otočiť obrazovku“ je skryté</translation>
+<translation id="5496012402277579695">Zobraziť tlačidlo „Otočiť obrazovku“ v systémovej ponuke</translation>
+<translation id="5882838977344999606">Prepínač režimu tablet/notebook</translation>
+<translation id="472164133625585606">Zobraziť prepínač režimu tablet/notebook v systémovej ponuke</translation>
+<translation id="1851103550468466960">Povoliť Widevine</translation>
+<translation id="4058176713282795846">Povoľte Widevine na streamovanie chráneného prémiového obsahu. <ph name="BEGIN_LINK_LEARN_MORE" />Ďalšie informácie<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">Vyberte „libwidevine.so“</translation>
+<translation id="4838463656205005584">Nepodarilo sa povoliť Widevine...</translation>
+<translation id="2164041826798266548">Inštalácia modulu Widevine CDM zlyhala. Skontrolujte pripojenie a skúste to znova.</translation>
+<translation id="4106982328079440606">Nastavenia účtu JemaOS</translation>
+<translation id="6468776556018764845">Experimentálne funkcie</translation>
+<translation id="3487615413425326553">Obísť kontroly modulu TPM (Trusted Platform Module)</translation>
+<translation id="4817176087932811573">Niektoré funkcie môžu zlyhať kvôli nekompatibilnému čipu TPM vo vašom zariadení; ako riešenie môžete kontroly TPM obísť.</translation>
+<translation id="3356003366173774486">Automatické prihlásenie</translation>
+<translation id="6218459410891191693">Povoliť aktuálnemu účtu automatické prihlásenie na plochu po reštarte zariadenia</translation>
+<translation id="6620839363422062843">Pre tento účet sa nedá povoliť; automatické prihlásenie je už aktívne pre iné účty na tomto zariadení</translation>
+<translation id="6734500226490446035">Pre tento účet sa nedá povoliť; počas inicializácie súborových systémov pre tento účet sa vyskytla neznáma chyba. Skúste reštartovať zariadenie alebo vytvoriť nový účet</translation>
+<translation id="5464880042146818691">Pre tento účet sa nedá povoliť; možnosť automatického prihlásenia je dostupná iba pre účty typu „Miestny účet“.</translation>
+<translation id="3335654854106476749">Pred povolením automatického prihlásenia pridajte heslo na prihlásenie v nastaveniach <ph name="BEGIN_LINK" />Súkromie a zabezpečenie<ph name="END_LINK" />.</translation>
+<translation id="5586831602198585601">Novšia verzia JemaOS je teraz k dispozícii na aktualizáciu. Vaše predplatné JemaOS for You však vypršalo; na aktualizáciu JemaOS potrebujete aktívne predplatné.</translation>
+<translation id="3869860597719956574">Nová hlavná verzia JemaOS je teraz k dispozícii na aktualizáciu. Ak chcete pokračovať v tejto aktualizácii, musíte zaplatiť jednorazový poplatok.</translation>
+<translation id="6523879681771260760">Zadajte cestu na uloženie súboru zálohy</translation>
+<translation id="2036152819788683293">Vytvoriť súbor zálohy pre tento účet (beta). <ph name="BEGIN_LINK_LEARN_MORE" />Ďalšie informácie<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Zálohovať</translation>
+<translation id="4267347174163690295">Vytvoriť súbor zálohy pre tento účet (beta).</translation>
+<translation id="8112950994208888917">Táto operácia vytvorí úplnú zálohu disku pre tento účet, čo uľahčuje obnovenie JemaOS do stavu, v akom bol pri vytvorení zálohy, vrátane nastavení, nainštalovaných rozšírení prehliadača a aplikácií subsystému. V závislosti od vašich aplikácií a obsahu domovského priečinka môže byť súbor zálohy veľký; odporúča sa uložiť súbor zálohy na externé úložné zariadenie. Ak máte prenosnú jednotku USB, pripojte ju teraz. <ph name="BEGIN_LINK_LEARN_MORE" />Ďalšie informácie<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Zadajte prihlasovacie heslo pre tento účet</translation>
+<translation id="8663988871299316062">Zapamätajte si toto heslo, pretože bude vyžadované pri obnovení tohto súboru zálohy</translation>
+<translation id="6408904153044317846">Vyberte súbor zálohy na obnovenie</translation>
+<translation id="8062988348127771021">Obnoviť údaje JemaOS zo súboru zálohy</translation>
+<translation id="7309192418866543730">Zadajte heslo zálohy</translation>
+<translation id="3642408376366598984">Zadajte heslo použité na zašifrovanie tohto súboru zálohy</translation>
+<translation id="7783974937157985523">Heslo zálohy</translation>
+<translation id="6583780301401541007">Obnovenie bolo úspešné</translation>
+<translation id="3514011352559420398">Obnovenie zlyhalo</translation>
+<translation id="7535980903266533458">Uložiť zálohu do zariadenia alebo na externé úložisko</translation>
+<translation id="604001903249547235">Záloha do cloudu</translation>
+<translation id="8885702701336541611">Nahrať zálohu do cloudového úložiska JemaOS</translation>
+<translation id="3939744430096549862">Zálohovať do cloudu</translation>
+<translation id="619129431573254316">Obnoviť z miestneho súboru zálohy</translation>
+<translation id="1859592711955106569">Obnovenie z cloudu</translation>
+<translation id="38222223336741457">Stiahnuť a obnoviť z cloudu JemaOS</translation>
+<translation id="1241089811244416179">Obnoviť z cloudu</translation>
+<translation id="652479689372703360">Prebieha zálohovanie</translation>
+<translation id="3655220146274872918">Zálohovanie dokončené</translation>
+<translation id="4243579853635792694">Vaša záloha bola úspešne vytvorená</translation>
+<translation id="6337433855796857931">Zálohovanie zlyhalo</translation>
+<translation id="4854179463174744546">Počas procesu zálohovania sa vyskytla chyba</translation>
+<translation id="2410668771600309999">Informácie o používateľovi Connect API</translation>
+<translation id="2223892939866251845">ID používateľa</translation>
+<translation id="3850846286480935456">Analýza úložiska záloh</translation>
+<translation id="6244494465581273970">Vyžaduje sa ID používateľa</translation>
+<translation id="9204006549413740506">Naposledy aktualizované</translation>
+<translation id="476642412165431515">Hardvérové zariadenia</translation>
+<translation id="3386337985825120901">Nie sú k dispozícii žiadne údaje zálohy</translation>
+<translation id="8490990067870590760">Načítavajú sa súbory zálohy...</translation>
+<translation id="2955409026764742995">Vyberte súbor zálohy na obnovenie:</translation>
+<translation id="7414629348005657242">-- Vyberte súbor zálohy --</translation>
+<translation id="918246516374174381">Nenašli sa žiadne súbory zálohy. Najprv vytvorte zálohu.</translation>
+<translation id="77997252117517973">Už čoskoro</translation>
+<translation id="1930692852800776096">Pridať slovník</translation>
+<translation id="8793060353848771694">Obrázok ľavého slúchadla</translation>
+<translation id="6257440204887306255">Obrázok nabíjacieho puzdra</translation>
+<translation id="2754700616124958693">Obrázok pravého slúchadla</translation>
+<translation id="1068676292264983586">Predvolený obrázok zariadenia</translation>
+<translation id="6364075396486660405">Zakážte automatické skenovanie multimediálnych súborov na všetkých oddieloch na optimalizáciu výdrže batérie. <ph name="BEGIN_LINK_LEARN_MORE" />Ďalšie informácie<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Možnosti zabezpečenia</translation>
+<translation id="5618366106086725045">Povoľte „Režim vývojára“ pre túto inštaláciu <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> s ďalšími funkciami pre vývojárov. <ph name="BEGIN_LINK_LEARN_MORE" />Ďalšie informácie<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Už ste v „Režime vývojára“</translation>
+<translation id="6074549317340202195">Povoliť „Režim vývojára“</translation>
+<translation id="418781258674176053">Upozornenie! Povolenie „Režimu vývojára“ je nevratná operácia. Ak chcete „Režim vývojára“ zakázať, musíte preinštalovať JemaOS, čo vymaže všetky údaje. Zálohujte si údaje a pokračujte na vlastné riziko.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Platforma <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Momentálne offline</translation>
+<translation id="2590678769628709242">Skontrolovať predplatné JemaOS online</translation>
+<translation id="4701836089682883918">Informácie o predplatnom JemaOS</translation>
+<translation id="5891566673089952188">Pri získavaní ID zariadenia sa vyskytla chyba</translation>
+<translation id="4685086787606104322">Koniec predplatného</translation>
+<translation id="3354919960795782984">ID zariadenia</translation>
+<translation id="5758632069869992306">Skontrolovať predplatné online</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Platforma <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Skúšobné predplatné</translation>
+<translation id="4362781408813685579">Aktívne predplatné</translation>
+<translation id="1141274201089997510">Vypršané predplatné</translation>
+<translation id="2553683254139782404">Nekomerčná edícia</translation>
+<translation id="8466048683756385518">Licencovaná verzia Enterprise (skúšobná)</translation>
+<translation id="2853871047705932424">Licencovaná verzia Enterprise</translation>
+<translation id="5239675900317881945">Licencovaná verzia Enterprise (vypršaná)</translation>
+<translation id="189101945990408398">Starší Intel</translation>
+<translation id="6816405236809604904">Moderný Intel</translation>
+<translation id="6169452478137972655">Grafika AMD</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="2747689477259164256">JemaOS AI</translation>
+<translation id="1270291881045478104">Povoliť JemaOS AI</translation>
+<translation id="2013780539677437932">Povoliť alebo zakázať všetky funkcie súvisiace s JemaOS AI</translation>
+<translation id="3398637633218757480">Povoliť rýchle vyvolanie JemaOS AI</translation>
+<translation id="8986197796475507452">Rýchlo zobrazte možnosti JemaOS AI pre zvýraznený obsah stlačením Ctrl + C + C</translation>
+<translation id="6407628130593274137">Ďalšie nastavenia a možnosti pre JemaOS AI</translation>
+<translation id="4005574560653331142">Ak chcete zmeniť PIN alebo prihlasovacie heslo tohto miestneho účtu, prejdite do nastavení <ph name="BEGIN_LINK" />Súkromie a zabezpečenie<ph name="END_LINK" />.</translation>
+
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">Môžete sa <ph name="LINK_START" />prihlásiť pomocou miestneho konta JemaOS<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">E-mail <ph name="EMAIL_ADDRESS" /> už existuje. Skúste to znova s iným e-mailom.</translation>
+<translation id="4519800823932975782">Centrum pomoci JemaOS</translation>
+<translation id="4737474693231655139">Nájdite články pomoci a odpovede na bežné otázky o JemaOS</translation>
+</translationbundle>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="am">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">ስለ Thot</translation>
+<translation id="5639860668557220477">በThot አሳሽ እርዳታ ያግኙ</translation>
+<translation id="1692689520561928457">ስለ JemaOS</translation>
+<translation id="8692765844418174375">የJemaOS ስሪት</translation>
+<translation id="2943260250558374955">በJemaOS እርዳታ ያግኙ</translation>
+<translation id="713321354492170993">አሳሹ ንቁ ያልሆኑ ትሮችን ማህደረ ትውስታ ይለቃል። ይህ ለንቁ ትሮች እና ለሌሎች መተግበሪያዎች ተጨማሪ የኮምፒዩተር ሀብቶችን ይሰጣል እና አሳሹን ፈጣን ያደርገዋል። ንቁ ያልሆኑ ትሮችዎ ወደ እነሱ ሲመለሱ በራስ-ሰር እንደገና ንቁ ይሆናሉ።</translation>
+<translation id="1774190491044887444">አሳሹ የድህረ-መድረክ እንቅስቃሴን እና እንደ ለስላሳ ስክሮሊንግ እና የቪዲዮ ፍሬም ፍጥነቶችን ያሉ የእይታ ውጤቶችን በመገደብ ባትሪ ይቆጥባል።</translation>
+<translation id="180121268008059459">አሳሹ ገጾችን ቀድሞ ይጭናል፣ ይህም አሰሳን እና ፍለጋን ፈጣን ያደርገዋል።</translation>
+<translation id="7127093527178692287">ምትኬ ወደ ነበረበት መለስ (ቤታ)</translation>
+<translation id="4439042171549201806">JemaOSን ከምትኬ ፋይል ለመመለስ፣ እባክዎ አሁን ምትኬ ፋይሉን የያዘውን ሊነቀል የሚችል ድራይቭ ወደ JemaOS መሣሪያዎ ያስገቡ እና የትኛውን ምትኬ ፋይል መመለስ እንደሚፈልጉ ይግለጹ። ምትኬ ፋይልዎ በዚህ መመሪያ እንዲታወቅ በሊነቀል ድራይቭዎ ሥር ማውጫ ውስጥ መሆን እንዳለበት እባክዎ ያስታውሱ።</translation>
+<translation id="2955409026764742995">የሚመለስውን ምትኬ ፋይል ይምረጡ፦</translation>
+<translation id="7040434808685140085">ይቅርታ፣ የተመረጠው ምትኬ ፋይል ሊታወቅ አይችልም፤ እባክዎ አዲስ ይምረጡ።</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />JemaOSን ከተመረጠው ምትኬ ፋይል ለመመለስ፣ ምትኬው ሲፈጠር ስለነበረው ሁኔታ ትክክለኛ መረጃ ማግኘት አስፈላጊ ነው። አለበለዚያ፣ የመመለሻ ሂደቱ ይወድቃል።<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"የመለያ ስም" ምትኬ ፋይልዎ የተፈጠረበት መለያ ዋና የመግቢያ ማረጋገጫ ነው። ለJemaOS/Google መለያዎ ለመመዝገብ የተጠቀሙበት ኢሜይል አድራሻ ነው ብሎም ይሆናል። የአካባቢ መለያ ቢሆን ኖሮ፣ የተጠቃሚ ስሙ "@jemaos.local" የተያያዘበት ይሆናል።<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />የይለፍ ቃሉ ምትኬው ሲፈጠር ማስገባት የተጠየቁት የይለፍ ሐረግ ነው። ለዚህ መለያ ወደ JemaOS ዴስክቶፕ ለመግባት የተጠቀሙበት ተመሳሳይ የይለፍ ቃል ነው ብሎም ይሆናል።<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">የመለያ ስም</translation>
+<translation id="5490570429039308155">ይቅርታ፣ እባክዎ ትክክለኛውን የመለያ ስም ያስገቡ</translation>
+<translation id="6657585470893396449">የይለፍ ቃል</translation>
+<translation id="8200189938001188563">ይቅርታ፣ የይለፍ ቃሉ ባዶ መሆን አይችልም</translation>
+<translation id="3157931365184549694">ወደ ነበረበት መለስ</translation>
+<translation id="8556278756526311953">ምትኬ ወደ ነበረበት በመመለስ ላይ</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />አሁን ምትኬ ፋይልዎን ወደ ነበረበት በመመለስ ላይ ነን፤ ይህ ትንሽ ሊወስድ ስለሚችል፣ እባክዎ ታግሠው ይጠብቁ።<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />የመመለሻ ሂደቱ በስኬት ሲጠናቀቅ የተጠቃሚ በይነገጹ በራስ-ሰር እንደሚጀምር እባክዎ ያስታውሱ።<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">ምትኬ ወደ ነበረበት መመለስ አልተሳካም</translation>
+<translation id="5003531399442003695">ለተጨማሪ ዝርዝሮች፣ ምዝግብ ማስታወሻዎችን ለማየት እባክዎ ከታች ያለውን አገናኝ ይጫኑ። ይህ ስህተት ከቀጠለ፣ እባክዎ ከJemaOS ቴክኒካል ድጋፍ መወካያዎች ጋር ይገናኙ እና የስህተት ምዝግብ ማስታወሻዎችን ያቅርቡ።</translation>
+<translation id="6363786367719063276">ምዝግብ ማስታወሻዎችን ይመልከቱ</translation>
+<translation id="8730621377337864115">ተጠናቋል</translation>
+<translation id="975238173507911396">ውሂብ በስኬት ወደ ነበረበት ተመልሷል</translation>
+<translation id="6276879052695618521">የምትኬ መመለሻ ምዝግብ ማስታወሻዎች</translation>
+<translation id="4901207598072637766">JemaOS፣ በ<ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /> የቀረበ</translation>
+<translation id="7894910504474624324">JemaOS እና አገልግሎቶቹ ከGDPR እና ከዩሮጳዊ የውሂብ ጥበቃ ሕግ ድንጋጌዎች ጋር ይጣጣማሉ። ለተጨማሪ መረጃ፣ እባክዎ የእኛን <ph name="BEGIN_LINK_PRIVACY" />የግላዊነት ፖሊሲ<ph name="END_LINK_PRIVACY" /> እና የእኛን <ph name="BEGIN_LINK_TOS" />የአገልግሎት ውሎች።<ph name="END_LINK_TOS" /> ይመልከቱ።</translation>
+<translation id="142388786713899398"><ph name="YEAR" />፣ Jema Technology፣ መብቱ በሕግ የተጠበቀ ነው።</translation>
+<translation id="370679569376308836">JemaOS በJema መሣሪያ እና በSaaS-ው ላይ የተመሰረተ የንግድ አቅርቦት ነው።</translation>
+<translation id="2773644194450163486">JemaOS የሚቻለው በ<ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> ክፍት ምንጭ ፕሮጀክት ነው።</translation>
+<translation id="2330680727776977160">Chromium ደግሞ የሚቻለው በሌሎች <ph name="BEGIN_LINK_1" />ክፍት ምንጭ ሶፍትዌሮች<ph name="END_LINK_1" /> እና <ph name="BEGIN_LINK_2" />ተጨማሪ ክፍት ምንጭ ሶፍትዌሮች<ph name="END_LINK_2" /> ነው።</translation>
+<translation id="1419954813084261088">በJema Technology የተነደፈ እና የተመረተ።</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />፣ Jema Technology LTD፣ መብቱ በሕግ የተጠበቀ ነው።</translation>
+<translation id="6168072053306020326">Jema Technology የJema Technology LTD እና Jema Technology (Beijing) Limited የንግድ ስም ነው።
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD በእንግሊዝ እና ዌልስ በኩባንያ ቁጥር 12273803 የተመዘገበ ኩባንያ ነው።</translation>
+<translation id="1251589813188467292">አስፈላጊ የመሣሪያ ዋስትና እና የአገልግሎት መረጃ</translation>
+<translation id="4851115775198886021">የመሣሪያ ተከታታይ ቁጥር፦</translation>
+</translationbundle>

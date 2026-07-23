@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="te">
+	<translation id="7386402409475121504">మీ స్థానిక JemaOS ఖాతాను సృష్టించండి</translation>
+	<translation id="3760308806144055927">మీ స్థానిక JemaOS ఖాతాకు సైన్ ఇన్ చేయండి</translation>
+	<translation id="3325117507482096812">దయచేసి పాస్‌వర్డ్‌ను ఇన్‌పుట్ చేయండి</translation>
+	<translation id="1838206877831947154">మీ పాస్‌వర్డ్‌లు సరిపోలడం లేదు</translation>
+	<translation id="2158276988029582286">కొత్త స్థానిక ఖాతాను సృష్టించండి</translation>
+	<translation id="8592849747346274067">ఇప్పటికే ఉన్న ఖాతాకు సైన్ ఇన్ చేయండి</translation>
+	<translation id="482190417986201746">మీరు నమోదు చేసిన వినియోగదారు పేరు లేదా పాస్‌వర్డ్ తప్పు</translation>
+	<translation id="6603987686259425085">మీరు <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph> JemaOS స్థానిక ఖాతాతో సైన్ ఇన్ చేయవచ్చు<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">ఇమెయిల్ <ph name="EMAIL_ADDRESS">$1</ph> ఇప్పటికే ఉంది. దయచేసి మరొక ఇమెయిల్‌తో మళ్లీ ప్రయత్నించండి.</translation>
+	<translation id="7215016743510876720">స్థానిక ఖాతాను ఉపయోగించండి</translation>
+	<translation id="6657635042185516718">ఆన్‌లైన్ ఖాతాను ఉపయోగించడం కొనసాగించండి</translation>
+	<translation id="6867476688065565618">స్థానిక ఖాతాకు మారాలా?</translation>
+	<translation id="4840454774882557974">మీరు స్థానిక ఖాతాను ఉపయోగించడాన్ని ఎంచుకుంటే, ఉపయోగకరమైన ఫీచర్‌లు బహుళ పరికరాల్లో మీ డేటా మరియు ప్రాధాన్యతలను సమకాలీకరించడం మరియు మీ JemaOS ఖాతాను ఉపయోగించి వెబ్ యాప్‌లలో స్వయంచాలకంగా సైన్ ఇన్ చేయడం పని చేయదు.</translation>
+	<translation id="8951507920859729424">JemaOSని పూర్తి స్థాయిలో ఉపయోగించుకోవడానికి ఆన్‌లైన్ ఖాతాను ఉపయోగించమని మేము సిఫార్సు చేస్తున్నాము.</translation>
+	<translation id="479773200536372215">Google API కీలు తప్పిపోయినందున మీరు Google ఖాతాలను జోడించలేరు. వివరాల కోసం <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph>ని చూడండి.</translation>
+	<translation id="1198491307547164157">JemaOS API కీలు లేనందున మీరు JemaOS ఖాతాలను జోడించలేరు. వివరాల కోసం <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph>ని చూడండి.</translation>
+	<translation id="5042404702659901995">గోప్యతా ప్రకటన</translation>
+	<translation id="4907736162587268100">గోప్యతా ప్రకటన విషయాలు</translation>
+	<translation id="5988344732274877691">JemaOS కోసం (చాలా అరుదుగా, వాగ్దానం చేయబడిన) వార్తాలేఖ కోసం సైన్ అప్ చేయండి</translation>
+	<translation id="1706203008474708805">JemaOS వినియోగదారు అనుభవ మెరుగుదల ప్రణాళికలో చేరండి</translation>
+	<translation id="1147139514756087229">స్థానిక ఖాతాతో సైన్ ఇన్ చేయండి</translation>
+	<translation id="2054784944085654098">ఇప్పుడు బ్యాకప్ ఫైల్‌ని సృష్టిస్తోంది. దీనికి కొంత సమయం పట్టవచ్చు; దయచేసి వేచి ఉండండి…</translation>
+	<translation id="3554401467586751874">బ్యాకప్ ఫైల్ విజయవంతంగా సృష్టించబడింది</translation>
+	<translation id="2349211327705667074">బ్యాకప్ ఫైల్‌ని వీక్షించండి</translation>
+	<translation id="6337433855796857931">బ్యాకప్ విఫలమైంది</translation>
+	<translation id="3049367131589710124">ఎర్రర్ లాగ్‌ని వీక్షించండి</translation>
+	<translation id="1079017345574916945">రిమోట్ డెస్క్‌టాప్</translation>
+	<translation id="3064478898280877715">యాప్ స్టోర్</translation>
+	<translation id="2747689477259164256">JemaOS AI</translation>
+	<translation id="5890206344045530832">ఇన్‌స్టాలర్</translation>
+	<translation id="2173278076276376488">ఈ పరికరం యొక్క అంతర్గత నిల్వలో <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>ని ఇన్‌స్టాల్ చేయడంలో ఈ యుటిలిటీ మీకు సహాయం చేస్తుంది.</translation>
+	<translation id="5323182426977498659">హెచ్చరిక! ఈ విధానం విధ్వంసకరం మరియు రద్దు చేయబడదు. మీ సంభావ్య డేటా నష్టానికి మేము ఎటువంటి బాధ్యత వహించము లేదా అత్యవసర సాంకేతిక మద్దతును అందించము, మీ స్వంత పూచీతో కొనసాగండి.</translation>
+	<translation id="8517836015601969896">పూర్తి డిస్క్ సంస్థాపన</translation>
+	<translation id="7300045760790370189">మొత్తం హార్డ్ డిస్క్‌ను ఆక్రమించడానికి <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>ని ఇన్‌స్టాల్ చేయండి, టార్గెట్ హార్డ్ డిస్క్‌లోని మొత్తం డేటా తుడిచివేయబడుతుంది.</translation>
+	<translation id="8762511733918256595">బహుళ-బూట్ సంస్థాపన</translation>
+	<translation id="248900698427753678">హార్డ్ డిస్క్ యొక్క ప్రస్తుత విభజనకు <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>ని ఇన్‌స్టాల్ చేయండి, ఇక్కడ <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ఇతర OSతో సమాంతరంగా ఉండవచ్చు. లక్ష్య విభజనలోని మొత్తం డేటా తుడిచివేయబడుతుంది.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> మీరు ఎంచుకున్న హార్డ్ డ్రైవ్‌లో ఇన్‌స్టాల్ చేయబడుతుంది; టార్గెట్ డిస్క్‌లోని మొత్తం డేటా తుడిచివేయబడుతుంది.</translation>
+	<translation id="4039091757234555415">డిస్క్</translation>
+	<translation id="7783580523889684697">డిస్క్ అందుబాటులో లేదు</translation>
+	<translation id="8217653566575018388">ఇన్‌స్టాలేషన్ పూర్తయింది</translation>
+	<translation id="8846746259444262774">ఇన్‌స్టాలేషన్ విఫలమైంది</translation>
+	<translation id="7263815009235541549">ఇన్‌స్టాలేషన్ విజయవంతంగా ముగిసింది. దయచేసి ముందుగా మీ పరికరాన్ని పవర్ ఆఫ్ చేయండి, ఆపై ఏదైనా ఇన్‌స్టాలేషన్ మీడియాను తీసివేయండి మరియు <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> బూట్ చేయడానికి దాన్ని మళ్లీ పవర్ ఆన్ చేయండి.</translation>
+	<translation id="3380151284134965398">అయ్యో, ఏదో తప్పు జరిగింది మరియు ఇన్‌స్టాలేషన్ పూర్తి కాలేదు. దయచేసి ప్రక్రియను మళ్లీ ప్రయత్నించండి. అదే లోపం కొనసాగితే, దయచేసి ఎగువ లాగ్‌తో JemaOS మద్దతు కోసం సంప్రదించండి.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> మీ హార్డ్ డ్రైవ్ ఎంచుకున్న విభజనలో ఇన్‌స్టాల్ చేయబడుతుంది. ప్రస్తుత మల్టీ-బూట్ స్కీమ్ ప్రకారం, మీ పరికరం UEFIకి మద్దతిస్తే మరియు మీ హార్డ్ డిస్క్‌లు GPTతో ఫార్మాట్ చేయబడితే మాత్రమే ఇది కొనసాగుతుంది.</translation>
+	<translation id="7831363758161884243">లక్ష్య విభజన తుడిచివేయబడుతుంది; ఇన్‌స్టాలర్ సిస్టమ్ బూట్ కాన్ఫిగరేషన్‌లను సవరించవలసి ఉంటుంది కాబట్టి మీరు మీ క్రియాశీల EFI విభజనను కూడా పేర్కొనాలి (సాధారణంగా స్వయంచాలకంగా చేయబడుతుంది).</translation>
+	<translation id="5670799238446305550"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> లక్ష్య విభజనను ఎంచుకోండి</translation>
+	<translation id="3695537760133394753">విభజన</translation>
+	<translation id="5610519566593708119">EFI విభజనను ఎంచుకోండి</translation>
+	<translation id="3367650349940010965">ఎంచుకున్న డిస్క్ కోసం విభజనలు అందుబాటులో లేవు</translation>
+	<translation id="7453223384507098390">ఎంచుకున్న డిస్క్ కోసం EFI విభజనలు అందుబాటులో లేవు</translation>
+	<translation id="1854532683465500847">ఎంచుకున్న విభజన పరిమాణం 20GB కంటే తక్కువగా ఉంది, ఇన్‌స్టాలేషన్ విఫలం కావచ్చు</translation>
+	<translation id="4144613075340468247">ఎంచుకున్న విభజన <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> బహుళ-బూట్‌కి మౌంట్ చేయబడింది, దానికి మళ్లీ ఇన్‌స్టాల్ చేయడం విఫలం కావచ్చు</translation>
+	<translation id="5793361052649920836">ఇన్‌స్టాలేషన్ తర్వాత, మీరు <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>ని ఎలా బూట్ చేయాలనుకుంటున్నారు?</translation>
+	<translation id="4273235330352963866">నా కోసం rEFIndని ఇన్‌స్టాల్ చేసి కాన్ఫిగర్ చేయండి (సిఫార్సు చేయబడింది)</translation>
+	<translation id="1858708492548921044">rEFInd అనేది బూట్ మేనేజర్ ప్రోగ్రామ్, ఇది మీ PC ప్రారంభమైనప్పుడు OS బూట్ ఎంపికల కోసం చక్కని గ్రాఫికల్ ఇంటర్‌ఫేస్‌ను అందిస్తుంది, మీరు దానితో బూట్ చేయడానికి మీకు కావలసిన OSని ఎంచుకోగలుగుతారు. rEFInd గురించి మరింత సమాచారం కోసం, దయచేసి దాని హోమ్‌పేజీని చూడండి.</translation>
+	<translation id="3861924051442564602">నా కోసం UEFI బూట్ మెను ఎంపికను జోడించండి</translation>
+	<translation id="8622370666798589804">మీ PC ప్రారంభమైనప్పుడు మీరు UEFI బూట్ ఎంపికల మెనుని నమోదు చేయగలరు (చాలా మటుకు హాట్‌కీని నొక్కడం ద్వారా), ఈ ఐచ్ఛికం <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>ని ఆ మెనుకి ఎంట్రీగా జోడిస్తుంది. (BIOS మరియు UEFI ఫర్మ్‌వేర్ యొక్క కొన్ని మోడళ్లకు మాత్రమే మద్దతు ఇస్తుంది).</translation>
+	<translation id="1569398690544416170">ఇక్కడ ఏమీ చేయవద్దు, నేనే దాన్ని కాన్ఫిగర్ చేస్తాను</translation>
+	<translation id="3554866444001249532">ఈ ఇన్‌స్టాలేషన్ స్క్రిప్ట్ <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>ని మీ EFI విభజనకు బూట్ చేయడానికి అవసరమైన .efi ఫైల్‌లను మాత్రమే ఉంచుతుంది, మీరు దీన్ని మీరే ఎలా బూట్ చేయాలో కాన్ఫిగర్ చేయాలి.</translation>
+	<translation id="7492832751164189534">బలవంతంగా నిష్క్రమించారు</translation>
+	<translation id="5159534860632584026">ఇన్‌స్టాలేషన్ ప్రక్రియ ముగించబడింది</translation>
+	<translation id="8686749782014838344">డిస్క్ సమాచారాన్ని పొందడంలో విఫలమైంది</translation>
+	<translation id="5688543378771259173">ఇన్‌స్టాలేషన్ నిలిపివేయబడుతోంది...</translation>
+	<translation id="5350452134936384991">USBలో ఇన్‌స్టాల్ చేయండి</translation>
+	<translation id="8008470485414925603">USB డిస్క్‌లో <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>ని ఇన్‌స్టాల్ చేయండి; లక్ష్యం USB డిస్క్‌లోని మొత్తం డేటా తుడిచివేయబడుతుంది.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> మీరు ఎంచుకున్న USB డిస్క్‌లో ఇన్‌స్టాల్ చేయబడుతుంది; టార్గెట్ డిస్క్‌లోని మొత్తం డేటా తుడిచివేయబడుతుంది.</translation>
+	<translation id="5725593226060700263">USB డిస్క్ అందుబాటులో లేదు</translation>
+	<translation id="4357040841587078287">మీరు JemaOS యొక్క ఈ కాపీని డౌన్‌లోడ్ చేసిన ఇమేజ్ ఫైల్ నుండి రన్ చేస్తున్నట్లు మేము గుర్తించాము. JemaOS అందించే అత్యంత సమగ్రమైన మద్దతు ఫీచర్లను (ఓవర్-ది-ఎయిర్ అప్‌డేట్‌లతో సహా) ఉపయోగించుకోవడానికి, ప్రత్యేక నిల్వ పరికరానికి JemaOS యొక్క పూర్తి-డిస్క్ ఇన్‌స్టాలేషన్‌ను నిర్వహించడానికి "ఇన్‌స్టాలర్" ఫంక్షన్‌ను ప్రారంభించాలని మేము గట్టిగా సిఫార్సు చేస్తున్నాము.</translation>
+	<translation id="1246398339704431302">మీరు <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>ఏమైనప్పటికీ ఈ JemaOS కాపీని ఉపయోగించడాన్ని కొనసాగించవచ్చు<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, ఇన్‌స్టాలేషన్ ప్రాసెస్ సిస్టమ్‌లో తర్వాతి దశలో అమలు చేయబడుతుంది, అయితే, ఈ ఇన్‌స్టాలేషన్ తర్వాత మీ మొత్తం పేజీ నుండి తొలగించబడుతుంది.</translation>
+	<translation id="3654532222088291133">సైన్ ఇన్ చేయడానికి మీ JemaOS ఖాతా పాస్‌వర్డ్‌ను నమోదు చేయడానికి బదులుగా, మీరు ఈ పరికరం కోసం <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> పాస్‌వర్డ్‌ను సృష్టించవచ్చు</translation>
+	<translation id="8377684629839541977">JemaOS ఖాతా పాస్‌వర్డ్‌ని ఉపయోగించండి</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398"><ph name="DEVICE_OS" />ను స్వయంచాలకంగా తాజాగా ఉంచండి</translation>
+<translation id="2347352406101856238"><ph name="DEVICE_OS" /> నవీకరణ ప్రారంభించబడింది</translation>
+<translation id="185834232609012804"><ph name="DEVICE_OS" /> నవీకరణ నిలిపివేయబడింది</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) ప్లాట్‌ఫారమ్ <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">రిమోట్ డెస్క్‌టాప్</translation>
+<translation id="6898090158927982244">మీ Linux తాజాగా ఉంది</translation>
+<translation id="4886703929102211360">Linux (బీటా) భాగం కోసం కీలకమైన నవీకరణ అందుబాటులో ఉంది. ఈ నవీకరణను వీలైనంత త్వరగా ఇన్‌స్టాల్ చేయాలని బలంగా సిఫార్సు చేయబడింది, లేకపోతే మీ Linux (బీటా) పని చేయడం ఆగిపోవచ్చు.</translation>
+<translation id="6694016202036959050"><ph name="DEVICE_OS" /> సెట్టింగ్స్</translation>
+<translation id="8362858344151826493">JemaOS ఖాతా, బ్యాకప్, ఇతరములు</translation>
+<translation id="9150429437595727962">Wi-Fi సెట్టింగ్స్</translation>
+<translation id="4938972461544498524">టచ్‌ప్యాడ్ సెట్టింగ్స్</translation>
+<translation id="1210024513248363065">రిమోట్ సేవలు</translation>
+<translation id="2878862288885588535">రిమోట్ డయాగ్నోస్టిక్ సేవ</translation>
+<translation id="7409197984340676806">రిమోట్ డయాగ్నోస్టిక్ సేవ అధికారిక JemaOS మద్దతు ప్రతినిధులు సిస్టమ్ సమస్యలను గుర్తించడానికి అనుమతిస్తుంది. ప్రస్తుతం, రిమోట్ డయాగ్నోస్టిక్ సేవను అధికారిక JemaOS మద్దతు ప్రతినిధులు మాత్రమే ప్రారంభించగలరు.</translation>
+<translation id="1791028023086176332">దయచేసి ఈ నంబర్‌ను అధికారిక JemaOS మద్దతు ప్రతినిధులతో పంచుకోండి</translation>
+<translation id="6279304275399437025">రిమోట్ డయాగ్నోస్టిక్ సేవ ప్రారంభమవుతోంది...</translation>
+<translation id="1501882165699826662">దయచేసి రిమోట్ డయాగ్నోస్టిక్ సేవను ఆపివేసి మళ్లీ ప్రయత్నించండి</translation>
+<translation id="3100283258447375201">మరింత సమాచారం</translation>
+<translation id="4070039109671307724">ఇతరములు</translation>
+<translation id="7326893024940073254">"పునఃప్రారంభం" బటన్</translation>
+<translation id="3002423764319968103">సిస్టమ్ మెనూలో "పునఃప్రారంభం" బటన్‌ను చూపండి</translation>
+<translation id="6243454903512423518">"స్క్రీన్ తిప్పు" బటన్</translation>
+<translation id="6491049336868978729">మీరు ప్రస్తుతం ట్యాబ్లెట్ మోడ్‌లో లేరు, "స్క్రీన్ తిప్పు" బటన్ దాచబడింది</translation>
+<translation id="5496012402277579695">సిస్టమ్ మెనూలో "స్క్రీన్ తిప్పు" బటన్‌ను చూపండి</translation>
+<translation id="5882838977344999606">ట్యాబ్లెట్/ల్యాప్‌టాప్ మోడ్ స్విచ్</translation>
+<translation id="472164133625585606">సిస్టమ్ మెనూలో ట్యాబ్లెట్/ల్యాప్‌టాప్ మోడ్ స్విచ్‌ను చూపండి</translation>
+<translation id="1851103550468466960">Widevineను ప్రారంభించండి</translation>
+<translation id="4058176713282795846">రక్షిత ప్రీమియం కంటెంట్‌ను స్ట్రీమ్ చేయడానికి Widevineను ప్రారంభించండి. <ph name="BEGIN_LINK_LEARN_MORE" />మరింత తెలుసుకోండి<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">"libwidevine.so"ను ఎంచుకోండి</translation>
+<translation id="4838463656205005584">Widevineను ప్రారంభించడం విఫలమైంది...</translation>
+<translation id="2164041826798266548">Widevine CDM మాడ్యూల్ ఇన్‌స్టాలేషన్ విఫలమైంది. దయచేసి మీ కనెక్షన్‌ను తనిఖీ చేసి మళ్లీ ప్రయత్నించండి.</translation>
+<translation id="4106982328079440606">JemaOS ఖాతా సెట్టింగ్స్</translation>
+<translation id="6468776556018764845">ప్రయోగాత్మక ఫీచర్లు</translation>
+<translation id="3487615413425326553">Trusted Platform Module (TPM) తనిఖీలను దాటవేయండి</translation>
+<translation id="4817176087932811573">మీ పరికరంలోని అననుకూల TPM చిప్ వల్ల కొన్ని ఫీచర్లు విఫలమవుతాయి; మీరు పరిష్కారంగా TPM తనిఖీలను దాటవేయవచ్చు.</translation>
+<translation id="3356003366173774486">స్వయంచాలక సైన్-ఇన్</translation>
+<translation id="6218459410891191693">పరికరం పునఃప్రారంభమైనప్పుడు ప్రస్తుత ఖాతా డెస్క్‌టాప్‌కు స్వయంచాలకంగా సైన్ ఇన్ చేయడానికి అనుమతించండి</translation>
+<translation id="6620839363422062843">ఈ ఖాతా కోసం ప్రారంభించలేరు; ఈ పరికరంలోని ఇతర ఖాతాల కోసం స్వయంచాలక సైన్-ఇన్ ఇప్పటికే యాక్టివ్‌గా ఉంది</translation>
+<translation id="6734500226490446035">ఈ ఖాతా కోసం ప్రారంభించలేరు; ఈ ఖాతా కోసం ఫైల్ సిస్టమ్స్‌ను ప్రారంభించడంలో తెలియని లోపం సంభవించింది. దయచేసి పునఃప్రారంభించడానికి లేదా కొత్త ఖాతాను సృష్టించడానికి ప్రయత్నించండి</translation>
+<translation id="5464880042146818691">ఈ ఖాతా కోసం ప్రారంభించలేరు; స్వయంచాలక సైన్-ఇన్ ఎంపిక "స్థానిక ఖాతా" రకానికి మాత్రమే అందుబాటులో ఉంది.</translation>
+<translation id="3335654854106476749">స్వయంచాలక సైన్-ఇన్‌ను ప్రారంభించడానికి ముందు దయచేసి <ph name="BEGIN_LINK" />గోప్యత మరియు భద్రత<ph name="END_LINK" /> సెట్టింగ్స్‌లో సైన్-ఇన్ పాస్‌వర్డ్‌ను జోడించండి.</translation>
+<translation id="5586831602198585601">JemaOS యొక్క కొత్త వెర్షన్ ఇప్పుడు నవీకరించడానికి అందుబాటులో ఉంది. అయితే, మీ JemaOS for You సబ్‌స్క్రిప్షన్ గడువు ముగిసింది; మీ JemaOSను నవీకరించడానికి మీకు యాక్టివ్ సబ్‌స్క్రిప్షన్ అవసరం.</translation>
+<translation id="3869860597719956574">JemaOS యొక్క కొత్త ప్రధాన వెర్షన్ ఇప్పుడు నవీకరించడానికి అందుబాటులో ఉంది. ఈ నవీకరణతో కొనసాగడానికి మీరు వన్-టైమ్ రుసుము చెల్లించాలి.</translation>
+<translation id="6523879681771260760">దయచేసి బ్యాకప్ ఫైల్‌ను నిల్వ చేయడానికి మార్గాన్ని పేర్కొనండి</translation>
+<translation id="2036152819788683293">ఈ ఖాతా కోసం బ్యాకప్ ఫైల్‌ను సృష్టించండి (బీటా). <ph name="BEGIN_LINK_LEARN_MORE" />మరింత తెలుసుకోండి<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">బ్యాకప్ చేయండి</translation>
+<translation id="4267347174163690295">ఈ ఖాతా కోసం బ్యాకప్ ఫైల్‌ను సృష్టించండి (బీటా).</translation>
+<translation id="8112950994208888917">ఈ ఆపరేషన్ ఈ ఖాతా కోసం పూర్తి డిస్క్ బ్యాకప్‌ను సృష్టిస్తుంది, సెట్టింగ్స్, ఇన్‌స్టాల్ చేసిన బ్రౌజర్ ఎక్స్‌టెన్షన్‌లు మరియు సబ్‌సిస్టమ్ యాప్‌లతో సహా బ్యాకప్ సృష్టించబడినప్పుడు ఉన్న స్థితికి మీ JemaOSను పునరుద్ధరించడానికి ఇది సులభం చేస్తుంది. మీ యాప్‌లు మరియు మీ హోమ్ ఫోల్డర్ యొక్క కంటెంట్‌లపై ఆధారపడి, బ్యాకప్ ఫైల్ పెద్దదిగా ఉండవచ్చు; బ్యాకప్ ఫైల్‌ను బాహ్య నిల్వ పరికరంలో నిల్వ చేయాలని సిఫార్సు చేయబడింది. మీ వద్ద పోర్టబుల్ USB డ్రైవ్ ఉంటే, దయచేసి ఇప్పుడు కనెక్ట్ చేయండి. <ph name="BEGIN_LINK_LEARN_MORE" />మరింత తెలుసుకోండి<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">దయచేసి ఈ ఖాతా కోసం సైన్-ఇన్ పాస్‌వర్డ్‌ను నమోదు చేయండి</translation>
+<translation id="8663988871299316062">దయచేసి ఈ పాస్‌వర్డ్‌ను గుర్తుంచుకోండి, ఎందుకంటే ఈ బ్యాకప్ ఫైల్‌ను పునరుద్ధరించినప్పుడు ఇది అవసరం అవుతుంది</translation>
+<translation id="6408904153044317846">పునరుద్ధరించడానికి బ్యాకప్ ఫైల్‌ను ఎంచుకోండి</translation>
+<translation id="8062988348127771021">బ్యాకప్ ఫైల్ నుండి మీ JemaOS డేటాను పునరుద్ధరించండి</translation>
+<translation id="7309192418866543730">బ్యాకప్ పాస్‌వర్డ్‌ను నమోదు చేయండి</translation>
+<translation id="3642408376366598984">ఈ బ్యాకప్ ఫైల్‌ను ఎన్‌క్రిప్ట్ చేయడానికి ఉపయోగించిన పాస్‌వర్డ్‌ను నమోదు చేయండి</translation>
+<translation id="7783974937157985523">బ్యాకప్ పాస్‌వర్డ్</translation>
+<translation id="6583780301401541007">పునరుద్ధరణ విజయవంతమైంది</translation>
+<translation id="3514011352559420398">పునరుద్ధరణ విఫలమైంది</translation>
+<translation id="7535980903266533458">బ్యాకప్‌ను మీ పరికరం లేదా బాహ్య నిల్వలో సేవ్ చేయండి</translation>
+<translation id="604001903249547235">క్లౌడ్ బ్యాకప్</translation>
+<translation id="8885702701336541611">బ్యాకప్‌ను JemaOS క్లౌడ్ నిల్వకు అప్‌లోడ్ చేయండి</translation>
+<translation id="3939744430096549862">క్లౌడ్‌కు బ్యాకప్ చేయండి</translation>
+<translation id="619129431573254316">స్థానిక బ్యాకప్ ఫైల్ నుండి పునరుద్ధరించండి</translation>
+<translation id="1859592711955106569">క్లౌడ్ పునరుద్ధరణ</translation>
+<translation id="38222223336741457">JemaOS క్లౌడ్ నుండి డౌన్‌లోడ్ చేసి పునరుద్ధరించండి</translation>
+<translation id="1241089811244416179">క్లౌడ్ నుండి పునరుద్ధరించండి</translation>
+<translation id="652479689372703360">బ్యాకప్ జరుగుతోంది</translation>
+<translation id="3655220146274872918">బ్యాకప్ పూర్తయింది</translation>
+<translation id="4243579853635792694">మీ బ్యాకప్ విజయవంతంగా సృష్టించబడింది</translation>
+<translation id="4854179463174744546">బ్యాకప్ ప్రక్రియలో లోపం సంభవించింది</translation>
+<translation id="2410668771600309999">Connect API వినియోగదారు సమాచారం</translation>
+<translation id="2223892939866251845">వినియోగదారు ID</translation>
+<translation id="3850846286480935456">బ్యాకప్ నిల్వ విశ్లేషణ</translation>
+<translation id="6244494465581273970">వినియోగదారు ID అవసరం</translation>
+<translation id="9204006549413740506">చివరిగా నవీకరించబడింది</translation>
+<translation id="476642412165431515">హార్డ్‌వేర్ పరికరాలు</translation>
+<translation id="3386337985825120901">బ్యాకప్ డేటా అందుబాటులో లేదు</translation>
+<translation id="8490990067870590760">బ్యాకప్ ఫైళ్లు లోడ్ అవుతున్నాయి...</translation>
+<translation id="2955409026764742995">పునరుద్ధరించడానికి బ్యాకప్ ఫైల్‌ను ఎంచుకోండి:</translation>
+<translation id="7414629348005657242">-- బ్యాకప్ ఫైల్‌ను ఎంచుకోండి --</translation>
+<translation id="918246516374174381">బ్యాకప్ ఫైళ్లు కనుగొనబడలేదు. దయచేసి ముందుగా బ్యాకప్‌ను సృష్టించండి.</translation>
+<translation id="77997252117517973">త్వరలో వస్తుంది</translation>
+<translation id="1930692852800776096">నిఘంటువును జోడించండి</translation>
+<translation id="8793060353848771694">ఎడమ ఇయర్‌బడ్ చిత్రం</translation>
+<translation id="6257440204887306255">ఛార్జింగ్ కేస్ చిత్రం</translation>
+<translation id="2754700616124958693">కుడి ఇయర్‌బడ్ చిత్రం</translation>
+<translation id="1068676292264983586">డిఫాల్ట్ పరికర చిత్రం</translation>
+<translation id="6364075396486660405">బ్యాటరీ లైఫ్‌ను ఆప్టిమైజ్ చేయడానికి అన్ని పార్టిషన్‌ల కోసం మీడియా ఫైళ్ల స్వయంచాలక స్కానింగ్‌ను నిలిపివేయండి. <ph name="BEGIN_LINK_LEARN_MORE" />మరింత తెలుసుకోండి<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">భద్రతా ఎంపికలు</translation>
+<translation id="5618366106086725045">మరింత డెవలపర్ ఫీచర్లతో ఈ <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> ఇన్‌స్టాలేషన్ కోసం "డెవలపర్ మోడ్"‌ను ప్రారంభించండి. <ph name="BEGIN_LINK_LEARN_MORE" />మరింత తెలుసుకోండి<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">మీరు ఇప్పటికే "డెవలపర్ మోడ్"‌లో ఉన్నారు</translation>
+<translation id="6074549317340202195">"డెవలపర్ మోడ్"‌ను ప్రారంభించండి</translation>
+<translation id="418781258674176053">హెచ్చరిక! "డెవలపర్ మోడ్"‌ను ప్రారంభించడం తిరిగి చేయలేని ఆపరేషన్. మీరు "డెవలపర్ మోడ్"‌ను నిలిపివేయాలనుకుంటే, మీరు JemaOSను మళ్లీ ఇన్‌స్టాల్ చేయాలి, ఇది అన్ని డేటాను తొలగిస్తుంది. దయచేసి మీ డేటాను బ్యాకప్ చేసి మీ స్వంత రిస్క్‌తో కొనసాగండి.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    ప్లాట్‌ఫారమ్ <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">ప్రస్తుతం ఆఫ్‌లైన్‌లో ఉంది</translation>
+<translation id="2590678769628709242">మీ JemaOS సబ్‌స్క్రిప్షన్‌ను ఆన్‌లైన్‌లో తనిఖీ చేయండి</translation>
+<translation id="4701836089682883918">JemaOS సబ్‌స్క్రిప్షన్ సమాచారం</translation>
+<translation id="5891566673089952188">మీ పరికర IDను పొందడంలో లోపం సంభవించింది</translation>
+<translation id="4685086787606104322">సబ్‌స్క్రిప్షన్ ముగింపు</translation>
+<translation id="3354919960795782984">పరికర ID</translation>
+<translation id="5758632069869992306">మీ సబ్‌స్క్రిప్షన్‌ను ఆన్‌లైన్‌లో తనిఖీ చేయండి</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     ప్లాట్‌ఫారమ్ <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">ట్రయల్ సబ్‌స్క్రిప్షన్</translation>
+<translation id="4362781408813685579">యాక్టివ్ సబ్‌స్క్రిప్షన్</translation>
+<translation id="1141274201089997510">గడువు ముగిసిన సబ్‌స్క్రిప్షన్</translation>
+<translation id="2553683254139782404">నాన్-కమర్షియల్ ఎడిషన్</translation>
+<translation id="8466048683756385518">ఎంటర్‌ప్రైజ్ లైసెన్స్ వెర్షన్ (ట్రయల్)</translation>
+<translation id="2853871047705932424">ఎంటర్‌ప్రైజ్ లైసెన్స్ వెర్షన్</translation>
+<translation id="5239675900317881945">ఎంటర్‌ప్రైజ్ లైసెన్స్ వెర్షన్ (గడువు ముగిసింది)</translation>
+<translation id="189101945990408398">లెగసీ Intel</translation>
+<translation id="6816405236809604904">మాడర్న్ Intel</translation>
+<translation id="6169452478137972655">AMD గ్రాఫిక్స్</translation>
+<translation id="6183637837838262693">Intel స్లిమ్</translation>
+<translation id="1270291881045478104">JemaOS AIను ప్రారంభించండి</translation>
+<translation id="2013780539677437932">JemaOS AIకి సంబంధించిన అన్ని ఫీచర్లను ప్రారంభించండి లేదా నిలిపివేయండి</translation>
+<translation id="3398637633218757480">JemaOS AI క్విక్ కాల్‌ను ప్రారంభించండి</translation>
+<translation id="8986197796475507452">Ctrl + C + C నొక్కడం ద్వారా హైలైట్ చేసిన కంటెంట్ కోసం JemaOS AI ఎంపికలను త్వరగా తెరవండి</translation>
+<translation id="6407628130593274137">JemaOS AI కోసం ఇతర సెట్టింగ్స్ మరియు ఎంపికలు</translation>
+<translation id="4005574560653331142">ఈ స్థానిక ఖాతా యొక్క PIN లేదా సైన్-ఇన్ పాస్‌వర్డ్‌ను మార్చడానికి, <ph name="BEGIN_LINK" />గోప్యత మరియు భద్రత<ph name="END_LINK" /> సెట్టింగ్స్‌కు వెళ్లండి.</translation>
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">మీరు <ph name="LINK_START" />JemaOS స్థానిక ఖాతాతో సైన్ ఇన్ చేయవచ్చు<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">ఇమెయిల్ <ph name="EMAIL_ADDRESS" /> ఇప్పటికే ఉంది. దయచేసి మరొక ఇమెయిల్‌తో మళ్లీ ప్రయత్నించండి.</translation>
+<translation id="4519800823932975782">JemaOS సహాయ కేంద్రం</translation>
+<translation id="4737474693231655139">సహాయక వ్యాసాలు మరియు సాధారణ JemaOS ప్రశ్నలకు సమాధానాలను కనుగొనండి</translation>
+</translationbundle>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="te">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Thot గురించి</translation>
+<translation id="5639860668557220477">Thot బ్రౌజర్‌తో సహాయం పొందండి</translation>
+<translation id="1692689520561928457">JemaOS గురించి</translation>
+<translation id="8692765844418174375">JemaOS వెర్షన్</translation>
+<translation id="2943260250558374955">JemaOSతో సహాయం పొందండి</translation>
+<translation id="713321354492170993">బ్రౌజర్ క్రియాశీలంగా లేని ట్యాబ్‌ల నుండి మెమరీని ఖాళీ చేస్తుంది. ఇది క్రియాశీల ట్యాబ్‌లకు మరియు ఇతర యాప్‌లకు మరిన్ని కంప్యూటింగ్ వనరులను ఇస్తుంది మరియు బ్రౌజర్‌ను వేగంగా ఉంచుతుంది. మీరు వాటి వద్దకు తిరిగి వచ్చినప్పుడు మీ క్రియాశీలంగా లేని ట్యాబ్‌లు స్వయంచాలకంగా మళ్లీ క్రియాశీలమవుతాయి.</translation>
+<translation id="1774190491044887444">బ్రౌజర్ స్మూత్ స్క్రోలింగ్ మరియు వీడియో ఫ్రేమ్ రేట్ల వంటి బ్యాక్‌గ్రౌండ్ యాక్టివిటీ మరియు విజువల్ ఎఫెక్ట్‌లను పరిమితం చేయడం ద్వారా బ్యాటరీని ఆదా చేస్తుంది.</translation>
+<translation id="180121268008059459">బ్రౌజర్ పేజీలను ముందుగానే లోడ్ చేస్తుంది, బ్రౌజింగ్ మరియు శోధనను వేగవంతం చేస్తుంది.</translation>
+<translation id="7127093527178692287">బ్యాకప్ పునరుద్ధరణ (బీటా)</translation>
+<translation id="4439042171549201806">బ్యాకప్ ఫైల్ నుండి JemaOSను పునరుద్ధరించడానికి, దయచేసి బ్యాకప్ ఫైల్ ఉన్న తొలగించగల డ్రైవ్‌ను ఇప్పుడు మీ JemaOS పరికరంలో చొప్పించండి మరియు మీరు ఏ బ్యాకప్ ఫైల్‌ను పునరుద్ధరించాలనుకుంటున్నారో పేర్కొనండి. ఈ విజర్డ్ గుర్తించడానికి మీ బ్యాకప్ ఫైల్ మీ తొలగించగల డ్రైవ్ యొక్క రూట్ డైరెక్టరీలో ఉండాలని దయచేసి గమనించండి.</translation>
+<translation id="2955409026764742995">పునరుద్ధరించాల్సిన బ్యాకప్ ఫైల్‌ను ఎంచుకోండి:</translation>
+<translation id="7040434808685140085">క్షమించండి, ఎంచుకున్న బ్యాకప్ ఫైల్‌ను గుర్తించడం సాధ్యం కాలేదు; దయచేసి కొత్తదాన్ని ఎంచుకోండి.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />ఎంచుకున్న బ్యాకప్ ఫైల్ నుండి JemaOSను పునరుద్ధరించడానికి, బ్యాకప్ సృష్టించబడినప్పుడు దాని గురించి ఖచ్చితమైన సమాచారం ఉండటం అవసరం. లేకపోతే, పునరుద్ధరణ ప్రక్రియ విఫలమవుతుంది.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"ఖాతా పేరు" అనేది మీ బ్యాకప్ ఫైల్ సృష్టించబడిన ఖాతా యొక్క ప్రాథమిక లాగిన్ ఆధారం. ఇది సాధారణంగా మీరు మీ JemaOS/Google ఖాతా కోసం సైన్ అప్ చేయడానికి ఉపయోగించిన ఇమెయిల్ చిరునామా. అది స్థానిక ఖాతా అయితే, అది "@jemaos.local" జోడించబడిన వినియోగదారు పేరు అవుతుంది.<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />పాస్‌వర్డ్ అనేది బ్యాకప్ సృష్టించబడినప్పుడు మీరు నమోదు చేయమని అడగబడిన పాస్‌ఫ్రేజ్. ఇది సాధారణంగా ఈ ఖాతా కోసం JemaOS డెస్క్‌టాప్‌లోకి సైన్ ఇన్ చేయడానికి మీరు ఉపయోగించిన అదే పాస్‌వర్డ్.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">ఖాతా పేరు</translation>
+<translation id="5490570429039308155">క్షమించండి, దయచేసి సరైన ఖాతా పేరును నమోదు చేయండి</translation>
+<translation id="6657585470893396449">పాస్‌వర్డ్</translation>
+<translation id="8200189938001188563">క్షమించండి, పాస్‌వర్డ్ ఖాళీగా ఉండకూడదు</translation>
+<translation id="3157931365184549694">పునరుద్ధరించండి</translation>
+<translation id="8556278756526311953">బ్యాకప్ పునరుద్ధరిస్తోంది</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />మేము ఇప్పుడు మీ బ్యాకప్ ఫైల్‌ను పునరుద్ధరించడంపై పని చేస్తున్నాము; దీనికి కొంత సమయం పట్టవచ్చు, కాబట్టి దయచేసి సహనంగా ఉండండి.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />పునరుద్ధరణ ప్రక్రియ విజయవంతంగా పూర్తయినప్పుడు UI స్వయంచాలకంగా పునఃప్రారంభమవుతుందని దయచేసి గమనించండి.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">బ్యాకప్ పునరుద్ధరణ విఫలమైంది</translation>
+<translation id="5003531399442003695">మరిన్ని వివరాల కోసం, దయచేసి లాగ్‌లను చూడటానికి దిగువ లింక్‌ను క్లిక్ చేయండి. ఈ లోపం కొనసాగితే, దయచేసి JemaOS సాంకేతిక మద్దతు ఛానెల్‌లను సంప్రదించి, లోపం లాగ్‌లను అందించండి.</translation>
+<translation id="6363786367719063276">లాగ్‌లను చూడండి</translation>
+<translation id="8730621377337864115">పూర్తయింది</translation>
+<translation id="975238173507911396">డేటా పునరుద్ధరణ విజయవంతమైంది</translation>
+<translation id="6276879052695618521">బ్యాకప్ పునరుద్ధరణ లాగ్‌లు</translation>
+<translation id="4901207598072637766">JemaOS, <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /> అందించబడింది</translation>
+<translation id="7894910504474624324">JemaOS మరియు దాని సేవలు GDPR మరియు ఐరోపా డేటా రక్షణ చట్టం నిబంధనలకు అనుగుణంగా ఉంటాయి. మరిన్ని వివరాల కోసం, దయచేసి మా <ph name="BEGIN_LINK_PRIVACY" />గోప్యతా విధానం<ph name="END_LINK_PRIVACY" /> మరియు మా <ph name="BEGIN_LINK_TOS" />సేవా నిబంధనలు<ph name="END_LINK_TOS" /> చూడండి.</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, అన్ని హక్కులు ప్రత్యేకించబడ్డాయి.</translation>
+<translation id="370679569376308836">JemaOS అనేది Jema పరికరం మరియు దాని SaaS ఆధారంగా ఒక వాణిజ్య ఆఫర్.</translation>
+<translation id="2773644194450163486">JemaOS <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> ఓపెన్ సోర్స్ ప్రాజెక్ట్ ద్వారా సాధ్యమైంది.</translation>
+<translation id="2330680727776977160">Chromium కూడా ఇతర <ph name="BEGIN_LINK_1" />ఓపెన్ సోర్స్ సాఫ్ట్‌వేర్<ph name="END_LINK_1" /> మరియు <ph name="BEGIN_LINK_2" />అదనపు ఓపెన్ సోర్స్ సాఫ్ట్‌వేర్<ph name="END_LINK_2" /> ద్వారా సాధ్యమైంది.</translation>
+<translation id="1419954813084261088">Jema Technology ద్వారా రూపొందించబడింది మరియు తయారు చేయబడింది.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, అన్ని హక్కులు ప్రత్యేకించబడ్డాయి.</translation>
+<translation id="6168072053306020326">Jema Technology అనేది Jema Technology LTD మరియు Jema Technology (Beijing) Limited యొక్క ట్రేడింగ్ పేరు.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD అనేది ఇంగ్లాండ్ మరియు వేల్స్‌లో నమోదు చేయబడిన సంస్థ, కంపెనీ నంబర్ 12273803.</translation>
+<translation id="1251589813188467292">ముఖ్యమైన పరికర వారంటీ మరియు సేవా సమాచారం</translation>
+<translation id="4851115775198886021">పరికరం SN:</translation>
+</translationbundle>

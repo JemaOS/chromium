@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="lv">
+	<translation id="7386402409475121504">Izveidojiet savu vietējo JemaOS kontu</translation>
+	<translation id="3760308806144055927">Pierakstieties savā vietējā JemaOS kontā</translation>
+	<translation id="3325117507482096812">Lūdzu, ievadiet paroli</translation>
+	<translation id="1838206877831947154">Jūsu paroles nesakrīt</translation>
+	<translation id="2158276988029582286">Izveidojiet jaunu vietējo kontu</translation>
+	<translation id="8592849747346274067">Pierakstieties esošajā kontā</translation>
+	<translation id="482190417986201746">Ievadītais lietotājvārds vai parole ir nepareiza</translation>
+	<translation id="6603987686259425085">Varat <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>pierakstīties, izmantojot JemaOS vietējo kontu<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">E-pasts <ph name="EMAIL_ADDRESS">$1</ph> jau pastāv. Lūdzu, mēģiniet vēlreiz, izmantojot citu e-pasta adresi.</translation>
+	<translation id="7215016743510876720">Izmantojiet vietējo kontu</translation>
+	<translation id="6657635042185516718">Turpiniet izmantot tiešsaistes kontu</translation>
+	<translation id="6867476688065565618">Pārslēgties uz vietējo kontu?</translation>
+	<translation id="4840454774882557974">Ja izvēlaties izmantot vietējo kontu, noderīgas funkcijas ietver datu un preferenču sinhronizēšanu vairākās ierīcēs un automātisku pierakstīšanos tīmekļa lietotnēs, izmantojot savu JemaOS kontu, nedarbosies.</translation>
+	<translation id="8951507920859729424">Mēs iesakām izmantot tiešsaistes kontu, lai pilnībā izmantotu JemaOS.</translation>
+	<translation id="479773200536372215">Jūs nevarēsit pievienot Google kontus, jo trūkst Google API atslēgu. Plašāku informāciju skatiet vietnē <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph>.</translation>
+	<translation id="1198491307547164157">Jūs nevarēsit pievienot JemaOS kontus, jo trūkst JemaOS API atslēgu. Plašāku informāciju skatiet vietnē <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph>.</translation>
+	<translation id="5042404702659901995">Privātuma paziņojums</translation>
+	<translation id="4907736162587268100">Privātuma paziņojuma saturs</translation>
+	<translation id="5988344732274877691">Reģistrējieties (ļoti reti, apsolītajam) JemaOS biļetenam</translation>
+	<translation id="1706203008474708805">Pievienojieties JemaOS lietotāja pieredzes uzlabošanas plānam</translation>
+	<translation id="1147139514756087229">Pierakstieties, izmantojot vietējo kontu</translation>
+	<translation id="2054784944085654098">Tagad tiek izveidots dublējuma fails. Tas var aizņemt kādu laiku; lūdzu uzgaidiet…</translation>
+	<translation id="3554401467586751874">Dublējuma fails tika veiksmīgi izveidots</translation>
+	<translation id="2349211327705667074">Skatīt dublējuma failu</translation>
+	<translation id="6337433855796857931">Dublēšana neizdevās</translation>
+	<translation id="3049367131589710124">Skatīt kļūdu žurnālu</translation>
+	<translation id="1079017345574916945">Attālā darbvirsma</translation>
+	<translation id="3064478898280877715">Lietotņu veikals</translation>
+	<translation id="2747689477259164256">JemaOS AI</translation>
+	<translation id="5890206344045530832">Uzstādītājs</translation>
+	<translation id="2173278076276376488">Šī utilīta palīdzēs instalēt <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> šīs ierīces iekšējā atmiņā.</translation>
+	<translation id="5323182426977498659">Brīdinājums! Šī procedūra ir destruktīva, un to nevar atsaukt. Lūdzu, ņemiet vērā, ka mēs neuzņemamies nekādu atbildību par jūsu iespējamo datu zudumu un nesniegsim nekādu steidzamu tehnisko atbalstu, rīkojieties uz savu risku.</translation>
+	<translation id="8517836015601969896">Pilna diska uzstādīšana</translation>
+	<translation id="7300045760790370189">Instalējiet <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>, lai aizņemtu visu cieto disku, tiks dzēsti visi mērķa cietā diska dati.</translation>
+	<translation id="8762511733918256595">Vairāku sāknēšanas instalēšana</translation>
+	<translation id="248900698427753678">Instalējiet <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> esošā cietā diska nodalījumā, kur <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> var pastāvēt paralēli citām operētājsistēmām. Visi dati par mērķa nodalījumu tiks dzēsti.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> tiks instalēts jūsu atlasītajā cietajā diskā; visi dati mērķa diskā tiks dzēsti.</translation>
+	<translation id="4039091757234555415">Disks</translation>
+	<translation id="7783580523889684697">Nav pieejams disks</translation>
+	<translation id="8217653566575018388">Uzstādīšana pabeigta</translation>
+	<translation id="8846746259444262774">Instalēšana neizdevās</translation>
+	<translation id="7263815009235541549">Instalēšana ir veiksmīgi pabeigta. Lūdzu, vispirms izslēdziet ierīci, pēc tam noņemiet visus instalācijas datu nesējus un ieslēdziet to vēlreiz, lai palaistu <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>.</translation>
+	<translation id="3380151284134965398">Hmm, kaut kas nogāja greizi, un instalēšana netika pabeigta. Lūdzu, mēģiniet vēlreiz. Ja tā pati kļūda joprojām pastāv, lūdzu, sazinieties ar JemaOS atbalstu, izmantojot iepriekš minēto žurnālu.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> tiks instalēts jūsu cietā diska atlasītajā nodalījumā. Saskaņā ar pašreizējo vairāku sāknēšanas shēmu tas varētu notikt tikai tad, ja jūsu ierīce atbalsta UEFI un jūsu cietie diski ir formatēti ar GPT.</translation>
+	<translation id="7831363758161884243">Mērķa nodalījums tiks notīrīts; jums arī jānorāda aktīvais EFI nodalījums (parasti tas tiek darīts automātiski), jo instalētājam ir jāmaina sistēmas sāknēšanas konfigurācijas.</translation>
+	<translation id="5670799238446305550">Atlasiet mērķa nodalījumu <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph></translation>
+	<translation id="3695537760133394753">Sadalījums</translation>
+	<translation id="5610519566593708119">Atlasiet EFI nodalījumu</translation>
+	<translation id="3367650349940010965">Atlasītajam diskam nav pieejami nodalījumi</translation>
+	<translation id="7453223384507098390">Atlasītajam diskam nav pieejams neviens EFI nodalījums</translation>
+	<translation id="1854532683465500847">Atlasītā nodalījuma izmērs ir mazāks par 20 GB, instalēšana var neizdoties</translation>
+	<translation id="4144613075340468247">Atlasītais nodalījums ir pievienots <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> vairākām sāknēšanas reizēm. Instalēšana tajā atkārtoti var neizdoties</translation>
+	<translation id="5793361052649920836">Pēc instalēšanas kā jūs vēlaties palaist <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>?</translation>
+	<translation id="4273235330352963866">Instalējiet un konfigurējiet reEFInd man (ieteicams)</translation>
+	<translation id="1858708492548921044">REFInd ir sāknēšanas pārvaldnieka programma, kas piedāvā jauku grafisko interfeisu OS sāknēšanas opcijām, kad jūsu dators tiek startēts, un jūs varēsiet izvēlēties vēlamo operētājsistēmu, ko ar to palaist. Lai iegūtu papildinformāciju par REFInd, lūdzu, skatiet tās mājaslapu.</translation>
+	<translation id="3861924051442564602">Pievienojiet man UEFI sāknēšanas izvēlnes opciju</translation>
+	<translation id="8622370666798589804">Kad dators tiek startēts, iespējams, varēsiet atvērt UEFI sāknēšanas opciju izvēlni (visticamāk, nospiežot karsto taustiņu), šī opcija šai izvēlnei pievieno <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>. (atbalsta tikai dažus BIOS un UEFI programmaparatūras modeļus).</translation>
+	<translation id="1569398690544416170">Šeit neko nedariet, es pats to konfigurēšu</translation>
+	<translation id="3554866444001249532">Šis instalācijas skripts ievietos tikai nepieciešamos .efi failus <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> sāknēšanai jūsu EFI nodalījumā. Jums būs jākonfigurē, kā to bootēt pašam.</translation>
+	<translation id="7492832751164189534">Piespiest atmest</translation>
+	<translation id="5159534860632584026">Instalēšanas process ir pārtraukts</translation>
+	<translation id="8686749782014838344">Neizdevās iegūt informāciju par disku</translation>
+	<translation id="5688543378771259173">Instalēšana tiek pārtraukta...</translation>
+	<translation id="5350452134936384991">Instalējiet USB</translation>
+	<translation id="8008470485414925603">Instalējiet <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> USB diskā; visi dati mērķa USB diskā tiks dzēsti.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> tiks instalēts jūsu atlasītajā USB diskā; visi dati mērķa diskā tiks dzēsti.</translation>
+	<translation id="5725593226060700263">Nav pieejams USB disks</translation>
+	<translation id="4357040841587078287">Esam konstatējuši, ka jūs izmantojat šo JemaOS kopiju no lejupielādēta attēla faila. Lai izmantotu visplašākās atbalsta funkcijas (tostarp Over-The-Air atjauninājumus), ko JemaOS var piedāvāt, mēs ļoti iesakām palaist funkciju "Instalētājs", lai veiktu JemaOS pilna diska instalēšanu atsevišķā atmiņas ierīcē.</translation>
+	<translation id="1246398339704431302">Varat <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>tik un tā turpināt izmantot šo JemaOS kopiju<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, instalēšanas procesu var izpildīt vēlākā sistēmas posmā, tomēr pēc instalēšanas visi jūsu dati tiks dzēsti no jauna, un jūs to darīsit.</translation>
+	<translation id="3654532222088291133">Lai pierakstītos, tā vietā, lai ievadītu JemaOS konta paroli, šai ierīcei varat izveidot <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> paroli.</translation>
+	<translation id="8377684629839541977">Izmantojiet JemaOS konta paroli</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">Automātiski uzturēt <ph name="DEVICE_OS" /> atjauninātu</translation>
+<translation id="2347352406101856238"><ph name="DEVICE_OS" /> atjaunināšana iespējota</translation>
+<translation id="185834232609012804"><ph name="DEVICE_OS" /> atjaunināšana atspējota</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Platforma <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Attālā darbvirsma</translation>
+<translation id="6898090158927982244">Jūsu Linux ir atjaunināts</translation>
+<translation id="4886703929102211360">Komponentam Linux (beta) ir pieejams kritiskais atjauninājums. Ļoti ieteicams to instalēt pēc iespējas ātrāk, pretējā gadījumā Linux (beta) var pārstāt darboties.</translation>
+<translation id="6694016202036959050"><ph name="DEVICE_OS" /> iestatījumi</translation>
+<translation id="8362858344151826493">JemaOS konts, dublējums, dažādi</translation>
+<translation id="9150429437595727962">Wi-Fi iestatījumi</translation>
+<translation id="4938972461544498524">Skārienpaliktņa iestatījumi</translation>
+<translation id="1210024513248363065">Attālie pakalpojumi</translation>
+<translation id="2878862288885588535">Attālās diagnostikas pakalpojums</translation>
+<translation id="7409197984340676806">Attālās diagnostikas pakalpojums ļauj oficiālajiem JemaOS atbalsta pārstāvjiem noteikt sistēmas problēmas. Pašlaik attālās diagnostikas pakalpojumu var uzsākt tikai oficiālie JemaOS atbalsta pārstāvji.</translation>
+<translation id="1791028023086176332">Lūdzu, nogādājiet šo numuru oficiālajiem JemaOS atbalsta pārstāvjiem</translation>
+<translation id="6279304275399437025">Notiek attālās diagnostikas pakalpojuma palaišana...</translation>
+<translation id="1501882165699826662">Lūdzu, apturiet attālās diagnostikas pakalpojumu un mēģiniet vēlreiz</translation>
+<translation id="3100283258447375201">Vairāk informācijas</translation>
+<translation id="4070039109671307724">Dažādi</translation>
+<translation id="7326893024940073254">Poga "Restartēt"</translation>
+<translation id="3002423764319968103">Rādīt pogu "Restartēt" sistēmas izvēlnē</translation>
+<translation id="6243454903512423518">Poga "Pagriezt ekrānu"</translation>
+<translation id="6491049336868978729">Pašlaik neesat planšetdatora režīmā, tāpēc poga "Pagriezt ekrānu" ir paslēpta</translation>
+<translation id="5496012402277579695">Rādīt pogu "Pagriezt ekrānu" sistēmas izvēlnē</translation>
+<translation id="5882838977344999606">Planšetdatora/klēpjdatora režīma pārslēdzējs</translation>
+<translation id="472164133625585606">Rādīt planšetdatora/klēpjdatora režīma pārslēdzēju sistēmas izvēlnē</translation>
+<translation id="1851103550468466960">Iespējot Widevine</translation>
+<translation id="4058176713282795846">Iespējojiet Widevine, lai straumētu aizsargātu maksas saturu. <ph name="BEGIN_LINK_LEARN_MORE" />Uzzināt vairāk<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">Atlasiet "libwidevine.so"</translation>
+<translation id="4838463656205005584">Neizdevās iespējot Widevine...</translation>
+<translation id="2164041826798266548">Widevine CDM moduļa instalēšana neizdevās. Lūdzu, pārbaudiet savienojumu un mēģiniet vēlreiz.</translation>
+<translation id="4106982328079440606">JemaOS konta iestatījumi</translation>
+<translation id="6468776556018764845">Eksperimentālas funkcijas</translation>
+<translation id="3487615413425326553">Apiet uzticamās platformas moduļa (TPM) pārbaudes</translation>
+<translation id="4817176087932811573">Dažas funkcijas var nedarbots, ja ierīcē ir nesaderīgs TPM mikroshēmojums; kā risinājumu varat apiet TPM pārbaudes.</translation>
+<translation id="3356003366173774486">Automātiskā pieteikšanās</translation>
+<translation id="6218459410891191693">Atļaut pašreizējam kontam automātiski pieteikties darbvirsmā pēc ierīces restartēšanas</translation>
+<translation id="6620839363422062843">Šim kontam nevar iespējot; automātiskā pieteikšanās šajā ierīcē jau ir aktīva citiem kontiem</translation>
+<translation id="6734500226490446035">Šim kontam nevar iespējot; inicializējot šī konta failu sistēmas, radās nezināma kļūda. Mēģiniet restartēt vai izveidot jaunu kontu</translation>
+<translation id="5464880042146818691">Šim kontam nevar iespējot; automātiskās pieteikšanās opcija ir pieejama tikai konta veidam "Vietējais konts".</translation>
+<translation id="3335654854106476749">Pirms automātiskās pieteikšanās iespējošanas pievienojiet pieteikšanās paroli iestatījumos <ph name="BEGIN_LINK" />Konfidencialitāte un drošība<ph name="END_LINK" />.</translation>
+<translation id="5586831602198585601">Jaunāka JemaOS versija tagad ir pieejama atjaunināšanai. Tomēr jūsu abonements JemaOS for You ir beidzies; lai atjauninātu JemaOS, nepieciešams aktīvs abonements.</translation>
+<translation id="3869860597719956574">Jauna galvenā JemaOS versija tagad ir pieejama atjaunināšanai. Lai turpinātu šo atjaunināšanu, jāveic vienreizējs maksājums.</translation>
+<translation id="6523879681771260760">Lūdzu, norādiet ceļu dublējuma faila saglabāšanai</translation>
+<translation id="2036152819788683293">Izveidot šī konta dublējuma failu (beta). <ph name="BEGIN_LINK_LEARN_MORE" />Uzzināt vairāk<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Dublēt</translation>
+<translation id="4267347174163690295">Izveidot šī konta dublējuma failu (beta).</translation>
+<translation id="8112950994208888917">Šī darbība izveido pilnu diska dublējumu šim kontam, ļaujot viegli atjaunot JemaOS stāvoklī, kāds tas bija dublējuma izveides brīdī, tostarp iestatījumus, instalētos pārlūka paplašinājumus un apakšsistēmas lietotnes. Atkarībā no lietotnēm un mājas mapes satura dublējuma fails var būt liels; ieteicams to saglabāt ārējā datu nesējā. Ja jums ir pārnēsājams USB disks, lūdzu, pievienojiet to tagad. <ph name="BEGIN_LINK_LEARN_MORE" />Uzzināt vairāk<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Lūdzu, ievadiet šī konta pieteikšanās paroli</translation>
+<translation id="8663988871299316062">Lūdzu, atcerieties šo paroli, jo tā būs nepieciešama šī dublējuma faila atjaunošanai</translation>
+<translation id="6408904153044317846">Atlasiet atjaunojamo dublējuma failu</translation>
+<translation id="8062988348127771021">Atjaunot JemaOS datus no dublējuma faila</translation>
+<translation id="7309192418866543730">Ievadiet dublējuma paroli</translation>
+<translation id="3642408376366598984">Ievadiet paroli, ar kuru šifrēts šis dublējuma fails</translation>
+<translation id="7783974937157985523">Dublējuma parole</translation>
+<translation id="6583780301401541007">Atjaunošana veiksmīga</translation>
+<translation id="3514011352559420398">Atjaunošana neizdevās</translation>
+<translation id="7535980903266533458">Saglabāt dublējumu ierīcē vai ārējā krātuvē</translation>
+<translation id="604001903249547235">Mākoņa dublējums</translation>
+<translation id="8885702701336541611">Augšupielādēt dublējumu JemaOS mākoņkrātuvē</translation>
+<translation id="3939744430096549862">Dublēt mākonī</translation>
+<translation id="619129431573254316">Atjaunot no vietējā dublējuma faila</translation>
+<translation id="1859592711955106569">Atjaunošana no mākoņa</translation>
+<translation id="38222223336741457">Lejupielādēt un atjaunot no JemaOS mākoņa</translation>
+<translation id="1241089811244416179">Atjaunot no mākoņa</translation>
+<translation id="652479689372703360">Notiek dublēšana</translation>
+<translation id="3655220146274872918">Dublēšana pabeigta</translation>
+<translation id="4243579853635792694">Jūsu dublējums veiksmīgi izveidots</translation>
+<translation id="4854179463174744546">Dublēšanas procesā radās kļūda</translation>
+<translation id="2410668771600309999">Connect API lietotāja informācija</translation>
+<translation id="2223892939866251845">Lietotāja ID</translation>
+<translation id="3850846286480935456">Dublējumu krātuves analīze</translation>
+<translation id="6244494465581273970">Nepieciešams lietotāja ID</translation>
+<translation id="9204006549413740506">Pēdējoreiz atjaunināts</translation>
+<translation id="476642412165431515">Aparatūras ierīces</translation>
+<translation id="3386337985825120901">Dublējuma datu nav</translation>
+<translation id="8490990067870590760">Notiek dublējuma failu ielāde...</translation>
+<translation id="2955409026764742995">Atlasiet atjaunojamo dublējuma failu:</translation>
+<translation id="7414629348005657242">-- Atlasiet dublējuma failu --</translation>
+<translation id="918246516374174381">Dublējuma faili nav atrasti. Lūdzu, vispirms izveidojiet dublējumu.</translation>
+<translation id="77997252117517973">Drīzumā</translation>
+<translation id="1930692852800776096">Pievienot vārdnīcu</translation>
+<translation id="8793060353848771694">Kreisās austiņas attēls</translation>
+<translation id="6257440204887306255">Uzlādes korpusa attēls</translation>
+<translation id="2754700616124958693">Labās austiņas attēls</translation>
+<translation id="1068676292264983586">Noklusējuma ierīces attēls</translation>
+<translation id="6364075396486660405">Atspējot automātisku multivides failu skenēšanu visās partīcijās, lai optimizētu akumulatora darbības laiku. <ph name="BEGIN_LINK_LEARN_MORE" />Uzzināt vairāk<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Drošības opcijas</translation>
+<translation id="5618366106086725045">Iespējot "Izstrādātāja režīmu" šai <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> instalācijai ar vairāk izstrādātāju funkcijām. <ph name="BEGIN_LINK_LEARN_MORE" />Uzzināt vairāk<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Jūs jau esat "Izstrādātāja režīmā"</translation>
+<translation id="6074549317340202195">Iespējot "Izstrādātāja režīmu"</translation>
+<translation id="418781258674176053">Brīdinājums! "Izstrādātāja režīma" iespējošana ir neatgriezeniska darbība. Ja vēlēsities "Izstrādātāja režīmu" atspējot, būs jāpārinstalē JemaOS, kas dzēsīs visus datus. Lūdzu, dublējiet savus datus un rīkojieties uz savu atbildību.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Platforma <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Pašlaik bezsaistē</translation>
+<translation id="2590678769628709242">Pārbaudiet savu JemaOS abonementu tiešsaistē</translation>
+<translation id="4701836089682883918">JemaOS abonementa informācija</translation>
+<translation id="5891566673089952188">Iegūstot ierīces ID, radās kļūda</translation>
+<translation id="4685086787606104322">Abonementa beigas</translation>
+<translation id="3354919960795782984">Ierīces ID</translation>
+<translation id="5758632069869992306">Pārbaudiet abonementu tiešsaistē</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Platforma <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Izmēģinājuma abonements</translation>
+<translation id="4362781408813685579">Aktīvs abonements</translation>
+<translation id="1141274201089997510">Abonements beidzies</translation>
+<translation id="2553683254139782404">Nekomerciālais izdevums</translation>
+<translation id="8466048683756385518">Uzņēmumu licencētā versija (izmēģinājuma)</translation>
+<translation id="2853871047705932424">Uzņēmumu licencētā versija</translation>
+<translation id="5239675900317881945">Uzņēmumu licencētā versija (beigusies)</translation>
+<translation id="189101945990408398">Vecāks Intel</translation>
+<translation id="6816405236809604904">Jaunāks Intel</translation>
+<translation id="6169452478137972655">AMD grafika</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="1270291881045478104">Iespējot JemaOS AI</translation>
+<translation id="2013780539677437932">Iespējot vai atspējot visas ar JemaOS AI saistītās funkcijas</translation>
+<translation id="3398637633218757480">Iespējot JemaOS AI ātro izsaukšanu</translation>
+<translation id="8986197796475507452">Ātri atveriet JemaOS AI opcijas iezīmētam saturam, nospiežot Ctrl + C + C</translation>
+<translation id="6407628130593274137">Citi JemaOS AI iestatījumi un opcijas</translation>
+<translation id="4005574560653331142">Lai mainītu šī vietējā konta PIN vai pieteikšanās paroli, atveriet iestatījumus <ph name="BEGIN_LINK" />Konfidencialitāte un drošība<ph name="END_LINK" />.</translation>
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">Jūs varat <ph name="LINK_START" />pierakstīties ar JemaOS lokālo kontu<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">E-pasts <ph name="EMAIL_ADDRESS" /> jau pastāv. Lūdzu, mēģiniet vēlreiz ar citu e-pastu.</translation>
+<translation id="4519800823932975782">JemaOS palīdzības centrs</translation>
+<translation id="4737474693231655139">Atrodiet palīdzības rakstus un atbildes uz biežiem JemaOS jautājumiem</translation>
+</translationbundle>

@@ -36,4 +36,16 @@
 <translation id="5541694001704515807">如需执行这一操作，你需要<ph name="BEGIN_LINK_ARC_APP" />激活该 JemaOS 设备上的 Android 子系统<ph name="END_LINK_ARC_APP" /> ，并且将你的 JemaOS 设备 <ph name="BEGIN_LINK_HELP" />置成「开发者模式」<ph name="END_LINK_HELP" />。</translation>
 <translation id="3576151496197730029">如需执行这一操作，你需要<ph name="BEGIN_LINK_ARC_APP" />激活该 openJema 设备上的 Android 子系统<ph name="END_LINK_ARC_APP" /> ，并且将你的 openJema 设备 <ph name="BEGIN_LINK_HELP" />置成「开发者模式」<ph name="END_LINK_HELP" />。</translation>
 <translation id="8917432843439850484">使用 JemaOS AI 打开</translation>
+
+
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">注册 Nutstore，在 JemaOS 中将文件同步到云端。</translation>
+<translation id="6565655783894300125">并使用您的电子邮件和应用密码将 Nutstore 帐户连接到 JemaOS</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">即将推出</translation>
+<translation id="4928968570611226525">要继续此操作，您需要在 JemaOS 设备上<ph name="BEGIN_LINK_ARC_APP" />&gt;激活 Android 子系统<ph name="END_LINK_ARC_APP" />；此外，您的 JemaOS 设备还需要<ph name="BEGIN_LINK_HELP" />切换到开发者模式<ph name="END_LINK_HELP" />。</translation>
+<translation id="7395250550107972941">无法侧载 .apk 文件。请确保 Android 子系统已激活，并且您处于 JemaOS 开发者模式。</translation>
+<translation id="5690820326685091783">使用 JemaOS AI 打开</translation>
 </translationbundle>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="my">
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">JemaOS တွင် သင့်ဖိုင်များကို cloud-sync လုပ်ရန် Nutstore သို့ ဆိုင်းအပ်ပါ။</translation>
+<translation id="8672291834743661083">Nutstore သို့ ဆိုင်းအပ်ပါ</translation>
+<translation id="5103639294476249880">လုံခြုံရေး ဆက်တင်များတွင် "Add Application" ခလုတ်ကို နှိပ်ပါ</translation>
+<translation id="8371020157576651120">သင့် application စကားဝှက်ကို ဖန်တီးပြီး ကူးယူပါ</translation>
+<translation id="3855250998276979579">Nutstore App ကို ဖွင့်ပါ</translation>
+<translation id="6565655783894300125">ပြီးနောက် သင့်အီးမေးလ်နှင့် application စကားဝှက်ဖြင့် Nutstore အကောင့်ကို JemaOS သို့ ချိတ်ဆက်ပါ</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">မကြာမီ လာမည်</translation>
+<translation id="4928968570611226525">ဤလုပ်ဆောင်ချက်ဖြင့် ဆက်လက်လုပ်ဆောင်ရန် သင်သည် သင့် JemaOS စက်တွင် <ph name="BEGIN_LINK_ARC_APP" />&gt;Android subsystem ကို အသက်သွင်းရန်<ph name="END_LINK_ARC_APP" /> လိုအပ်ပါမည်; ထို့အပြင် သင့် JemaOS စက်ကို <ph name="BEGIN_LINK_HELP" />Developer Mode သို့ ပြောင်းထားရန်<ph name="END_LINK_HELP" /> လိုအပ်ပါသည်။</translation>
+<translation id="7395250550107972941">.apk ဖိုင်များကို sideload လုပ်၍ မရပါ။ Android subsystem ကို အသက်သွင်းပြီးဖြစ်ကြောင်းနှင့် သင်သည် JemaOS Developer mode တွင် ရှိနေကြောင်း ကျေးဇူးပြု၍ သေချာစေပါ။</translation>
+<translation id="5690820326685091783">JemaOS AI ဖြင့် ဖွင့်ပါ</translation>
+</translationbundle>

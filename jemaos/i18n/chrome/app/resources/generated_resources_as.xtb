@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="as">
+	<translation id="7386402409475121504">আপোনাৰ স্থানীয় JemaOS একাউণ্ট সৃষ্টি কৰক</translation>
+	<translation id="3760308806144055927">আপোনাৰ স্থানীয় JemaOS একাউণ্টত চাইন ইন কৰক</translation>
+	<translation id="3325117507482096812">অনুগ্ৰহ কৰি এটা পাছৱৰ্ড ইনপুট কৰক</translation>
+	<translation id="1838206877831947154">আপোনাৰ পাছৱৰ্ডসমূহ মিল নাই</translation>
+	<translation id="2158276988029582286">এটা নতুন স্থানীয় একাউণ্ট সৃষ্টি কৰক</translation>
+	<translation id="8592849747346274067">এটা বৰ্তমানৰ একাউণ্টত চাইন ইন কৰক</translation>
+	<translation id="482190417986201746">আপুনি দিয়া ব্যৱহাৰকাৰীৰ নাম বা পাছৱৰ্ড ভুল</translation>
+	<translation id="6603987686259425085">আপুনি <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>এটা JemaOS স্থানীয় একাউণ্টৰ সৈতে চাইন ইন কৰিব পাৰে<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph> ।</translation>
+	<translation id="3598802966230712759">ইমেইল <ph name="EMAIL_ADDRESS">$1</ph> ইতিমধ্যে আছে। অনুগ্ৰহ কৰি আন এটা ইমেইলৰ সৈতে পুনৰ চেষ্টা কৰক।</translation>
+	<translation id="7215016743510876720">স্থানীয় একাউণ্ট ব্যৱহাৰ কৰক</translation>
+	<translation id="6657635042185516718">অনলাইন একাউণ্ট ব্যৱহাৰ কৰি যাওক</translation>
+	<translation id="6867476688065565618">স্থানীয় একাউণ্টলৈ সলনি কৰক?</translation>
+	<translation id="4840454774882557974">যদি আপুনি এটা স্থানীয় একাউণ্ট ব্যৱহাৰ কৰিবলৈ বাছনি কৰে, উপযোগী বৈশিষ্ট্যসমূহে আপোনাৰ ডাটা আৰু পছন্দসমূহ একাধিক ডিভাইচসমূহৰ মাজেৰে সমন্বয় কৰা আৰু আপোনাৰ JemaOS একাউণ্ট ব্যৱহাৰ কৰি ৱেব এপসমূহ স্বয়ংক্ৰিয়ভাৱে চাইন ইন কৰাটো অন্তৰ্ভুক্ত কৰে।</translation>
+	<translation id="8951507920859729424">আমি JemaOS সম্পূৰ্ণৰূপে ব্যৱহাৰ কৰিবলৈ এটা অনলাইন একাউণ্ট ব্যৱহাৰ কৰাৰ পৰামৰ্শ দিওঁ।</translation>
+	<translation id="479773200536372215">গুগল এপিআই কি নোহোৱাৰ বাবে আপুনি গুগল একাউণ্ট যোগ কৰিব নোৱাৰিব। বিৱৰণৰ বাবে <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> চাওক।</translation>
+	<translation id="1198491307547164157">আপুনি JemaOS একাউণ্টসমূহ যোগ কৰিব নোৱাৰিব কাৰণ JemaOS API কি'সমূহ অনুপস্থিত। বিৱৰণৰ বাবে <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> চাওক।</translation>
+	<translation id="5042404702659901995">গোপনীয়তা বিবৃতি</translation>
+	<translation id="4907736162587268100">গোপনীয়তা বিবৃতিৰ বিষয়বস্তু</translation>
+	<translation id="5988344732274877691">JemaOS ৰ বাবে (অতি কম, প্ৰতিশ্ৰুতিবদ্ধ) বাতৰি কাকতৰ বাবে চাইন আপ কৰক</translation>
+	<translation id="1706203008474708805">JemaOS ব্যৱহাৰকাৰী অভিজ্ঞতা উন্নয়ন পৰিকল্পনাত যোগদান কৰক</translation>
+	<translation id="1147139514756087229">স্থানীয় একাউণ্টৰ সৈতে চাইন ইন কৰক</translation>
+	<translation id="2054784944085654098">এতিয়া বেকআপ ফাইল সৃষ্টি কৰা হৈছে। ইয়াৰ বাবে কিছু সময় লাগিব পাৰে; অনুগ্ৰহ কৰি অপেক্ষা কৰক...</translation>
+	<translation id="3554401467586751874">বেকআপ ফাইল সফলভাৱে সৃষ্টি কৰা হৈছিল</translation>
+	<translation id="2349211327705667074">বেকআপ ফাইল চাওক</translation>
+	<translation id="6337433855796857931">বেকআপ বিফল হ'ল</translation>
+	<translation id="3049367131589710124">ত্ৰুটি লগ চাওক</translation>
+	<translation id="1079017345574916945">দূৰৱৰ্তী ডেস্কটপ</translation>
+	<translation id="3064478898280877715">এপ ষ্ট'ৰ</translation>
+	<translation id="2747689477259164256">জেমাঅ'এছ এআই</translation>
+	<translation id="5890206344045530832">ইনষ্টলাৰ</translation>
+	<translation id="2173278076276376488">এই সঁজুলিয়ে আপোনাক এই ডিভাইচৰ অভ্যন্তৰীণ সংৰক্ষণত <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> সংস্থাপন কৰাত সহায় কৰিব।</translation>
+	<translation id="5323182426977498659">সতৰ্কবাণী! এই পদ্ধতি ধ্বংসাত্মক আৰু ইয়াক বাতিল কৰিব নোৱাৰি। অনুগ্ৰহ কৰি মন কৰক যে আপোনাৰ সম্ভাৱ্য তথ্য হেৰুৱাৰ বাবে আমি কোনো দায়িত্ব ল'ব নোৱাৰো বা কোনো জৰুৰী কাৰিকৰী সমৰ্থন প্ৰদান নকৰো, আপোনাৰ নিজৰ দায়িত্বত আগবাঢ়িম।</translation>
+	<translation id="8517836015601969896">সম্পূৰ্ণ ডিষ্ক সংস্থাপন</translation>
+	<translation id="7300045760790370189">এটা সম্পূৰ্ণ হাৰ্ড ডিষ্ক দখল কৰিবলে <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> সংস্থাপন কৰক, লক্ষ্য হাৰ্ড ডিস্কৰ সকলো তথ্য মচি পেলোৱা হ'ব।</translation>
+	<translation id="8762511733918256595">বহু-বুট সংস্থাপন</translation>
+	<translation id="248900698427753678">এটা হাৰ্ড ডিষ্কৰ এটা বৰ্ত্তমানৰ বিভাজনত <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> সংস্থাপন কৰক, য'ত <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> অন্য OS ৰ সৈতে সমান্তৰালভাৱে থাকিব পাৰে । লক্ষ্য বিভাজনৰ সকলো তথ্য মচি পেলোৱা হ'ব ।</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> আপোনাৰ নিৰ্বাচিত হাৰ্ড ড্ৰাইভত সংস্থাপন কৰা হ'ব; লক্ষ্য ডিষ্কৰ সকলো তথ্য মচি পেলোৱা হ'ব ।</translation>
+	<translation id="4039091757234555415">ডিস্ক</translation>
+	<translation id="7783580523889684697">কোনো ডিষ্ক উপলব্ধ নহয়</translation>
+	<translation id="8217653566575018388">সংস্থাপন সম্পূৰ্ণ হ'ল</translation>
+	<translation id="8846746259444262774">সংস্থাপন বিফল হ'ল</translation>
+	<translation id="7263815009235541549">সংস্থাপন সফলভাৱে সমাপ্ত হৈছে। অনুগ্ৰহ কৰি আপোনাৰ ডিভাইচ প্ৰথমে বন্ধ কৰক, তাৰ পিছত যিকোনো সংস্থাপন মাধ্যম আঁতৰাওক, আৰু ইয়াক পুনৰায় অন কৰক <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> বুট কৰিবলে ।</translation>
+	<translation id="3380151284134965398">উফ, কিবা এটা ভুল হৈছে আৰু ইনষ্টলেচন সম্পূৰ্ণ হোৱা নাই। অনুগ্ৰহ কৰি প্ৰক্ৰিয়াটো পুনৰ চেষ্টা কৰক। যদি একে ভুল থাকে, অনুগ্ৰহ কৰি ওপৰৰ লগৰ সৈতে JemaOS সমৰ্থনৰ বাবে হাত আগবঢ়াওক ।</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> আপোনাৰ হাৰ্ড ড্ৰাইভৰ নিৰ্বাচিত বিভাজনত সংস্থাপন কৰা হব । বৰ্ত্তমানৰ বহু-বুট আঁচনিৰ অন্তৰ্গত, ই কেৱল আগবাঢ়িব পাৰে যদি আপোনাৰ ডিভাইচে UEFI সমৰ্থন কৰে আৰু আপোনাৰ হাৰ্ড ডিষ্কসমূহ GPT ৰ সৈতে বিন্যাস কৰা হয় ।</translation>
+	<translation id="7831363758161884243">লক্ষ্য বিভাজন মচি পেলোৱা হ'ব; আপুনি আপোনাৰ সক্ৰিয় EFI বিভাজন ধাৰ্য্য কৰিব লাগিব (সাধাৰণতে স্বয়ংক্ৰিয়ভাৱে কৰা) কাৰণ সংস্থাপকে ব্যৱস্থাপ্ৰণালীৰ বুট বিন্যাসসমূহ পৰিবৰ্তন কৰিব লাগিব ।</translation>
+	<translation id="5670799238446305550"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> লক্ষ্য বিভাজন নিৰ্ব্বাচন কৰক</translation>
+	<translation id="3695537760133394753">বিভাজন</translation>
+	<translation id="5610519566593708119">EFI বিভাজন নিৰ্ব্বাচন কৰক</translation>
+	<translation id="3367650349940010965">নিৰ্বাচিত ডিষ্কৰ বাবে কোনো বিভাজন উপলব্ধ নহয়</translation>
+	<translation id="7453223384507098390">নিৰ্বাচিত ডিষ্কৰ বাবে কোনো EFI বিভাজন উপলব্ধ নহয়</translation>
+	<translation id="1854532683465500847">নিৰ্বাচিত বিভাজনৰ আকাৰ 20GB তকৈ কম, সংস্থাপন বিফল হব পাৰে</translation>
+	<translation id="4144613075340468247">নিৰ্বাচিত বিভাজনক <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> বহু-বুটলৈ তুলি লোৱা হৈছে, ইয়াত পুনৰ সংস্থাপন বিফল হব পাৰে</translation>
+	<translation id="5793361052649920836">সংস্থাপনৰ পিছত, আপুনি <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> কেনেকৈ বুট কৰিব বিচাৰে?</translation>
+	<translation id="4273235330352963866">মোৰ বাবে rEFInd সংস্থাপন আৰু বিন্যাস কৰক (উপদেশিত)</translation>
+	<translation id="1858708492548921044">rEFInd এটা বুট ব্যৱস্থাপক প্ৰগ্ৰাম যি OS বুট বিকল্পসমূহৰ বাবে এটা সুন্দৰ গ্ৰাফিকেল আন্তঃপৃষ্ঠ প্ৰদান কৰে যেতিয়া আপোনাৰ PC আৰম্ভ হয়, আপুনি ইয়াৰ সৈতে বুট কৰিবলে আপোনাৰ পছন্দৰ OS নিৰ্ব্বাচন কৰিব পাৰিব। rEFInd সম্পৰ্কে অধিক তথ্যৰ বাবে, অনুগ্ৰহ কৰি ইয়াৰ হোমপেজ চাওক।</translation>
+	<translation id="3861924051442564602">মোৰ বাবে এটা UEFI বুট মেনু বিকল্প যোগ কৰক</translation>
+	<translation id="8622370666798589804">যেতিয়া আপোনাৰ PC আৰম্ভ হয় আপুনি UEFI বুট বিকল্পসমূহ মেনুত প্ৰৱেশ কৰিব পাৰিব (সম্ভৱতঃ এটা হটকি টিপি), এই বিকল্পই <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> সেই মেনুত এটা প্ৰৱেশ হিচাপে যোগ কৰে। (কেৱল BIOS আৰু UEFI ফাৰ্মৱেৰৰ কিছুমান আৰ্হি সমৰ্থন কৰে) ।</translation>
+	<translation id="1569398690544416170">ইয়াত একো নকৰিব, মই নিজেই কনফিগাৰ কৰিম</translation>
+	<translation id="3554866444001249532">এই সংস্থাপন স্ক্ৰিপ্ট কেৱল আপোনাৰ EFI বিভাজনলৈ <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> বুট কৰাৰ বাবে প্ৰয়োজনীয় .efi নথিপত্ৰসমূহ ৰাখিব, আপুনি ইয়াক নিজে কেনেকৈ বুট কৰিব লাগে বিন্যাস কৰিব লাগিব ।</translation>
+	<translation id="7492832751164189534">বলপূৰ্বক চাকৰি এৰি দিলে</translation>
+	<translation id="5159534860632584026">সংস্থাপন প্ৰক্ৰিয়া সমাপ্ত কৰা হৈছে</translation>
+	<translation id="8686749782014838344">ডিষ্কৰ তথ্য লাভ কৰাত ব্যৰ্থ</translation>
+	<translation id="5688543378771259173">সংস্থাপন সমাপ্ত কৰা হৈছে...</translation>
+	<translation id="5350452134936384991">USB ত সংস্থাপন কৰক</translation>
+	<translation id="8008470485414925603">এটা USB ডিষ্কত <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> সংস্থাপন কৰক; লক্ষ্য USB ডিষ্কৰ সকলো তথ্য মচি পেলোৱা হ'ব ।</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> আপোনাৰ নিৰ্বাচিত USB ডিষ্কত সংস্থাপন কৰা হ'ব; লক্ষ্য ডিষ্কৰ সকলো তথ্য মচি পেলোৱা হ'ব ।</translation>
+	<translation id="5725593226060700263">কোনো USB ডিস্ক উপলব্ধ নহয়</translation>
+	<translation id="4357040841587078287">আমি ধৰা পেলাইছো যে আপুনি এটা ডাউনলোড কৰা ছবি ফাইলৰ পৰা JemaOS ৰ এই কপি চলাই আছে। JemaOS এ প্ৰদান কৰিব পৰা আটাইতকৈ বিস্তৃত সমৰ্থন বৈশিষ্ট্যসমূহ (অভাৰ-দ্য-এয়াৰ আপডেইটসমূহ অন্তৰ্ভুক্ত কৰি) ব্যৱহাৰ কৰিবলে, আমি আপোনাক এটা পৃথক সংৰক্ষণ ডিভাইচলৈ JemaOS ৰ এটা সম্পূৰ্ণ-ডিস্ক সংস্থাপন সম্পাদন কৰিবলে "ইনস্টলাৰ" ফলন আৰম্ভ কৰিবলৈ দৃঢ়ভাৱে পৰামৰ্শ দিওঁ।</translation>
+	<translation id="1246398339704431302">আপুনি <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>JemaOS ৰ এই কপি যিকোনো প্ৰকাৰে ব্যৱহাৰ কৰি থাকিব পাৰে<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, সংস্থাপন প্ৰক্ৰিয়া চিস্টেমৰ পিছৰ পৰ্যায়ত এক্সিকিউট কৰিব পাৰি, অৱশ্যে, সংস্থাপনৰ পিছত আপোনাৰ সকলো তথ্য মচি পেলোৱা হ'ব আৰু আপুনি এই পৃষ্ঠাৰ পৰা পুনৰ আৰম্ভ কৰিব।</translation>
+	<translation id="3654532222088291133">চাইন ইন কৰিবলৈ আপোনাৰ JemaOS একাউণ্টৰ গুপ্তশব্দ প্ৰৱেশ কৰাৰ পৰিবৰ্তে, আপুনি এই ডিভাইচৰ বাবে এটা <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> গুপ্তশব্দ সৃষ্টি কৰিব পাৰিব</translation>
+	<translation id="8377684629839541977">JemaOS একাউণ্টৰ পাছৱৰ্ড ব্যৱহাৰ কৰক</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398"><ph name="DEVICE_OS" /> স্বয়ংক্ৰিয়ভাৱে আপ-টু-ডেট ৰাখক</translation>
+<translation id="2347352406101856238"><ph name="DEVICE_OS" /> আপডেট সক্ষম কৰা হৈছে</translation>
+<translation id="185834232609012804"><ph name="DEVICE_OS" /> আপডেট নিষ্ক্ৰিয় কৰা হৈছে</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) প্লেটফৰ্ম <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">ৰিমোট ডেস্কটপ</translation>
+<translation id="6898090158927982244">আপোনাৰ Linux আপ-টু-ডেট আছে</translation>
+<translation id="4886703929102211360">Linux (বেটা) উপাদানৰ বাবে এটা গুৰুত্বপূৰ্ণ আপডেট উপলব্ধ। এই আপডেটটো যত শীঘ্ৰে সম্ভৱ ইনষ্টল কৰাৰ পৰামৰ্শ দিয়া হৈছে, নহলে আপোনাৰ Linux (বেটা) কাম কৰা বন্ধ কৰিব পাৰে।</translation>
+<translation id="6694016202036959050"><ph name="DEVICE_OS" /> ছেটিংছ</translation>
+<translation id="8362858344151826493">JemaOS একাউণ্ট, বেকআপ, বিবিধ</translation>
+<translation id="9150429437595727962">Wi-Fi ছেটিংছ</translation>
+<translation id="4938972461544498524">টাচপেড ছেটিংছ</translation>
+<translation id="1210024513248363065">ৰিমোট সেৱাসমূহ</translation>
+<translation id="2878862288885588535">ৰিমোট ডায়াগনষ্টিক সেৱা</translation>
+<translation id="7409197984340676806">ৰিমোট ডায়াগনষ্টিক সেৱাই চৰকাৰী JemaOS সমৰ্থন প্ৰতিনিধিসকলক চিষ্টেমৰ সমস্যাসমূহ চিনাক্ত কৰিবলৈ অনুমতি দিয়ে। বৰ্তমান, ৰিমোট ডায়াগনষ্টিক সেৱা কেৱল চৰকাৰী JemaOS সমৰ্থন প্ৰতিনিধিসকলেহে আৰম্ভ কৰিব পাৰে।</translation>
+<translation id="1791028023086176332">অনুগ্ৰহ কৰি এই নম্বৰটো চৰকাৰী JemaOS সমৰ্থন প্ৰতিনিধিসকলৰ সৈতে ভাগ-বতৰা কৰক</translation>
+<translation id="6279304275399437025">ৰিমোট ডায়াগনষ্টিক সেৱা আৰম্ভ হৈ আছে...</translation>
+<translation id="1501882165699826662">অনুগ্ৰহ কৰি ৰিমোট ডায়াগনষ্টিক সেৱা বন্ধ কৰি পুনৰ চেষ্টা কৰক</translation>
+<translation id="3100283258447375201">অধিক তথ্য</translation>
+<translation id="4070039109671307724">বিবিধ</translation>
+<translation id="7326893024940073254">"পুনৰ আৰম্ভ" বুটাম</translation>
+<translation id="3002423764319968103">চিষ্টেম মেনুত "পুনৰ আৰম্ভ" বুটাম দেখুৱাওক</translation>
+<translation id="6243454903512423518">"স্ক্ৰীন ঘূৰোৱা" বুটাম</translation>
+<translation id="6491049336868978729">আপুনি এতিয়া টেবলেট মোডত নাই, "স্ক্ৰীন ঘূৰোৱা" বুটাম লুকোৱা হৈছে</translation>
+<translation id="5496012402277579695">চিষ্টেম মেনুত "স্ক্ৰীন ঘূৰোৱা" বুটাম দেখুৱাওক</translation>
+<translation id="5882838977344999606">টেবলেট/লেপটপ মোড চুইচ</translation>
+<translation id="472164133625585606">চিষ্টেম মেনুত টেবলেট/লেপটপ মোড চুইচ দেখুৱাওক</translation>
+<translation id="1851103550468466960">Widevine সক্ষম কৰক</translation>
+<translation id="4058176713282795846">সুৰক্ষিত প্ৰিমিয়াম বিষয়বস্তু ষ্ট্ৰীম কৰিবলৈ Widevine সক্ষম কৰক। <ph name="BEGIN_LINK_LEARN_MORE" />অধিক জানক<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">"libwidevine.so" নিৰ্বাচন কৰক</translation>
+<translation id="4838463656205005584">Widevine সক্ষম কৰিবলৈ বিফল...</translation>
+<translation id="2164041826798266548">Widevine CDM মডিউল ইনষ্টলেশ্যন বিফল হৈছে। অনুগ্ৰহ কৰি আপোনাৰ সংযোগ পৰীক্ষা কৰি পুনৰ চেষ্টা কৰক।</translation>
+<translation id="4106982328079440606">JemaOS একাউণ্ট ছেটিংছ</translation>
+<translation id="6468776556018764845">পৰীক্ষামূলক বৈশিষ্ট্যসমূহ</translation>
+<translation id="3487615413425326553">Trusted Platform Module (TPM) পৰীক্ষাসমূহ এৰি যাওক</translation>
+<translation id="4817176087932811573">আপোনাৰ ডিভাইচত থকা অসংগতিপূৰ্ণ TPM চিপৰ বাবে কিছুমান বৈশিষ্ট্য বিফল হ'ব পাৰে; আপুনি সমাধান হিচাপে TPM পৰীক্ষাসমূহ এৰি যাব পাৰে।</translation>
+<translation id="3356003366173774486">স্বয়ংক্ৰিয় ছাইন-ইন</translation>
+<translation id="6218459410891191693">ডিভাইচটো পুনৰ আৰম্ভ হ'লে বৰ্তমানৰ একাউণ্টটোক ডেস্কটপত স্বয়ংক্ৰিয়ভাৱে ছাইন ইন কৰিবলৈ অনুমতি দিয়ক</translation>
+<translation id="6620839363422062843">এই একাউণ্টৰ বাবে সক্ষম কৰিব নোৱাৰি; এই ডিভাইচত থকা অন্য একাউণ্টসমূহৰ বাবে স্বয়ংক্ৰিয় ছাইন-ইন ইতিমধ্যে সক্ৰিয় আছে</translation>
+<translation id="6734500226490446035">এই একাউণ্টৰ বাবে সক্ষম কৰিব নোৱাৰি; এই একাউণ্টৰ বাবে ফাইল চিষ্টেমসমূহ আৰম্ভ কৰোঁতে এটা অজ্ঞাত ত্ৰুটি ঘটিছে। অনুগ্ৰহ কৰি পুনৰ আৰম্ভ কৰি বা নতুন একাউণ্ট সৃষ্টি কৰি চাওক</translation>
+<translation id="5464880042146818691">এই একাউণ্টৰ বাবে সক্ষম কৰিব নোৱাৰি; স্বয়ংক্ৰিয় ছাইন-ইন বিকল্পটো কেৱল "স্থানীয় একাউণ্ট" প্ৰকাৰৰ বাবেহে উপলব্ধ।</translation>
+<translation id="3335654854106476749">স্বয়ংক্ৰিয় ছাইন-ইন সক্ষম কৰাৰ আগতে অনুগ্ৰহ কৰি <ph name="BEGIN_LINK" />গোপনীয়তা আৰু সুৰক্ষা<ph name="END_LINK" /> ছেটিংছত ছাইন-ইন পাছৱৰ্ড যোগ কৰক।</translation>
+<translation id="5586831602198585601">JemaOSৰ এটা নতুন সংস্কৰণ এতিয়া আপডেটৰ বাবে উপলব্ধ। অৱশ্যে, আপোনাৰ JemaOS for You চাবস্ক্ৰিপশ্যনৰ ম্যাদ শেষ হৈছে; আপোনাৰ JemaOS আপডেট কৰিবলৈ আপোনাক এটা সক্ৰিয় চাবস্ক্ৰিপশ্যনৰ প্ৰয়োজন।</translation>
+<translation id="3869860597719956574">JemaOSৰ এটা নতুন মুখ্য সংস্কৰণ এতিয়া আপডেটৰ বাবে উপলব্ধ। এই আপডেটৰ সৈতে আগবাঢ়িবলৈ আপুনি এবাৰৰ মাচুল পৰিশোধ কৰিব লাগিব।</translation>
+<translation id="6523879681771260760">অনুগ্ৰহ কৰি বেকআপ ফাইলটো সংৰক্ষণ কৰাৰ পথ উল্লেখ কৰক</translation>
+<translation id="2036152819788683293">এই একাউণ্টৰ বাবে বেকআপ ফাইল সৃষ্টি কৰক (বেটা)। <ph name="BEGIN_LINK_LEARN_MORE" />অধিক জানক<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">বেকআপ কৰক</translation>
+<translation id="4267347174163690295">এই একাউণ্টৰ বাবে বেকআপ ফাইল সৃষ্টি কৰক (বেটা)।</translation>
+<translation id="8112950994208888917">এই অপাৰেচনে এই একাউণ্টৰ বাবে এটা সম্পূৰ্ণ ডিস্ক বেকআপ সৃষ্টি কৰে, যিয়ে ছেটিংছ, ইনষ্টল কৰা ব্ৰাউজাৰ এক্সটেনশ্যন আৰু ছাবচিষ্টেম এপসমূহকে ধৰি বেকআপ সৃষ্টি কৰাৰ সময়ত থকা অৱস্থালৈ আপোনাৰ JemaOS পুনৰুদ্ধাৰ কৰা সহজ কৰি তোলে। আপোনাৰ এপসমূহ আৰু আপোনাৰ হোম ফোল্ডাৰৰ বিষয়বস্তুৰ ওপৰত নিৰ্ভৰ কৰি, বেকআপ ফাইলটো ডাঙৰ হ'ব পাৰে; বেকআপ ফাইলটো বাহ্যিক ষ্টোৰেজ ডিভাইচত সংৰক্ষণ কৰাৰ পৰামৰ্শ দিয়া হৈছে। যদি আপোনাৰ ওচৰত পোৰ্টেবল USB ড্ৰাইভ আছে, অনুগ্ৰহ কৰি এতিয়া সংযোগ কৰক। <ph name="BEGIN_LINK_LEARN_MORE" />অধিক জানক<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">অনুগ্ৰহ কৰি এই একাউণ্টৰ ছাইন-ইন পাছৱৰ্ড দিয়ক</translation>
+<translation id="8663988871299316062">অনুগ্ৰহ কৰি এই পাছৱৰ্ডটো মনত ৰাখক, কিয়নো এই বেকআপ ফাইলটো পুনৰুদ্ধাৰ কৰাৰ সময়ত ইয়াৰ প্ৰয়োজন হ'ব</translation>
+<translation id="6408904153044317846">পুনৰুদ্ধাৰ কৰিবলৈ বেকআপ ফাইলটো নিৰ্বাচন কৰক</translation>
+<translation id="8062988348127771021">বেকআপ ফাইলৰ পৰা আপোনাৰ JemaOS ডাটা পুনৰুদ্ধাৰ কৰক</translation>
+<translation id="7309192418866543730">বেকআপ পাছৱৰ্ড দিয়ক</translation>
+<translation id="3642408376366598984">এই বেকআপ ফাইলটো এনক্ৰিপ্ট কৰিবলৈ ব্যৱহাৰ কৰা পাছৱৰ্ডটো দিয়ক</translation>
+<translation id="7783974937157985523">বেকআপ পাছৱৰ্ড</translation>
+<translation id="6583780301401541007">পুনৰুদ্ধাৰ সফল</translation>
+<translation id="3514011352559420398">পুনৰুদ্ধাৰ বিফল</translation>
+<translation id="7535980903266533458">বেকআপটো আপোনাৰ ডিভাইচ বা বাহ্যিক ষ্টোৰেজত সংৰক্ষণ কৰক</translation>
+<translation id="604001903249547235">ক্লাউড বেকআপ</translation>
+<translation id="8885702701336541611">বেকআপটো JemaOS ক্লাউড ষ্টোৰেজলৈ আপলোড কৰক</translation>
+<translation id="3939744430096549862">ক্লাউডলৈ বেকআপ কৰক</translation>
+<translation id="619129431573254316">স্থানীয় বেকআপ ফাইলৰ পৰা পুনৰুদ্ধাৰ কৰক</translation>
+<translation id="1859592711955106569">ক্লাউড পুনৰুদ্ধাৰ</translation>
+<translation id="38222223336741457">JemaOS ক্লাউডৰ পৰা ডাউনলোড আৰু পুনৰুদ্ধাৰ কৰক</translation>
+<translation id="1241089811244416179">ক্লাউডৰ পৰা পুনৰুদ্ধাৰ কৰক</translation>
+<translation id="652479689372703360">বেকআপ চলি আছে</translation>
+<translation id="3655220146274872918">বেকআপ সম্পূৰ্ণ হৈছে</translation>
+<translation id="4243579853635792694">আপোনাৰ বেকআপ সফলতাৰে সৃষ্টি কৰা হৈছে</translation>
+<translation id="4854179463174744546">বেকআপ প্ৰক্ৰিয়াৰ সময়ত এটা ত্ৰুটি ঘটিছে</translation>
+<translation id="2410668771600309999">Connect API ব্যৱহাৰকাৰীৰ তথ্য</translation>
+<translation id="2223892939866251845">ব্যৱহাৰকাৰী ID</translation>
+<translation id="3850846286480935456">বেকআপ ষ্টোৰেজ বিশ্লেষণ</translation>
+<translation id="6244494465581273970">ব্যৱহাৰকাৰী IDৰ প্ৰয়োজন</translation>
+<translation id="9204006549413740506">শেষবাৰৰ বাবে আপডেট কৰা হৈছে</translation>
+<translation id="476642412165431515">হাৰ্ডৱেৰ ডিভাইচসমূহ</translation>
+<translation id="3386337985825120901">কোনো বেকআপ ডাটা উপলব্ধ নহয়</translation>
+<translation id="8490990067870590760">বেকআপ ফাইলসমূহ লোড হৈ আছে...</translation>
+<translation id="2955409026764742995">পুনৰুদ্ধাৰ কৰিবলৈ বেকআপ ফাইলটো নিৰ্বাচন কৰক:</translation>
+<translation id="7414629348005657242">-- বেকআপ ফাইল নিৰ্বাচন কৰক --</translation>
+<translation id="918246516374174381">কোনো বেকআপ ফাইল পোৱা নগ'ল। অনুগ্ৰহ কৰি প্ৰথমে বেকআপ সৃষ্টি কৰক।</translation>
+<translation id="77997252117517973">শীঘ্ৰে আহি আছে</translation>
+<translation id="1930692852800776096">অভিধান যোগ কৰক</translation>
+<translation id="8793060353848771694">বাওঁফালৰ ইয়াৰবাডৰ ছবি</translation>
+<translation id="6257440204887306255">চাৰ্জিং কেচৰ ছবি</translation>
+<translation id="2754700616124958693">সোঁফালৰ ইয়াৰবাডৰ ছবি</translation>
+<translation id="1068676292264983586">ডিফল্ট ডিভাইচৰ ছবি</translation>
+<translation id="6364075396486660405">বেটাৰী আয়ুস অনুকূল কৰিবলৈ সকলো পাৰ্টিশ্যনৰ বাবে মিডিয়া ফাইলসমূহৰ স্বয়ংক্ৰিয় স্কেনিং নিষ্ক্ৰিয় কৰক। <ph name="BEGIN_LINK_LEARN_MORE" />অধিক জানক<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">সুৰক্ষা বিকল্পসমূহ</translation>
+<translation id="5618366106086725045">অধিক ডেভেলপাৰ বৈশিষ্ট্যৰ সৈতে এই <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> ইনষ্টলেশ্যনৰ বাবে "ডেভেলপাৰ মোড" সক্ষম কৰক। <ph name="BEGIN_LINK_LEARN_MORE" />অধিক জানক<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">আপুনি ইতিমধ্যে "ডেভেলপাৰ মোড"ত আছে</translation>
+<translation id="6074549317340202195">"ডেভেলপাৰ মোড" সক্ষম কৰক</translation>
+<translation id="418781258674176053">সতৰ্কবাণী! "ডেভেলপাৰ মোড" সক্ষম কৰা এটা অপৰিৱৰ্তনীয় অপাৰেচন। যদি আপুনি "ডেভেলপাৰ মোড" নিষ্ক্ৰিয় কৰিব বিচাৰে, আপুনি JemaOS পুনৰ ইনষ্টল কৰিব লাগিব, যিয়ে সকলো ডাটা মচি পেলাব। অনুগ্ৰহ কৰি আপোনাৰ ডাটা বেকআপ কৰি নিজা বিপদৰ ওপৰত আগবাঢ়ক।</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    প্লেটফৰ্ম <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">বৰ্তমান অফলাইনত আছে</translation>
+<translation id="2590678769628709242">আপোনাৰ JemaOS চাবস্ক্ৰিপশ্যন অনলাইনত পৰীক্ষা কৰক</translation>
+<translation id="4701836089682883918">JemaOS চাবস্ক্ৰিপশ্যনৰ তথ্য</translation>
+<translation id="5891566673089952188">আপোনাৰ ডিভাইচ ID পোৱাত ত্ৰুটি হৈছে</translation>
+<translation id="4685086787606104322">চাবস্ক্ৰিপশ্যনৰ শেষ</translation>
+<translation id="3354919960795782984">ডিভাইচ ID</translation>
+<translation id="5758632069869992306">আপোনাৰ চাবস্ক্ৰিপশ্যন অনলাইনত পৰীক্ষা কৰক</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     প্লেটফৰ্ম <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">পৰীক্ষামূলক চাবস্ক্ৰিপশ্যন</translation>
+<translation id="4362781408813685579">সক্ৰিয় চাবস্ক্ৰিপশ্যন</translation>
+<translation id="1141274201089997510">ম্যাদ শেষ হোৱা চাবস্ক্ৰিপশ্যন</translation>
+<translation id="2553683254139782404">অ-বাণিজ্যিক সংস্কৰণ</translation>
+<translation id="8466048683756385518">এণ্টাৰপ্ৰাইজ লাইচেন্সপ্ৰাপ্ত সংস্কৰণ (পৰীক্ষামূলক)</translation>
+<translation id="2853871047705932424">এণ্টাৰপ্ৰাইজ লাইচেন্সপ্ৰাপ্ত সংস্কৰণ</translation>
+<translation id="5239675900317881945">এণ্টাৰপ্ৰাইজ লাইচেন্সপ্ৰাপ্ত সংস্কৰণ (ম্যাদ শেষ)</translation>
+<translation id="189101945990408398">লেগাচি Intel</translation>
+<translation id="6816405236809604904">আধুনিক Intel</translation>
+<translation id="6169452478137972655">AMD গ্ৰাফিক্স</translation>
+<translation id="6183637837838262693">Intel স্লিম</translation>
+<translation id="1270291881045478104">JemaOS AI সক্ষম কৰক</translation>
+<translation id="2013780539677437932">JemaOS AI-সম্পৰ্কীয় সকলো বৈশিষ্ট্য সক্ষম বা নিষ্ক্ৰিয় কৰক</translation>
+<translation id="3398637633218757480">JemaOS AI কুইক কল সক্ষম কৰক</translation>
+<translation id="8986197796475507452">Ctrl + C + C টিপি হাইলাইট কৰা বিষয়বস্তুৰ বাবে JemaOS AI বিকল্পসমূহ সোনকালে তুলি আনক</translation>
+<translation id="6407628130593274137">JemaOS AIৰ বাবে অন্যান্য ছেটিংছ আৰু বিকল্পসমূহ</translation>
+<translation id="4005574560653331142">এই স্থানীয় একাউণ্টৰ PIN বা ছাইন-ইন পাছৱৰ্ড সলনি কৰিবলৈ, <ph name="BEGIN_LINK" />গোপনীয়তা আৰু সুৰক্ষা<ph name="END_LINK" /> ছেটিংছলৈ যাওক।</translation>
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">আপুনি <ph name="LINK_START" />JemaOS স্থানীয় একাউণ্টেৰে ছাইন ইন কৰিব পাৰে<ph name="LINK_END" />।</translation>
+<translation id="5291842596976929391">ইমেইল <ph name="EMAIL_ADDRESS" /> ইতিমধ্যে আছে। অনুগ্ৰহ কৰি আন এটা ইমেইলেৰে পুনৰ চেষ্টা কৰক।</translation>
+<translation id="4519800823932975782">JemaOS সহায় কেন্দ্ৰ</translation>
+<translation id="4737474693231655139">সহায় প্ৰবন্ধ আৰু সাধাৰণ JemaOS প্ৰশ্নৰ উত্তৰ বিচাৰক</translation>
+</translationbundle>

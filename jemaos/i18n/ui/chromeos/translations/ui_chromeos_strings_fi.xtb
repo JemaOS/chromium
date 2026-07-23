@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="fi">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">Rekisteröidy Nutstoreen synkronoidaksesi tiedostosi pilvessä JemaOS:ssa.</translation>
+<translation id="8672291834743661083">Rekisteröidy Nutstoreen</translation>
+<translation id="5103639294476249880">Napsauta suojausasetuksissa "Lisää sovellus" -painiketta</translation>
+<translation id="8371020157576651120">Luo ja kopioi sovellussalasanasi</translation>
+<translation id="3855250998276979579">Avaa Nutstore-sovellus</translation>
+<translation id="6565655783894300125">ja yhdistä Nutstore-tilisi JemaOS:ään sähköpostiosoitteellasi ja sovellussalasanallasi</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Tulossa pian</translation>
+<translation id="4928968570611226525">Jatkaaksesi tätä toimintoa sinun on <ph name="BEGIN_LINK_ARC_APP" />&gt;aktivoitava Android-alijärjestelmä<ph name="END_LINK_ARC_APP" /> JemaOS-laitteessasi; lisäksi JemaOS-laitteesi on <ph name="BEGIN_LINK_HELP" />vaihdettava kehittäjätilaan<ph name="END_LINK_HELP" />.</translation>
+<translation id="7395250550107972941">.apk-tiedostoja ei voi asentaa sivulatauksena. Varmista, että Android-alijärjestelmä on aktivoitu ja että JemaOS-laitteesi on kehittäjätilassa.</translation>
+<translation id="5690820326685091783">Avaa JemaOS AI:lla</translation>
+</translationbundle>

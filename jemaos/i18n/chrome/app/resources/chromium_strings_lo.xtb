@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="lo">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">ກ່ຽວກັບ Thot</translation>
+<translation id="5639860668557220477">ຮັບຄວາມຊ່ວຍເຫຼືອກ່ຽວກັບບຣາວເຊີ Thot</translation>
+<translation id="1692689520561928457">ກ່ຽວກັບ JemaOS</translation>
+<translation id="8692765844418174375">ເວີຊັນ JemaOS</translation>
+<translation id="2943260250558374955">ຮັບຄວາມຊ່ວຍເຫຼືອກ່ຽວກັບ JemaOS</translation>
+<translation id="713321354492170993">ບຣາວເຊີປ່ອຍໜ່ວຍຄວາມຈຳຈາກແຖບທີ່ບໍ່ໃຊ້ງານ. ນີ້ໃຫ້ແຖບທີ່ໃຊ້ງານຢູ່ ແລະ ແອັບອື່ນໆມີຊັບພະຍາກອນການປະມວນຜົນຫຼາຍຂຶ້ນ ແລະ ຮັກສາໃຫ້ບຣາວເຊີໄວ. ແຖບທີ່ບໍ່ໃຊ້ງານຂອງທ່ານຈະກັບມາໃຊ້ງານໂດຍອັດຕະໂນມັດເມື່ອທ່ານກັບໄປຫາມັນ.</translation>
+<translation id="1774190491044887444">ບຣາວເຊີປະຢັດແບັດເຕີຣີໂດຍຈຳກັດກິດຈະກຳພື້ນຫຼັງ ແລະ ເອັບເຟັກທາງສາຍຕາ, ເຊັ່ນ ການເລື່ອນແບບລຽບ ແລະ ອັດຕາເຟຣມວິດີໂອ.</translation>
+<translation id="180121268008059459">ບຣາວເຊີໂຫຼດໜ້າລ່ວງໜ້າ, ເຮັດໃຫ້ການທ່ອງເວັບ ແລະ ການຄົ້ນຫາໄວຂຶ້ນ.</translation>
+<translation id="7127093527178692287">ກູ້ຄືນຂໍ້ມູນສຳຮອງ (ເບຕ້າ)</translation>
+<translation id="4439042171549201806">ເພື່ອກູ້ຄືນ JemaOS ຈາກໄຟລ໌ສຳຮອງຂໍ້ມູນ, ກະລຸນາໃສ່ໄດຣຟ໌ທີ່ຖອດອອກໄດ້ທີ່ມີໄຟລ໌ສຳຮອງຂໍ້ມູນເຂົ້າໃນອຸປະກອນ JemaOS ຂອງທ່ານດຽວນີ້ ແລະ ລະບຸວ່າທ່ານຕ້ອງການກູ້ຄືນໄຟລ໌ສຳຮອງຂໍ້ມູນໃດ. ກະລຸນາໝາຍເຫດວ່າ ໄຟລ໌ສຳຮອງຂໍ້ມູນຂອງທ່ານຕ້ອງຢູ່ໃນໄດເຣັກທໍຣີຫຼັກຂອງໄດຣຟ໌ທີ່ຖອດອອກໄດ້ຂອງທ່ານເພື່ອໃຫ້ວິຊາດນີ້ກວດພົບ.</translation>
+<translation id="2955409026764742995">ເລືອກໄຟລ໌ສຳຮອງຂໍ້ມູນທີ່ຈະກູ້ຄືນ:</translation>
+<translation id="7040434808685140085">ຂໍອະໄພ, ບໍ່ສາມາດຮັບຮູ້ໄຟລ໌ສຳຮອງຂໍ້ມູນທີ່ເລືອກໄດ້; ກະລຸນາເລືອກໄຟລ໌ໃໝ່.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />ເພື່ອກູ້ຄືນ JemaOS ຈາກໄຟລ໌ສຳຮອງຂໍ້ມູນທີ່ເລືອກ, ຈຳເປັນຕ້ອງມີຂໍ້ມູນທີ່ຖືກຕ້ອງກ່ຽວກັບການສຳຮອງຂໍ້ມູນເມື່ອມັນຖືກສ້າງ. ຖ້າບໍ່ດັ່ງນັ້ນ, ຂະບວນການກູ້ຄືນຈະລົ້ມເຫຼວ.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"ຊື່ບັນຊີ" ແມ່ນຂໍ້ມູນປະຈຳຕົວເຂົ້າສູ່ລະບົບຫຼັກຂອງບັນຊີທີ່ໄຟລ໌ສຳຮອງຂໍ້ມູນຂອງທ່ານຖືກສ້າງຂຶ້ນ. ປົກກະຕິແລ້ວມັນແມ່ນທີ່ຢູ່ອີເມວທີ່ທ່ານໃຊ້ລົງທະບຽນບັນຊີ JemaOS/Google ຂອງທ່ານ. ຖ້າມັນເປັນບັນຊີທ້ອງຖິ່ນ, ມັນຈະເປັນຊື່ຜູ້ໃຊ້ທີ່ຕໍ່ທ້າຍດ້ວຍ "@jemaos.local".<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />ລະຫັດຜ່ານແມ່ນປະໂຫຍກລະຫັດທີ່ທ່ານຖືກຂໍໃຫ້ໃສ່ເມື່ອສ້າງການສຳຮອງຂໍ້ມູນ. ປົກກະຕິແລ້ວມັນແມ່ນລະຫັດຜ່ານດຽວກັນທີ່ທ່ານໃຊ້ເຂົ້າສູ່ລະບົບເດສກ໌ທັອບ JemaOS ສຳລັບບັນຊີນີ້.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">ຊື່ບັນຊີ</translation>
+<translation id="5490570429039308155">ຂໍອະໄພ, ກະລຸນາໃສ່ຊື່ບັນຊີທີ່ຖືກຕ້ອງ</translation>
+<translation id="6657585470893396449">ລະຫັດຜ່ານ</translation>
+<translation id="8200189938001188563">ຂໍອະໄພ, ລະຫັດຜ່ານບໍ່ສາມາດຫວ່າງເປົ່າໄດ້</translation>
+<translation id="3157931365184549694">ກູ້ຄືນ</translation>
+<translation id="8556278756526311953">ກຳລັງກູ້ຄືນຂໍ້ມູນສຳຮອງ</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />ພວກເຮົາກຳລັງເຮັດວຽກເພື່ອກູ້ຄືນໄຟລ໌ສຳຮອງຂໍ້ມູນຂອງທ່ານ; ອາດຈະໃຊ້ເວລາສັກໜ່ອຍ, ສະນັ້ນກະລຸນາອົດທົນລໍຖ້າ.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />ກະລຸນາໝາຍເຫດວ່າ UI ຈະຣີສະຕາດໂດຍອັດຕະໂນມັດເມື່ອຂະບວນການກູ້ຄືນສຳເລັດສົມບູນ.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">ການກູ້ຄືນຂໍ້ມູນສຳຮອງລົ້ມເຫຼວ</translation>
+<translation id="5003531399442003695">ສຳລັບລາຍລະອຽດເພີ່ມເຕີມ, ກະລຸນາຄລິກລິ້ງຂ້າງລຸ່ມນີ້ເພື່ອເບິ່ງບັນທຶກ. ຖ້າຂໍ້ຜິດພາດນີ້ຍັງຄົງຢູ່, ກະລຸນາຕິດຕໍ່ຊ່ອງທາງສະໜັບສະໜູນດ້ານເຕັກນິກຂອງ JemaOS ແລະ ສະໜອງບັນທຶກຂໍ້ຜິດພາດ.</translation>
+<translation id="6363786367719063276">ເບິ່ງບັນທຶກ</translation>
+<translation id="8730621377337864115">ສຳເລັດ</translation>
+<translation id="975238173507911396">ກູ້ຄືນຂໍ້ມູນສຳເລັດ</translation>
+<translation id="6276879052695618521">ບັນທຶກການກູ້ຄືນຂໍ້ມູນສຳຮອງ</translation>
+<translation id="4901207598072637766">JemaOS, ສະໜອງໂດຍ <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS ແລະ ການບໍລິການຂອງມັນປະຕິບັດຕາມ GDPR ແລະ ບົດບັນຍັດຂອງກົດໝາຍຄຸ້ມຄອງຂໍ້ມູນເອີຣົບ. ສຳລັບຂໍ້ມູນເພີ່ມເຕີມ, ກະລຸນາເບິ່ງ<ph name="BEGIN_LINK_PRIVACY" />ນະໂຍບາຍຄວາມເປັນສ່ວນຕົວ<ph name="END_LINK_PRIVACY" /> ແລະ <ph name="BEGIN_LINK_TOS" />ເງື່ອນໄຂການບໍລິການ<ph name="END_LINK_TOS" />ຂອງພວກເຮົາ.</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, ສະຫງວນລິຂະສິດທັງໝົດ.</translation>
+<translation id="370679569376308836">JemaOS ແມ່ນການສະເໜີເຊີງພານິດທີ່ອີງໃສ່ອຸປະກອນ Jema ແລະ SaaS ຂອງມັນ.</translation>
+<translation id="2773644194450163486">JemaOS ເປັນໄປໄດ້ໂດຍໂຄງການໂອເພນຊອສ <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" />.</translation>
+<translation id="2330680727776977160">Chromium ຍັງເປັນໄປໄດ້ໂດຍ<ph name="BEGIN_LINK_1" />ຊອບແວໂອເພນຊອສອື່ນໆ<ph name="END_LINK_1" /> ແລະ <ph name="BEGIN_LINK_2" />ຊອບແວໂອເພນຊອສເພີ່ມເຕີມ<ph name="END_LINK_2" />ອີກດ້ວຍ.</translation>
+<translation id="1419954813084261088">ອອກແບບ ແລະ ຜະລິດໂດຍ Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, ສະຫງວນລິຂະສິດທັງໝົດ.</translation>
+<translation id="6168072053306020326">Jema Technology ແມ່ນຊື່ການຄ້າຂອງ Jema Technology LTD ແລະ Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD ແມ່ນບໍລິສັດທີ່ຈົດທະບຽນໃນປະເທດອັງກິດ ແລະ ເວລສ໌ ດ້ວຍໝາຍເລກບໍລິສັດ 12273803.</translation>
+<translation id="1251589813188467292">ຂໍ້ມູນການຮັບປະກັນ ແລະ ການບໍລິການອຸປະກອນທີ່ສຳຄັນ</translation>
+<translation id="4851115775198886021">SN ອຸປະກອນ:</translation>
+</translationbundle>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="is">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Um Thot</translation>
+<translation id="5639860668557220477">Fá aðstoð með Thot-vafrann</translation>
+<translation id="1692689520561928457">Um JemaOS</translation>
+<translation id="8692765844418174375">JemaOS-útgáfa</translation>
+<translation id="2943260250558374955">Fá aðstoð með JemaOS</translation>
+<translation id="713321354492170993">Vafrinn losar minni frá óvirkum flipum. Þetta veitir virkum flipum og öðrum forritum meira reikniafl og heldur vafranum hraðvirkum. Óvirkir fliparnir þínir verða sjálfkrafa virkir aftur þegar þú snýrð aftur til þeirra.</translation>
+<translation id="1774190491044887444">Vafrinn sparar rafhlöðu með því að takmarka bakgrunnsvirkni og sjónræn áhrif, eins og slétt skrun og myndatíðni myndbanda.</translation>
+<translation id="180121268008059459">Vafrinn hleður síðum fyrirfram, sem gerir vafur og leit hraðari.</translation>
+<translation id="7127093527178692287">Endurheimta öryggisafrit (beta)</translation>
+<translation id="4439042171549201806">Til að endurheimta JemaOS úr öryggisafritsskrá skaltu setja færanlegt drif sem inniheldur öryggisafritsskrána í JemaOS-tækið þitt núna og tilgreina hvaða öryggisafritsskrá þú vilt endurheimta. Athugaðu að öryggisafritsskráin þarf að vera í rótarmöppu færanlega drifsins svo þessi leiðarvísir greini hana.</translation>
+<translation id="2955409026764742995">Veldu öryggisafritsskrána sem á að endurheimta:</translation>
+<translation id="7040434808685140085">Því miður er ekki hægt að þekja valda öryggisafritsskrána. Veldu aðra.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />Til að endurheimta JemaOS úr völdu öryggisafriti er nauðsynlegt að hafa nákvæmar upplýsingar um hvenær öryggisafritið var búið til. Að öðrum kosti mistekst endurheimtingin.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />„Aðgangsheiti“ er aðalinnskráningarauðkenni aðgangsins sem öryggisafritsskráin var búin til undir. Það er venjulega netfangið sem þú notaðir til að skrá þig fyrir JemaOS-/Google-aðganginn þinn. Ef það væri staðbundinn aðgangur væri það notandanafnið með „@jemaos.local“ bætt við.<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Lykilorðið er lykilorðasetningin sem þú varst beðinn að slá inn þegar öryggisafritið var búið til. Það er venjulega sama lykilorð og þú notaðir til að skrá þig inn á JemaOS-skjáborðið fyrir þennan aðgang.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Aðgangsheiti</translation>
+<translation id="5490570429039308155">Vinsamlegast sláðu inn rétt aðgangsheiti</translation>
+<translation id="6657585470893396449">Lykilorð</translation>
+<translation id="8200189938001188563">Lykilorðið má ekki vera tómt</translation>
+<translation id="3157931365184549694">Endurheimta</translation>
+<translation id="8556278756526311953">Endurheimtir öryggisafrit</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Við erum nú að vinna að því að endurheimta öryggisafritsskrána þína; þetta getur tekið smá tíma, svo vertu þolinmóður.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Athugaðu að notendaviðmótið endurræsir sjálfkrafa þegar endurheimtun lýkur með góðum árangri.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Endurheimtun öryggisafrits mistókst</translation>
+<translation id="5003531399442003695">Fyrir frekari upplýsingar skaltu smella á hlekkinn hér að neðan til að skoða atvikaskrárnar. Ef þessi villa viðvarar skaltu hafa samband við tæknilega aðstoð JemaOS og afhenda villuskrárnar.</translation>
+<translation id="6363786367719063276">Skoða atvikaskrár</translation>
+<translation id="8730621377337864115">Lokið</translation>
+<translation id="975238173507911396">Gögn endurheimt með góðum árangri</translation>
+<translation id="6276879052695618521">Atvikaskrár fyrir endurheimtun öryggisafrits</translation>
+<translation id="4901207598072637766">JemaOS, veitt af <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS og þjónustur þess fara eftir GDPR og ákvæðum evrópskrar persónuverndarlöggjafar. Fyrir frekari upplýsingar, sjáðu <ph name="BEGIN_LINK_PRIVACY" />persónuverndarstefnu<ph name="END_LINK_PRIVACY" /> okkar og <ph name="BEGIN_LINK_TOS" />þjónustuskilmála.<ph name="END_LINK_TOS" /></translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, öll réttindi áskilin.</translation>
+<translation id="370679569376308836">JemaOS er atvinnutilboð byggt á Jema-tækinu og SaaS-þjónustu þess.</translation>
+<translation id="2773644194450163486">JemaOS er mögulegt þökk sé <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> opna hugbúnaðarverkefninu.</translation>
+<translation id="2330680727776977160">Chromium er einnig mögulegt þökk sé öðrum <ph name="BEGIN_LINK_1" />opnum hugbúnaði<ph name="END_LINK_1" /> og <ph name="BEGIN_LINK_2" />öðrum opnum hugbúnaði til viðbótar<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Hannað og framleitt af Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, öll réttindi áskilin.</translation>
+<translation id="6168072053306020326">Jema Technology er viðskiptaheiti Jema Technology LTD og Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD er fyrirtæki skráð í Englandi og Wales með fyrirtækisnúmeri 12273803.</translation>
+<translation id="1251589813188467292">Mikilvægar upplýsingar um ábyrgð og þjónustu tækisins</translation>
+<translation id="4851115775198886021">Raðnúmer tækis:</translation>
+</translationbundle>

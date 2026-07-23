@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="as">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Thotৰ বিষয়ে</translation>
+<translation id="5639860668557220477">Thot ব্ৰাউজাৰৰ সহায় লাভ কৰক</translation>
+<translation id="1692689520561928457">JemaOSৰ বিষয়ে</translation>
+<translation id="8692765844418174375">JemaOS সংস্কৰণ</translation>
+<translation id="2943260250558374955">JemaOSৰ সহায় লাভ কৰক</translation>
+<translation id="713321354492170993">ব্ৰাউজাৰে নিষ্ক্ৰিয় টেবৰ পৰা মেমৰি মুক্ত কৰে। ইয়াৰ ফলত সক্ৰিয় টেব আৰু অন্যান্য এপ্‌সমূহে অধিক কম্পিউটিং সমল পায় আৰু ব্ৰাউজাৰ দ্ৰুত হৈ থাকে। আপুনি ওভোঁটাৰ লগে লগে আপোনাৰ নিষ্ক্ৰিয় টেববোৰ স্বয়ংক্ৰিয়ভাৱে পুনৰ সক্ৰিয় হয়।</translation>
+<translation id="1774190491044887444">ব্ৰাউজাৰে স্মুথ স্ক্ৰলিং আৰু ভিডিঅ' ফ্ৰেম ৰেটৰ দৰে বেকগ্ৰাউণ্ড কাৰ্যকলাপ আৰু ভিজুৱেল ইফেক্ট সীমিত কৰি বেটাৰী সঞ্চয় কৰে।</translation>
+<translation id="180121268008059459">ব্ৰাউজাৰে পৃষ্ঠাবোৰ প্ৰিলোড কৰে, যাৰ ফলত ব্ৰাউজিং আৰু বিচৰা দ্ৰুত হয়।</translation>
+<translation id="7127093527178692287">বেকআপ পুনৰুদ্ধাৰ (বেটা)</translation>
+<translation id="4439042171549201806">বেকআপ ফাইলৰ পৰা JemaOS পুনৰুদ্ধাৰ কৰিবলৈ, অনুগ্ৰহ কৰি বেকআপ ফাইলটো থকা আঁতৰাব পৰা ড্ৰাইভটো এতিয়াই আপোনাৰ JemaOS ডিভাইচত সোমোৱাচক আৰু আপুনি কোনটো বেকআপ ফাইল পুনৰুদ্ধাৰ কৰিব বিচাৰে নির্দিষ্ট কৰক। অনুগ্ৰহ কৰি মন কৰক যে এই ৱিজাৰ্ডে চিনাক্ত কৰিবলৈ আপোনাৰ বেকআপ ফাইলটো আপোনাৰ আঁতৰাব পৰা ড্ৰাইভৰ ৰূট ডাইৰেক্টৰীত থকা আৱশ্যক।</translation>
+<translation id="2955409026764742995">পুনৰুদ্ধাৰ কৰিবলগীয়া বেকআপ ফাইলটো বাছনি কৰক:</translation>
+<translation id="7040434808685140085">দুঃখিত, বাছনি কৰা বেকআপ ফাইলটো চিনাক্ত কৰিব পৰা নগ'ল; অনুগ্ৰহ কৰি নতুন এটা বাছনি কৰক।</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />বাছনি কৰা বেকআপ ফাইলৰ পৰা JemaOS পুনৰুদ্ধাৰ কৰিবলৈ, বেকআপটো সৃষ্টি কৰাৰ সময়ৰ সঠিক তথ্য থকা অত্যাৱশ্যক। নহ'লে পুনৰুদ্ধাৰ প্ৰক্ৰিয়া বিফল হ'ব।<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"একাউণ্টৰ নাম" হৈছে আপোনাৰ বেকআপ ফাইলটো যি একাউণ্টৰ অধীনত সৃষ্টি কৰা হৈছিল সেই একাউণ্টৰ মুখ্য লগইন প্ৰমাণপত্ৰ। ই সাধাৰণতে আপোনাৰ JemaOS/Google একাউণ্টত ছাইন আপ কৰিবলৈ ব্যৱহাৰ কৰা ইমেইল ঠিকনা। ই যদি স্থানীয় একাউণ্ট আছিল, তেন্তে ই "@jemaos.local" যুক্ত কৰা ব্যৱহাৰকাৰীৰ নাম হ'ব।<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />পাছৱৰ্ডটো হৈছে বেকআপটো সৃষ্টি কৰাৰ সময়ত দিয়াৰ বাবে কোৱা হৈছিল পাছফ্ৰেজ। ই সাধাৰণতে এই একাউণ্টৰ বাবে JemaOS ডেস্কটপত ছাইন ইন কৰিবলৈ ব্যৱহাৰ কৰা একেই পাছৱৰ্ড।<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">একাউণ্টৰ নাম</translation>
+<translation id="5490570429039308155">দুঃখিত, অনুগ্ৰহ কৰি সঠিক একাউণ্টৰ নাম দিয়ক</translation>
+<translation id="6657585470893396449">পাছৱৰ্ড</translation>
+<translation id="8200189938001188563">দুঃখিত, পাছৱৰ্ড খালী থাকিব নোৱাৰে</translation>
+<translation id="3157931365184549694">পুনৰুদ্ধাৰ কৰক</translation>
+<translation id="8556278756526311953">বেকআপ পুনৰুদ্ধাৰ কৰি আছে</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />আমি এতিয়া আপোনাৰ বেকআপ ফাইল পুনৰুদ্ধাৰ কৰাৰ কাম কৰি আছোঁ; ইয়াত কিছু সময় লাগিব পাৰে, গতিকে অনুগ্ৰহ কৰি ধৈৰ্য ধৰক।<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />অনুগ্ৰহ কৰি মন কৰক যে পুনৰুদ্ধাৰ প্ৰক্ৰিয়া সফলভাৱে সম্পূৰ্ণ হ'লে UI স্বয়ংক্ৰিয়ভাৱে পুনৰ আৰম্ভ হ'ব।<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">বেকআপ পুনৰুদ্ধাৰ বিফল হৈছে</translation>
+<translation id="5003531399442003695">অধিক বিৱৰণৰ বাবে, অনুগ্ৰহ কৰি লগবোৰ চাবলৈ তলৰ লিংকটোত ক্লিক কৰক। যদি এই ত্ৰুটিয়ে অব্যাহত থাকে, অনুগ্ৰহ কৰি JemaOS কাৰিকৰী সহায় চেনেলসমূহৰ সৈতে যোগাযোগ কৰক আৰু ত্ৰুটি লগবোৰ প্ৰদান কৰক।</translation>
+<translation id="6363786367719063276">লগবোৰ চাওক</translation>
+<translation id="8730621377337864115">সম্পূৰ্ণ হ'ল</translation>
+<translation id="975238173507911396">ডাটা পুনৰুদ্ধাৰ সফল হ'ল</translation>
+<translation id="6276879052695618521">বেকআপ পুনৰুদ্ধাৰ লগবোৰ</translation>
+<translation id="4901207598072637766">JemaOS, <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" />ৰ দ্বাৰা প্ৰদান কৰা</translation>
+<translation id="7894910504474624324">JemaOS আৰু ইয়াৰ সেৱাসমূহে GDPR আৰু ইউৰোপীয় ডাটা সুৰক্ষা আইনৰ বিধানসমূহ মানি চলে। অধিক তথ্যৰ বাবে, অনুগ্ৰহ কৰি আমাৰ <ph name="BEGIN_LINK_PRIVACY" />গোপনীয়তা নীতি<ph name="END_LINK_PRIVACY" /> আৰু আমাৰ <ph name="BEGIN_LINK_TOS" />সেৱাৰ চৰ্তসমূহ<ph name="END_LINK_TOS" /> চাওক।</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, সকলো অধিকাৰ সংৰক্ষিত।</translation>
+<translation id="370679569376308836">JemaOS হৈছে Jema ডিভাইচ আৰু ইয়াৰ SaaSৰ ওপৰত আধাৰিত এটা বাণিজ্যিক প্ৰস্তাৱ।</translation>
+<translation id="2773644194450163486">JemaOS <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> মুক্ত উৎস প্ৰকল্পৰ দ্বাৰা সম্ভব হৈছে।</translation>
+<translation id="2330680727776977160">Chromiumও অন্যান্য <ph name="BEGIN_LINK_1" />মুক্ত উৎস ছফ্টৱেৰ<ph name="END_LINK_1" /> আৰু <ph name="BEGIN_LINK_2" />অতিৰিক্ত মুক্ত উৎস ছফ্টৱেৰ<ph name="END_LINK_2" />ৰ দ্বাৰা সম্ভব হৈছে।</translation>
+<translation id="1419954813084261088">Jema Technologyৰ দ্বাৰা ডিজাইন আৰু নিৰ্মিত।</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, সকলো অধিকাৰ সংৰক্ষিত।</translation>
+<translation id="6168072053306020326">Jema Technology হৈছে Jema Technology LTD আৰু Jema Technology (Beijing) Limitedৰ ব্যৱসায়িক নাম।
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD হৈছে ইংলেণ্ড আৰু ৱেলছত পঞ্জীয়ন কৰা এটা কোম্পানী, কোম্পানী নম্বৰ 12273803।</translation>
+<translation id="1251589813188467292">গুৰুত্বপূৰ্ণ ডিভাইচ ৱাৰেণ্টী আৰু সেৱা তথ্য</translation>
+<translation id="4851115775198886021">ডিভাইচ SN:</translation>
+</translationbundle>

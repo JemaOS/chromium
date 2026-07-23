@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="ta">
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">JemaOS இல் உங்கள் கோப்புகளை மேகம்-ஒத்திசைக்க Nutstore இல் பதிவு செய்யவும்.</translation>
+<translation id="8672291834743661083">Nutstore இல் பதிவு செய்யவும்</translation>
+<translation id="5103639294476249880">பாதுகாப்பு அமைப்புகளில் "Add Application" பொத்தானைக் கிளிக் செய்யவும்</translation>
+<translation id="8371020157576651120">உங்கள் பயன்பாட்டுக் கடவுச்சொல்லை உருவாக்கி நகலெடுக்கவும்</translation>
+<translation id="3855250998276979579">Nutstore பயன்பாட்டைத் திறக்கவும்</translation>
+<translation id="6565655783894300125">மற்றும் உங்கள் மின்னஞ்சல் மற்றும் பயன்பாட்டுக் கடவுச்சொல்லுடன் Nutstore கணக்கை JemaOS உடன் இணைக்கவும்</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">விரைவில் வரும்</translation>
+<translation id="4928968570611226525">இந்தச் செயலைத் தொடர உங்கள் JemaOS சாதனத்தில் <ph name="BEGIN_LINK_ARC_APP" />&gt;Android துணை அமைப்பைச் செயல்படுத்த<ph name="END_LINK_ARC_APP" /> வேண்டும்; மேலும் உங்கள் JemaOS சாதனம் <ph name="BEGIN_LINK_HELP" />டெவலப்பர் பயன்முறைக்கு மாற்றப்பட்டிருக்க<ph name="END_LINK_HELP" /> வேண்டும்.</translation>
+<translation id="7395250550107972941">.apk கோப்புகளை சைடுலோடு செய்ய முடியவில்லை. Android துணை அமைப்பு செயல்படுத்தப்பட்டுள்ளதா என்பதையும் நீங்கள் JemaOS டெவலப்பர் பயன்முறையில் இருக்கிறீர்கள் என்பதையும் உறுதிப்படுத்தவும்.</translation>
+<translation id="5690820326685091783">JemaOS AI உடன் திறக்கவும்</translation>
+</translationbundle>

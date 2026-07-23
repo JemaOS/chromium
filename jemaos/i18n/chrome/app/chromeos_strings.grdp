@@ -9,7 +9,23 @@
         Connectez-vous à votre compte local openJema
       </message>
     </if>
-    <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <if expr="lang == 'es'">
+      <message name="IDS_JEMAOS_LOCAL_SIGNUP_TITLE" desc="Title of oobe jemaos local signup page">
+        Crea tu cuenta local de openJema
+      </message>
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_TITLE" desc="Title of oobe jemaos local signin page">
+        Inicia sesión en tu cuenta local de openJema
+      </message>
+    </if>
+    <if expr="lang == 'it'">
+      <message name="IDS_JEMAOS_LOCAL_SIGNUP_TITLE" desc="Title of oobe jemaos local signup page">
+        Crea il tuo account locale openJema
+      </message>
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_TITLE" desc="Title of oobe jemaos local signin page">
+        Accedi al tuo account locale openJema
+      </message>
+    </if>
+    <if expr="lang != 'fr' and lang != 'fr-CA' and lang != 'es' and lang != 'it'">
       <message name="IDS_JEMAOS_LOCAL_SIGNUP_TITLE" desc="Title of oobe jemaos local signup page">
         Create your local openJema account
       </message>
@@ -27,7 +43,23 @@
         Connectez-vous à votre compte local JemaOS
       </message>
     </if>
-    <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <if expr="lang == 'es'">
+      <message name="IDS_JEMAOS_LOCAL_SIGNUP_TITLE" desc="Title of oobe jemaos local signup page">
+        Crea tu cuenta local de JemaOS
+      </message>
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_TITLE" desc="Title of oobe jemaos local signin page">
+        Inicia sesión en tu cuenta local de JemaOS
+      </message>
+    </if>
+    <if expr="lang == 'it'">
+      <message name="IDS_JEMAOS_LOCAL_SIGNUP_TITLE" desc="Title of oobe jemaos local signup page">
+        Crea il tuo account locale JemaOS
+      </message>
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_TITLE" desc="Title of oobe jemaos local signin page">
+        Accedi al tuo account locale JemaOS
+      </message>
+    </if>
+    <if expr="lang != 'fr' and lang != 'fr-CA' and lang != 'es' and lang != 'it'">
       <message name="IDS_JEMAOS_LOCAL_SIGNUP_TITLE" desc="Title of oobe jemaos local signup page">
         Create your local JemaOS account
       </message>
@@ -37,7 +69,7 @@
     </if>
   </if>
   <if expr="lang == 'fr' or lang == 'fr-CA'">
-    <message name="IDS_JEMAOS_LOCAL_SIGNIN_USERNAME" desc="Label of oobe jemaos local signin page, username input">
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_USERNAME" desc="Label of oobe jemaos local signin page, username input">
       Nom d'utilisateur
     </message>
     <message name="IDS_JEMAOS_LOCAL_SIGNIN_INVALID_USERNAME" desc="Error message of oobe jemaos local signin page, username input">
@@ -64,9 +96,67 @@
     <message name="IDS_JEMAOS_LOCAL_SIGNIN_EXIST_LOCAL_ACCOUNT_ERROR_MESSAGE" desc="Error message of oobe jemaos local signin page, password_confirm input">
       Le nom d'utilisateur ou le mot de passe est incorrect
     </message>
-  </if>
-  <if expr="lang != 'fr' and lang != 'fr-CA'">
-    <message name="IDS_JEMAOS_LOCAL_SIGNIN_USERNAME" desc="Label of oobe jemaos local signin page, username input">
+    </if>
+    <if expr="lang == 'es'">
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_USERNAME" desc="Label of oobe jemaos local signin page, username input">
+        Nombre de usuario
+      </message>
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_INVALID_USERNAME" desc="Error message of oobe jemaos local signin page, username input">
+        Nombre de usuario no válido
+      </message>
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_PASSWORD" desc="Label of oobe jemaos local signin page, password input">
+        Contraseña
+      </message>
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_INVALID_PASSWORD" desc="Error message of oobe jemaos local signin page, password input">
+        Introduce una contraseña
+      </message>
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_PASSWORD_CONFIRM" desc="Label of oobe jemaos local signin page, password_confirm input">
+        Confirmar contraseña
+      </message>
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_PASSWORD_CONFIRM_ERROR" desc="Error message of oobe jemaos local signin page, password_confirm input">
+        Las contraseñas no coinciden
+      </message>
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_NEW_LOCAL_ACCOUNT_BUTTON_TEXT" desc="Error message of oobe jemaos local signin page, password_confirm input">
+        Crear una cuenta local nueva
+      </message>
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_EXIST_LOCAL_ACCOUNT_BUTTON_TEXT" desc="Error message of oobe jemaos local signin page, password_confirm input">
+        Iniciar sesión en una cuenta existente
+      </message>
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_EXIST_LOCAL_ACCOUNT_ERROR_MESSAGE" desc="Error message of oobe jemaos local signin page, password_confirm input">
+        El nombre de usuario o la contraseña que has introducido son incorrectos
+      </message>
+    </if>
+    <if expr="lang == 'it'">
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_USERNAME" desc="Label of oobe jemaos local signin page, username input">
+        Nome utente
+      </message>
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_INVALID_USERNAME" desc="Error message of oobe jemaos local signin page, username input">
+        Nome utente non valido
+      </message>
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_PASSWORD" desc="Label of oobe jemaos local signin page, password input">
+        Password
+      </message>
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_INVALID_PASSWORD" desc="Error message of oobe jemaos local signin page, password input">
+        Inserisci una password
+      </message>
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_PASSWORD_CONFIRM" desc="Label of oobe jemaos local signin page, password_confirm input">
+        Conferma password
+      </message>
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_PASSWORD_CONFIRM_ERROR" desc="Error message of oobe jemaos local signin page, password_confirm input">
+        Le password non corrispondono
+      </message>
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_NEW_LOCAL_ACCOUNT_BUTTON_TEXT" desc="Error message of oobe jemaos local signin page, password_confirm input">
+        Crea un nuovo account locale
+      </message>
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_EXIST_LOCAL_ACCOUNT_BUTTON_TEXT" desc="Error message of oobe jemaos local signin page, password_confirm input">
+        Accedi a un account esistente
+      </message>
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_EXIST_LOCAL_ACCOUNT_ERROR_MESSAGE" desc="Error message of oobe jemaos local signin page, password_confirm input">
+        Il nome utente o la password inseriti non sono corretti
+      </message>
+    </if>
+    <if expr="lang != 'fr' and lang != 'fr-CA' and lang != 'es' and lang != 'it'">
+      <message name="IDS_JEMAOS_LOCAL_SIGNIN_USERNAME" desc="Label of oobe jemaos local signin page, username input">
       Username
     </message>
     <message name="IDS_JEMAOS_LOCAL_SIGNIN_INVALID_USERNAME" desc="Error message of oobe jemaos local signin page, username input">
@@ -93,14 +183,24 @@
     <message name="IDS_JEMAOS_LOCAL_SIGNIN_EXIST_LOCAL_ACCOUNT_ERROR_MESSAGE" desc="Error message of oobe jemaos local signin page, password_confirm input">
       The username or password you entered is incorrect
     </message>
-  </if>
+    </if>
   <if expr="openjema">
     <if expr="lang == 'fr' or lang == 'fr-CA'">
       <message name="IDS_JEMA_LOCAL_SIGNIN_HTML" desc="Text shown on network error screen, suggest user to use jema local account">
         Vous pouvez <ph name="LINK_START">$1<ex>&gt;a&lt;</ex></ph>vous connecter avec un compte local openJema<ph name="LINK_END">$2<ex>&gt;/a&lt;</ex></ph>.
       </message>
     </if>
-    <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <if expr="lang == 'es'">
+      <message name="IDS_JEMA_LOCAL_SIGNIN_HTML" desc="Text shown on network error screen, suggest user to use jema local account">
+        Puedes <ph name="LINK_START">$1<ex>&gt;a&lt;</ex></ph>iniciar sesión con una cuenta local de openJema<ph name="LINK_END">$2<ex>&gt;/a&lt;</ex></ph>.
+      </message>
+    </if>
+    <if expr="lang == 'it'">
+      <message name="IDS_JEMA_LOCAL_SIGNIN_HTML" desc="Text shown on network error screen, suggest user to use jema local account">
+        Puoi <ph name="LINK_START">$1<ex>&gt;a&lt;</ex></ph>accedere con un account locale openJema<ph name="LINK_END">$2<ex>&gt;/a&lt;</ex></ph>.
+      </message>
+    </if>
+    <if expr="lang != 'fr' and lang != 'fr-CA' and lang != 'es' and lang != 'it'">
       <message name="IDS_JEMA_LOCAL_SIGNIN_HTML" desc="Text shown on network error screen, suggest user to use jema local account">
         You can <ph name="LINK_START">$1<ex>&gt;a&lt;</ex></ph>sign in with a openJema local account<ph name="LINK_END">$2<ex>&gt;/a&lt;</ex></ph>.
       </message>
@@ -112,14 +212,24 @@
         Vous pouvez <ph name="LINK_START">$1<ex>&gt;a&lt;</ex></ph>vous connecter avec un compte local JemaOS<ph name="LINK_END">$2<ex>&gt;/a&lt;</ex></ph>.
       </message>
     </if>
-    <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <if expr="lang == 'es'">
+      <message name="IDS_JEMA_LOCAL_SIGNIN_HTML" desc="Text shown on network error screen, suggest user to use jema local account">
+        Puedes <ph name="LINK_START">$1<ex>&gt;a&lt;</ex></ph>iniciar sesión con una cuenta local de JemaOS<ph name="LINK_END">$2<ex>&gt;/a&lt;</ex></ph>.
+      </message>
+    </if>
+    <if expr="lang == 'it'">
+      <message name="IDS_JEMA_LOCAL_SIGNIN_HTML" desc="Text shown on network error screen, suggest user to use jema local account">
+        Puoi <ph name="LINK_START">$1<ex>&gt;a&lt;</ex></ph>accedere con un account locale JemaOS<ph name="LINK_END">$2<ex>&gt;/a&lt;</ex></ph>.
+      </message>
+    </if>
+    <if expr="lang != 'fr' and lang != 'fr-CA' and lang != 'es' and lang != 'it'">
       <message name="IDS_JEMA_LOCAL_SIGNIN_HTML" desc="Text shown on network error screen, suggest user to use jema local account">
         You can <ph name="LINK_START">$1<ex>&gt;a&lt;</ex></ph>sign in with a JemaOS local account<ph name="LINK_END">$2<ex>&gt;/a&lt;</ex></ph>.
       </message>
     </if>
   </if>
   <if expr="lang == 'fr' or lang == 'fr-CA'">
-    <message name="IDS_JEMAOS_ADD_USER_DUP_EMAIL_ERROR_MESSAGE" desc="error message when user want to add existed email with different account type (jemaos or google)">
+      <message name="IDS_JEMAOS_ADD_USER_DUP_EMAIL_ERROR_MESSAGE" desc="error message when user want to add existed email with different account type (jemaos or google)">
       L'adresse e-mail <ph name="EMAIL_ADDRESS">$1</ph> existe déjà. Veuillez réessayer avec une autre adresse.
     </message>
     <message name="IDS_JEMAOS_USE_LOCAL_ACCOUNT_BUTTON_TEXT" desc="text on button of modal dialog in gaia_signin screen">
@@ -134,9 +244,43 @@
     <message name="IDS_JEMAOS_CONFIRM_GOTO_LOCAL_HINT_MESSAGE_1" desc="first hint message of modal dialog in gaia_signin screen">
       Si vous choisissez un compte local, des fonctionnalités telles que la synchronisation de vos données et préférences sur plusieurs appareils et la connexion automatique aux applications web avec votre compte JemaOS ne fonctionneront pas.
     </message>
-  </if>
-  <if expr="lang != 'fr' and lang != 'fr-CA'">
-    <message name="IDS_JEMAOS_ADD_USER_DUP_EMAIL_ERROR_MESSAGE" desc="error message when user want to add existed email with different account type (jemaos or google)">
+    </if>
+    <if expr="lang == 'es'">
+      <message name="IDS_JEMAOS_ADD_USER_DUP_EMAIL_ERROR_MESSAGE" desc="error message when user want to add existed email with different account type (jemaos or google)">
+        El correo electrónico <ph name="EMAIL_ADDRESS">$1</ph> ya existe. Inténtalo con otro correo electrónico.
+      </message>
+      <message name="IDS_JEMAOS_CONFIRM_GOTO_LOCAL_ACCOUNT_TITLE" desc="title of modal dialog in gaia_signin screen">
+        ¿Cambiar a una cuenta local?
+      </message>
+      <message name="IDS_JEMAOS_CONFIRM_GOTO_LOCAL_HINT_MESSAGE_1" desc="first hint message of modal dialog in gaia_signin screen">
+        Si eliges usar una cuenta local, las funciones útiles como la sincronización de tus datos y preferencias en varios dispositivos y el inicio de sesión automático en aplicaciones web con tu cuenta de JemaOS no funcionarán.
+      </message>
+      <message name="IDS_JEMAOS_USE_LOCAL_ACCOUNT_BUTTON_TEXT" desc="text on button of modal dialog in gaia_signin screen">
+        Utilizar una cuenta local
+      </message>
+      <message name="IDS_JEMAOS_USE_ONLINE_ACCOUNT_BUTTON_TEXT" desc="text on button of modal dialog in gaia_signin screen">
+        Continuar con la cuenta en línea
+      </message>
+    </if>
+    <if expr="lang == 'it'">
+      <message name="IDS_JEMAOS_ADD_USER_DUP_EMAIL_ERROR_MESSAGE" desc="error message when user want to add existed email with different account type (jemaos or google)">
+        L'email <ph name="EMAIL_ADDRESS">$1</ph> esiste già. Riprova con un'altra email.
+      </message>
+      <message name="IDS_JEMAOS_CONFIRM_GOTO_LOCAL_ACCOUNT_TITLE" desc="title of modal dialog in gaia_signin screen">
+        Passare a un account locale?
+      </message>
+      <message name="IDS_JEMAOS_CONFIRM_GOTO_LOCAL_HINT_MESSAGE_1" desc="first hint message of modal dialog in gaia_signin screen">
+        Se scegli di utilizzare un account locale, le funzioni utili come la sincronizzazione dei tuoi dati e delle tue preferenze su più dispositivi e l'accesso automatico alle app web con il tuo account JemaOS non funzioneranno.
+      </message>
+      <message name="IDS_JEMAOS_USE_LOCAL_ACCOUNT_BUTTON_TEXT" desc="text on button of modal dialog in gaia_signin screen">
+        Utilizza un account locale
+      </message>
+      <message name="IDS_JEMAOS_USE_ONLINE_ACCOUNT_BUTTON_TEXT" desc="text on button of modal dialog in gaia_signin screen">
+        Continua con l'account online
+      </message>
+    </if>
+    <if expr="lang != 'fr' and lang != 'fr-CA' and lang != 'es' and lang != 'it'">
+      <message name="IDS_JEMAOS_ADD_USER_DUP_EMAIL_ERROR_MESSAGE" desc="error message when user want to add existed email with different account type (jemaos or google)">
       Email <ph name="EMAIL_ADDRESS">$1</ph> already exists. Please retry with another email.
     </message>
     <message name="IDS_JEMAOS_USE_LOCAL_ACCOUNT_BUTTON_TEXT" desc="text on button of modal dialog in gaia_signin screen">
@@ -151,14 +295,24 @@
     <message name="IDS_JEMAOS_CONFIRM_GOTO_LOCAL_HINT_MESSAGE_1" desc="first hint message of modal dialog in gaia_signin screen">
       If you opt to use a local account, useful features include synchronising your data and preferences across multiple devices and automatically signing in web apps using your JemaOS account will not work.
     </message>
-  </if>
+    </if>
   <if expr="openjema">
     <if expr="lang == 'fr' or lang == 'fr-CA'">
       <message name="IDS_JEMAOS_CONFIRM_GOTO_LOCAL_HINT_MESSAGE_2" desc="first hint message of modal dialog in gaia_signin screen">
         Nous recommandons d'utiliser un compte en ligne pour profiter pleinement d'openJema.
       </message>
     </if>
-    <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <if expr="lang == 'es'">
+      <message name="IDS_JEMAOS_CONFIRM_GOTO_LOCAL_HINT_MESSAGE_2" desc="first hint message of modal dialog in gaia_signin screen">
+        Recomendamos usar una cuenta en línea para aprovechar openJema al máximo.
+      </message>
+    </if>
+    <if expr="lang == 'it'">
+      <message name="IDS_JEMAOS_CONFIRM_GOTO_LOCAL_HINT_MESSAGE_2" desc="first hint message of modal dialog in gaia_signin screen">
+        Consigliamo di utilizzare un account online per sfruttare openJema al massimo.
+      </message>
+    </if>
+    <if expr="lang != 'fr' and lang != 'fr-CA' and lang != 'es' and lang != 'it'">
       <message name="IDS_JEMAOS_CONFIRM_GOTO_LOCAL_HINT_MESSAGE_2" desc="first hint message of modal dialog in gaia_signin screen">
         We recommend using an online account to utilise openJema to its fullest.
       </message>
@@ -170,7 +324,17 @@
         Nous recommandons d'utiliser un compte en ligne pour profiter pleinement de JemaOS.
       </message>
     </if>
-    <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <if expr="lang == 'es'">
+      <message name="IDS_JEMAOS_CONFIRM_GOTO_LOCAL_HINT_MESSAGE_2" desc="first hint message of modal dialog in gaia_signin screen">
+        Recomendamos usar una cuenta en línea para aprovechar JemaOS al máximo.
+      </message>
+    </if>
+    <if expr="lang == 'it'">
+      <message name="IDS_JEMAOS_CONFIRM_GOTO_LOCAL_HINT_MESSAGE_2" desc="first hint message of modal dialog in gaia_signin screen">
+        Consigliamo di utilizzare un account online per sfruttare JemaOS al massimo.
+      </message>
+    </if>
+    <if expr="lang != 'fr' and lang != 'fr-CA' and lang != 'es' and lang != 'it'">
       <message name="IDS_JEMAOS_CONFIRM_GOTO_LOCAL_HINT_MESSAGE_2" desc="first hint message of modal dialog in gaia_signin screen">
         We recommend using an online account to utilise JemaOS to its fullest.
       </message>
@@ -239,6 +403,16 @@
         Join JemaOS user experience improvement plan
       </message>
     </if>
+  </if>
+  <if expr="lang == 'fr' or lang == 'fr-CA'">
+    <message name="IDS_JEMAOS_LOCAL_CONNECT_LINK" desc="Link on the OOBE WiFi page to sign in with a local account instead of an online one">
+      Se connecter avec un compte local
+    </message>
+  </if>
+  <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <message name="IDS_JEMAOS_LOCAL_CONNECT_LINK" desc="Link on the OOBE WiFi page to sign in with a local account instead of an online one">
+      Sign in with a local account
+    </message>
   </if>
   <if expr="lang == 'fr' or lang == 'fr-CA'">
     <message name="IDS_JEMAOS_BACKUP_NOTIFICATION_RUNNING_TITLE" desc="Title of backup notification when backup is running.">

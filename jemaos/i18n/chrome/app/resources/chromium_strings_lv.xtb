@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="lv">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Par Thot</translation>
+<translation id="5639860668557220477">Saņemiet palīdzību par Thot pārlūkprogrammu</translation>
+<translation id="1692689520561928457">Par JemaOS</translation>
+<translation id="8692765844418174375">JemaOS versija</translation>
+<translation id="2943260250558374955">Saņemiet palīdzību par JemaOS</translation>
+<translation id="713321354492170993">Pārlūkprogramma atbrīvo atmiņu no neaktīvajām cilnēm. Tas dod aktīvajām cilnēm un citām lietotnēm vairāk skaitļošanas resursu un uztur pārlūkprogrammu ātru. Jūsu neaktīvās cilnes automātiski atkal kļūst aktīvas, kad atgriežaties pie tām.</translation>
+<translation id="1774190491044887444">Pārlūkprogramma taupa akumulatoru, ierobežojot fona aktivitātes un vizuālos efektus, piemēram, vienmērīgu ritināšanu un video kadru ātrumu.</translation>
+<translation id="180121268008059459">Pārlūkprogramma iepriekš ielādē lapas, padarot pārlūkošanu un meklēšanu ātrāku.</translation>
+<translation id="7127093527178692287">Atjaunot dublējumu (beta)</translation>
+<translation id="4439042171549201806">Lai atjaunotu JemaOS no dublējumfaila, lūdzu, tagad ievietojiet savā JemaOS ierīcē noņemamo disku, kurā atrodas dublējumfails, un norādiet, kuru dublējumfailu vēlaties atjaunot. Lūdzu, ņemiet vērā, ka dublējumfailam jāatrodas noņemamā diska saknes direktorijā, lai šis vednis to noteiktu.</translation>
+<translation id="2955409026764742995">Atlasiet atjaunojamo dublējumfailu:</translation>
+<translation id="7040434808685140085">Diemžēl atlasīto dublējumfailu nevar atpazīt; lūdzu, atlasiet jaunu.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />Lai atjaunotu JemaOS no atlasītā dublējumfaila, ir būtiski iegūt precīzu informāciju par dublējuma izveides brīdi. Pretējā gadījumā atjaunošanas process neizdosies.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"Konta nosaukums" ir primārais pieteikšanās akreditācijas dati kontam, kurā tika izveidots jūsu dublējumfails. Tas parasti ir e-pasta adrese, ko izmantojāt, lai reģistrētos savam JemaOS/Google kontam. Ja tas bija lokālais konts, tas būtu lietotājvārds ar pievienotu "@jemaos.local".<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Parole ir paroles frāze, ko jums tika lūgts ievadīt, kad tika izveidots dublējums. Tā parasti ir tā pati parole, ko izmantojāt, lai pierakstītos JemaOS darbvirsmā šim kontam.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Konta nosaukums</translation>
+<translation id="5490570429039308155">Diemžēl lūdzu, ievadiet pareizo konta nosaukumu</translation>
+<translation id="6657585470893396449">Parole</translation>
+<translation id="8200189938001188563">Diemžēl parole nevar būt tukša</translation>
+<translation id="3157931365184549694">Atjaunot</translation>
+<translation id="8556278756526311953">Notiek dublējuma atjaunošana</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Mēs pašlaik strādājam pie jūsu dublējumfaila atjaunošanas; tas var aizņemt kādu laiku, tāpēc, lūdzu, esiet pacietīgi.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Lūdzu, ņemiet vērā, ka lietotāja saskarne automātiski restartēsies, kad atjaunošanas process būs veiksmīgi pabeigts.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Dublējuma atjaunošana neizdevās</translation>
+<translation id="5003531399442003695">Lai iegūtu sīkāku informāciju, lūdzu, noklikšķiniet uz tālāk esošās saites, lai skatītu žurnālus. Ja šī kļūda joprojām pastāv, lūdzu, sazinieties ar JemaOS tehniskā atbalsta kanāliem un sniedziet kļūdu žurnālus.</translation>
+<translation id="6363786367719063276">Skatīt žurnālus</translation>
+<translation id="8730621377337864115">Gatavs</translation>
+<translation id="975238173507911396">Datu atjaunošana veiksmīga</translation>
+<translation id="6276879052695618521">Dublējuma atjaunošanas žurnāli</translation>
+<translation id="4901207598072637766">JemaOS, nodrošina <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS un tā pakalpojumi atbilst GDPR un Eiropas datu aizsardzības likuma noteikumiem. Lai iegūtu vairāk informācijas, lūdzu, skatiet mūsu <ph name="BEGIN_LINK_PRIVACY" />Privātuma politiku<ph name="END_LINK_PRIVACY" /> un mūsu <ph name="BEGIN_LINK_TOS" />Pakalpojumu sniegšanas noteikumus.<ph name="END_LINK_TOS" /></translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, visas tiesības aizsargātas.</translation>
+<translation id="370679569376308836">JemaOS ir komerciāls piedāvājums, kas balstīts uz Jema ierīci un tās SaaS.</translation>
+<translation id="2773644194450163486">JemaOS ir iespējams pateicoties <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> atvērtā koda projektam.</translation>
+<translation id="2330680727776977160">Chromium ir iespējams arī pateicoties citai <ph name="BEGIN_LINK_1" />atvērtā koda programmatūrai<ph name="END_LINK_1" /> un <ph name="BEGIN_LINK_2" />papildu atvērtā koda programmatūrai<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Izstrādājis un ražojis Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, visas tiesības aizsargātas.</translation>
+<translation id="6168072053306020326">Jema Technology ir Jema Technology LTD un Jema Technology (Beijing) Limited tirdzniecības nosaukums.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD ir uzņēmums, kas reģistrēts Anglijā un Velsā ar uzņēmuma numuru 12273803.</translation>
+<translation id="1251589813188467292">Svarīga ierīces garantijas un servisa informācija</translation>
+<translation id="4851115775198886021">Ierīces SN:</translation>
+</translationbundle>

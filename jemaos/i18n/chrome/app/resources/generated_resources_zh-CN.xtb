@@ -45,7 +45,7 @@
 <translation id="3853374591075338656">将 <ph name="DEVICE_OS" /> 安装至此设备的磁盘上；所选目标磁盘的所有分区和数据将全部抹去。</translation>
 <translation id="4039091757234555415">磁盘</translation>
 <translation id="7783580523889684697">没有可用的磁盘</translation>
-<!-- <translation id="4148957013307229264">正在安装...</translation> -->
+<!-- -->
 <translation id="8217653566575018388">安装完成</translation>
 <translation id="8846746259444262774">安装失败</translation>
 <translation id="8826683299983762794">请先关机，然后移除任何安装介质，最后再次启动设备以引导 <ph name="DEVICE_OS" /> 系统。</translation>
@@ -75,7 +75,6 @@
 <translation id="2054784944085654098">正在备份中，此过程需要一段时间，请耐心等待……</translation>
 <translation id="3554401467586751874">备份文件创建成功</translation>
 <translation id="2349211327705667074">查看备份文件</translation>
-<translation id="6337433855796857931">备份文件创建失败</translation>
 <translation id="3049367131589710124">查看错误日志</translation>
 <translation id="3064478898280877715">应用商店</translation>
 <!-- os_settings_strings.override.grdp -->
@@ -103,9 +102,6 @@
 <translation id="4356727807337882306">JemaOS 安卓子系统的应用可能需要获得完整的文件系统访问权限，才能在外部存储设备上读取和写入文件。任何使用外部驱动器的人员都能看到在此设备上创建的文件和文件夹。</translation>
 <translation id="7841006096296111449">请确保您的打印机与 JemaOS 设备连接到同一 Wi-Fi 网络，或者使用 USB 线。<ph name="LINK_BEGIN" />详细了解兼容性<ph name="LINK_END" /></translation>
 <translation id="8976574741886416199">请确保您的打印机与 openJema 设备连接到同一 Wi-Fi 网络，或者使用 USB 线。<ph name="LINK_BEGIN" />详细了解兼容性<ph name="LINK_END" /></translation>
-<translation id="7456142309650173560">开发者</translation>
-<translation id="1764226536771329714">测试</translation>
-<translation id="913411432238655354">启动时恢复应用</translation>
 <translation id="4761916003358543528">您的应用和设置会在您使用自己的 JemaOS 帐号登录的所有设备上保持同步。如需了解浏览器同步选项，请前往 <ph name="LINK_BEGIN" />Chromium 设置<ph name="LINK_END" />。</translation>
 <translation id="2284684596745086553">屏幕键盘、开关控制等</translation>
 <translation id="6391619337105968582">单声道音频、启动等</translation>
@@ -145,80 +141,12 @@
 <translation id="6496949983038880601">如果您找不到要查找的内容，请参阅 <ph name="BEGIN_LINK_CHROMIUM" />JemaOS 帮助<ph name="END_LINK_CHROMIUM" /></translation>
 <translation id="1733544241248581977">为您提供更快速主动的保护措施，免受危险网站、下载内容或扩展程序的威胁。系统会在密码遭泄露时向您发出警告。</translation>
 <translation id="1144810021918451336">不会保护您免受危险网站、下载内容和扩展程序的侵害。</translation>
-<!-- os_settings_strings.grdp -->
-<translation id="4722832498335744482">自动保持我的 <ph name="DEVICE_OS" /> 运行最新版本</translation>
-<translation id="2347352406101856238"><ph name="DEVICE_OS" /> 自动更新已开启</translation>
-<translation id="185834232609012804"><ph name="DEVICE_OS" /> 自动更新已禁用</translation>
-<translation id="6095651579470426894"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" />（<ph name="PRODUCT_CHANNEL"></ph>）平台 <ph name="JEMAOS_PLATFORM_VERSION" /><ph name="PRODUCT_VERSION_BITS" /></translation>
-<translation id="8543313412385980367"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />，<ph name="JEMAOS_MAJOR_VERSION" />
-    <ph name="LINE_BREAK1" />
-    平台 <ph name="JEMAOS_PLATFORM_VERSION" />
-    <ph name="LINE_BREAK2" />
-    Chromium <ph name="PRODUCT_VERSION" /></translation>
-<translation id="7054511234201172814"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />，<ph name="JEMAOS_MAJOR_VERSION" />，<ph name="JEMAOS_LICENSE_STATE_DESC" />
-    <ph name="LINE_BREAK1" />
-    平台 <ph name="JEMAOS_PLATFORM_VERSION" />
-    <ph name="LINE_BREAK2" />
-    Chromium <ph name="PRODUCT_VERSION" /></translation>
-<translation id="7392552814771602496">非商用授权版</translation>
-<translation id="2896503748067813182">订阅试用</translation>
-<translation id="4362781408813685579">有效订阅</translation>
-<translation id="6478848278025138641">订阅失效</translation>
-<translation id="8466048683756385518">企业授权版（试用）</translation>
-<translation id="2853871047705932424">企业授权版</translation>
-<translation id="5239675900317881945">企业授权版（已失效）</translation>
-<translation id="189101945990408398">经典 Intel</translation>
-<translation id="6816405236809604904">现代 Intel</translation>
-<translation id="6169452478137972655">AMD 显卡</translation>
-<translation id="6183637837838262693">能效 Intel</translation>
-<translation id="1079017345574916945">远程桌面</translation>
-<translation id="6898090158927982244">您的 Linux 已是最新版本</translation>
-<translation id="125640132000960723">检测到 Linux 子系统有可用重要更新。强烈建议尽早执行更新，否则 Linux 子系统有可能停止工作。</translation>
-<translation id="6694016202036959050"><ph name="DEVICE_OS" /> 设置</translation>
-<translation id="1553585557005267964">JemaOS 账号、备份、其他设置</translation>
-<translation id="8509770612780794865">Wifi 设置</translation>
-<translation id="4938972461544498524">触控板设置</translation>
-<translation id="1210024513248363065">远程服务</translation>
-<translation id="7170710479480545448">远程协助服务</translation>
-<translation id="7421654468125961872">通过远程协助服务 JemaOS 官方技术支持人员可以更好地检查系统可能存在的问题及帮助你解决问题。远程协助服务仅支持由 JemaOS 官方技术支持人员发起。</translation>
-<translation id="4153448966914043142">请把显示的数字分享给与您联系的 JemaOS 官方技术支持人员</translation>
-<translation id="8447783727233371010">正在启动远程协助服务...</translation>
-<translation id="4770469035145322795">请尝试重新开启远程协助服务</translation>
-<translation id="4070039109671307724">其他选项</translation>
-<translation id="7326893024940073254">显示「重启」按钮</translation>
-<translation id="4690206696796355711">在系统任务栏菜单显示「重启」按钮</translation>
-<translation id="6243454903512423518">显示「旋转屏幕」按钮</translation>
-<translation id="7303548327449168702">当前不是平板电脑模式，已在系统任务栏菜单隐藏「旋转屏幕」按钮</translation>
-<translation id="3840770932695838898">在系统任务栏菜单显示「旋转屏幕」按钮</translation>
-<translation id="4745886129774726269">在系统任务栏菜单显示切换平板模式和桌面模式的按钮</translation>
-<translation id="2985624172970894798">平板/桌面模式切换按钮</translation>
-<translation id="1851103550468466960">开启 Widevine 支持</translation>
-<translation id="8990695698551687522">指定 "libwidevine.so"</translation>
-<translation id="4838463656205005584">启用 Widevine 失败...</translation>
-<translation id="7386874137903403308">所选的 "libwidevine.so" 无效；请重新选择正确的文件再尝试。</translation>
-<translation id="768441431736013726">在播放受保护的流媒体内容时启用 Widevine 支持。<ph name="BEGIN_LINK_LEARN_MORE" />了解详情<ph name="END_LINK_LEARN_MORE" /></translation>
-<translation id="3851274061009484883">JemaOS 帐号设置</translation>
-<translation id="6468776556018764845">实验性功能</translation>
-<translation id="6463286951433091842">绕过部分可信平台模块 (TPM) 的检查</translation>
-<translation id="8473208832886345753">如果系统部分依赖 TPM 的相关功能出现问题，可设置绕过在这些功能上对 TPM 的检查。</translation>
-<translation id="621731412870836460">允许该账户在设备启动时免密自动登录桌面</translation>
-<translation id="2988226676715633921">检测到该设备上已有其它账户设置了自动登录，如需为目前账户设置自动登录，需要将目前设置的自动登录设置关闭</translation>
-<translation id="1674714510072289091">该账户文件系统初始化出现未知错误，暂时无法开启；请尝试重启或重新创建账户</translation>
-<translation id="8180845003886240840">自动登录选项仅限于「本地账户」类型，目前账户类型无法开启</translation>
-<translation id="157949693054552220">请在<ph name="BEGIN_LINK" />隐私与安全<ph name="END_LINK" />设置中添加登录密码，然后再启用自动登录</translation>
-<translation id="595136526907376719">JemaOS 大版本更新已上线。如需进行 JemaOS 的大版本升级，请支付一次性更新费用后，再次检查更新。</translation>
-<translation id="376676483415835736">有新版本的 JemaOS 可供升级，但你的 JemaOS for You 订阅已过期。如需升级 JemaOS，请考虑续费。</translation>
-<translation id="9125114578624380848">Linux 子系统、Linux 应用程序</translation>
-<translation id="2100769780401669290">如需更换此本地账号登录 JemaOS 所用的 PIN 码或密码，请至<ph name="BEGIN_LINK" />隐私与安全<ph name="END_LINK" />设置页找到相关选项。</translation>
-<!-- <translation id="3819257035322786455">备份</translation> -->
-<translation id="6523879681771260760">请选择存储备份的位置</translation>
-<translation id="2036152819788683293">为当前登录的账户创建备份 (beta)。<ph name="BEGIN_LINK_LEARN_MORE" />了解详情<ph name="END_LINK_LEARN_MORE" /></translation>
+
+<!-- -->
 <translation id="5879112835975398426">为当前登录的账户创建备份 (beta)</translation>
 <translation id="6529331856800157597">此操作可以为当前登录的账户创建全盘备份，方便日后恢复至备份文件创建时 JemaOS 系统的状态，包括设置项、安装的浏览器插件以及子系统的程序等。视目前已安装的程序和你的个人文件夹的内容，备份文件可能会很大；建议将备份文件存储在外部存储设备上。如果你有便携式移动磁盘，此时请接入该设备。<ph name="BEGIN_LINK_LEARN_MORE" />了解详情<ph name="END_LINK_LEARN_MORE" /></translation>
 <translation id="996700315270946845">请输入当前账户的登录密码</translation>
-<translation id="8663988871299316062">请务必牢记此密码，恢复备份时会用到</translation>
 <translation id="3176232846379750386">禁用多分区下的媒体文件自动扫描以获得更长的电池续航时间。<ph name="BEGIN_LINK_LEARN_MORE" />了解详情<ph name="END_LINK_LEARN_MORE" /></translation>
-<translation id="2237927770036822831">安全选项</translation>
 <translation id="4590248637022771792">以「开发者模式」运行当前的 <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> 以启用开发者相关的功能。<ph name="BEGIN_LINK_LEARN_MORE" />了解更多<ph name="END_LINK_LEARN_MORE" /></translation>
 <translation id="8484013063794117855">目前已在「开发者模式」下</translation>
 <translation id="4779786050352687599">启用「开发者模式」</translation>
@@ -227,8 +155,6 @@
 <translation id="2377461835684104822">JemaOS 订阅信息</translation>
 <translation id="6382379769502480932">读取设备识别码信息失败</translation>
 <translation id="7384698100459834045">订阅有效期</translation>
-<translation id="3354919960795782984">设备识别码</translation>
-<translation id="5758632069869992306">联网查看订阅信息</translation>
 <translation id="2505128566310022721">功能开关、JemaOS AI 相关设置</translation>
 <translation id="133677533106907546">启用 JemaOS AI</translation>
 <translation id="1987923075425225632">开启或关闭全部 JemaOS AI 相关功能</translation>
@@ -351,7 +277,6 @@
 <translation id="799069234167243501">请确保您的蓝牙设备处于配对模式且就在附近。应仅与您信任的设备配对。此 <ph name="DEVICE_TYPE" /> 上的所有账号都可以看到已配对的设备。</translation>
 <translation id="4329124023116919625">请确保您的蓝牙设备处于配对模式且就在附近。应仅与您信任的设备配对。此 <ph name="DEVICE_TYPE" /> 上的所有账号都可以看到已配对的设备。<ph name="BEGIN_LINK_LEARN_MORE" />了解详情<ph name="END_LINK_LEARN_MORE" /></translation>
 <translation id="7810198884977336267">您将使用自助终端或数字标牌的授权许可，此模式仅允许设备运行自助终端或数字标牌模式。如果您希望用户能够登录设备，请返回并使用高级版进行注册。</translation>
-<translation id="3520824492621090923">确认把设备注册为自助终端或数字标牌？</translation>
 <translation id="5658446439144437349">您没有足够的授权许可来注册此设备。请联系销售部门购买更多升级。如果您认为此消息有误，请联系支持部门。</translation>
 <translation id="3476266622859415268">欢迎使用 JemaOS AI，你的系统级 AI 助手</translation>
 <translation id="8947422922793200440"><ph name="BEGIN_PARAGRAPH1" />开始在 JemaOS AI 中随便聊聊，通过创建各种 AI 助手开始写作、计划、学习等。按下 Ctrl + C + C 快捷键组合可以在任何地方随时唤醒 JemaOS AI 以进行可定制的快捷操作。<ph name="END_PARAGRAPH1" />
@@ -389,4 +314,135 @@
 <translation id="8911625876778733358">若要使用「附近分享」功能，请确保两部设备均已解锁、相距很近且均已开启蓝牙。如果您的分享对象是一部不在您通讯录中的 openJema 设备，请确保已为它开启「附近分享」的高可见度模式（先选择时间，打开状态区，然后开启「附近分享」的高可见度模式）。</translation>
 <translation id="6925864293458303066">若要使用「附近分享」功能，请确保两部设备均已解锁、相距很近且均已开启蓝牙。如果您的分享对象是一部不在您通讯录中的 JemaOS 设备，请确保已为它开启「附近分享」的高可见度模式（先选择时间，打开状态区，然后开启「附近分享」的高可见度模式）。</translation>
 
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">自动保持 <ph name="DEVICE_OS" /> 为最新版本</translation>
+<translation id="2347352406101856238">已启用 <ph name="DEVICE_OS" /> 更新</translation>
+<translation id="185834232609012804">已停用 <ph name="DEVICE_OS" /> 更新</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" />（<ph name="PRODUCT_CHANNEL" />）平台 <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">远程桌面</translation>
+<translation id="6898090158927982244">您的 Linux 已是最新版本</translation>
+<translation id="4886703929102211360">Linux（测试版）组件有关键更新可用。强烈建议尽快安装此更新，否则您的 Linux（测试版）可能无法正常运行。</translation>
+<translation id="6694016202036959050"><ph name="DEVICE_OS" /> 设置</translation>
+<translation id="8362858344151826493">JemaOS 账号、备份、其他</translation>
+<translation id="9150429437595727962">Wi-Fi 设置</translation>
+<translation id="4938972461544498524">触摸板设置</translation>
+<translation id="1210024513248363065">远程服务</translation>
+<translation id="2878862288885588535">远程诊断服务</translation>
+<translation id="7409197984340676806">远程诊断服务允许 JemaOS 官方支持人员识别系统问题。目前，远程诊断服务只能由 JemaOS 官方支持人员启动。</translation>
+<translation id="1791028023086176332">请将此号码告知 JemaOS 官方支持人员</translation>
+<translation id="6279304275399437025">正在启动远程诊断服务...</translation>
+<translation id="1501882165699826662">请停止远程诊断服务，然后重试</translation>
+<translation id="3100283258447375201">更多信息</translation>
+<translation id="4070039109671307724">其他</translation>
+<translation id="7326893024940073254">“重新启动”按钮</translation>
+<translation id="3002423764319968103">在系统菜单中显示“重新启动”按钮</translation>
+<translation id="6243454903512423518">“旋转屏幕”按钮</translation>
+<translation id="6491049336868978729">您当前不在平板模式，“旋转屏幕”按钮现已隐藏</translation>
+<translation id="5496012402277579695">在系统菜单中显示“旋转屏幕”按钮</translation>
+<translation id="5882838977344999606">平板/笔记本模式切换</translation>
+<translation id="472164133625585606">在系统菜单中显示平板/笔记本模式切换开关</translation>
+<translation id="1851103550468466960">启用 Widevine</translation>
+<translation id="4058176713282795846">启用 Widevine 以流式传输受保护的高级内容。<ph name="BEGIN_LINK_LEARN_MORE" />了解详情<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">选择“libwidevine.so”</translation>
+<translation id="4838463656205005584">启用 Widevine 失败...</translation>
+<translation id="2164041826798266548">Widevine CDM 模块安装失败。请检查您的网络连接，然后重试。</translation>
+<translation id="4106982328079440606">JemaOS 账号设置</translation>
+<translation id="6468776556018764845">实验性功能</translation>
+<translation id="3487615413425326553">绕过可信平台模块 (TPM) 检查</translation>
+<translation id="4817176087932811573">由于设备中的 TPM 芯片不兼容，某些功能可能会失败；您可以绕过 TPM 检查作为临时解决方法。</translation>
+<translation id="3356003366173774486">自动登录</translation>
+<translation id="6218459410891191693">允许当前账号在设备重启时自动登录到桌面</translation>
+<translation id="6620839363422062843">无法为此账号启用；此设备上的其他账号已启用自动登录</translation>
+<translation id="6734500226490446035">无法为此账号启用；初始化此账号的文件系统时发生未知错误。请尝试重启或创建新账号</translation>
+<translation id="5464880042146818691">无法为此账号启用；自动登录选项仅适用于“本地账号”类型。</translation>
+<translation id="3335654854106476749">请先在<ph name="BEGIN_LINK" />隐私和安全<ph name="END_LINK" />设置中添加登录密码，然后再启用自动登录。</translation>
+<translation id="5586831602198585601">现在有更新版本的 JemaOS 可用。但是，您的 JemaOS for You 订阅已过期；您需要有效订阅才能更新 JemaOS。</translation>
+<translation id="3869860597719956574">现在有新的 JemaOS 主要版本可用。您需要支付一次性费用才能继续此更新。</translation>
+<translation id="6523879681771260760">请指定存储备份文件的路径</translation>
+<translation id="2036152819788683293">为此账号创建备份文件（测试版）。<ph name="BEGIN_LINK_LEARN_MORE" />了解详情<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">备份</translation>
+<translation id="4267347174163690295">为此账号创建备份文件（测试版）。</translation>
+<translation id="8112950994208888917">此操作会为此账号创建完整的磁盘备份，可轻松将您的 JemaOS 恢复到创建备份时的状态，包括设置、已安装的浏览器扩展和子系统应用。根据您的应用和个人文件夹内容，备份文件可能很大；建议将备份文件存储在外部存储设备上。如果您有便携式 U 盘，请立即连接。<ph name="BEGIN_LINK_LEARN_MORE" />了解详情<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">请输入此账号的登录密码</translation>
+<translation id="8663988871299316062">请记住此密码，因为恢复此备份文件时需要用到它</translation>
+<translation id="6408904153044317846">选择要恢复的备份文件</translation>
+<translation id="8062988348127771021">从备份文件恢复您的 JemaOS 数据</translation>
+<translation id="7309192418866543730">输入备份密码</translation>
+<translation id="3642408376366598984">输入用于加密此备份文件的密码</translation>
+<translation id="7783974937157985523">备份密码</translation>
+<translation id="6583780301401541007">恢复成功</translation>
+<translation id="3514011352559420398">恢复失败</translation>
+<translation id="7535980903266533458">将备份保存到您的设备或外部存储</translation>
+<translation id="604001903249547235">云端备份</translation>
+<translation id="8885702701336541611">将备份上传到 JemaOS 云存储</translation>
+<translation id="3939744430096549862">备份到云端</translation>
+<translation id="619129431573254316">从本地备份文件恢复</translation>
+<translation id="1859592711955106569">云端恢复</translation>
+<translation id="38222223336741457">从 JemaOS 云端下载并恢复</translation>
+<translation id="1241089811244416179">从云端恢复</translation>
+<translation id="652479689372703360">正在备份</translation>
+<translation id="3655220146274872918">备份完成</translation>
+<translation id="4243579853635792694">您的备份已成功创建</translation>
+<translation id="6337433855796857931">备份失败</translation>
+<translation id="4854179463174744546">备份过程中发生错误</translation>
+<translation id="2410668771600309999">Connect API 用户信息</translation>
+<translation id="2223892939866251845">用户 ID</translation>
+<translation id="3850846286480935456">备份存储分析</translation>
+<translation id="6244494465581273970">需要用户 ID</translation>
+<translation id="9204006549413740506">上次更新</translation>
+<translation id="476642412165431515">硬件设备</translation>
+<translation id="3386337985825120901">没有可用的备份数据</translation>
+<translation id="8490990067870590760">正在加载备份文件...</translation>
+<translation id="2955409026764742995">选择要恢复的备份文件：</translation>
+<translation id="7414629348005657242">-- 选择备份文件 --</translation>
+<translation id="918246516374174381">未找到备份文件。请先创建备份。</translation>
+<translation id="77997252117517973">即将推出</translation>
+<translation id="1930692852800776096">添加词典</translation>
+<translation id="8793060353848771694">左耳机图片</translation>
+<translation id="6257440204887306255">充电盒图片</translation>
+<translation id="2754700616124958693">右耳机图片</translation>
+<translation id="1068676292264983586">默认设备图片</translation>
+<translation id="6364075396486660405">停用对所有分区的媒体文件自动扫描，以优化电池续航。<ph name="BEGIN_LINK_LEARN_MORE" />了解详情<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">安全选项</translation>
+<translation id="5618366106086725045">为此 <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> 安装启用“开发者模式”，以获得更多开发者功能。<ph name="BEGIN_LINK_LEARN_MORE" />了解详情<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">您已处于“开发者模式”</translation>
+<translation id="6074549317340202195">启用“开发者模式”</translation>
+<translation id="418781258674176053">警告！启用“开发者模式”是不可逆的操作。如果您想停用“开发者模式”，必须重新安装 JemaOS，这将清除所有数据。请备份您的数据并自担风险继续操作。</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />，<ph name="JEMAOS_MAJOR_VERSION" /> <ph name="LINE_BREAK1" /> 平台 <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="LINE_BREAK2" /> Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">当前离线</translation>
+<translation id="2590678769628709242">在线查看您的 JemaOS 订阅</translation>
+<translation id="4701836089682883918">JemaOS 订阅信息</translation>
+<translation id="5891566673089952188">获取您的设备 ID 时出错</translation>
+<translation id="4685086787606104322">订阅到期</translation>
+<translation id="3354919960795782984">设备 ID</translation>
+<translation id="5758632069869992306">在线查看您的订阅</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />，<ph name="JEMAOS_MAJOR_VERSION" />，<ph name="JEMAOS_LICENSE_STATE_DESC" /> <ph name="LINE_BREAK1" /> 平台 <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="LINE_BREAK2" /> Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">试用订阅</translation>
+<translation id="4362781408813685579">有效订阅</translation>
+<translation id="1141274201089997510">订阅已过期</translation>
+<translation id="2553683254139782404">非商业版</translation>
+<translation id="8466048683756385518">企业许可版（试用）</translation>
+<translation id="2853871047705932424">企业许可版</translation>
+<translation id="5239675900317881945">企业许可版（已过期）</translation>
+<translation id="189101945990408398">旧款 Intel</translation>
+<translation id="6816405236809604904">新款 Intel</translation>
+<translation id="6169452478137972655">AMD 显卡</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="2747689477259164256">JemaOS AI</translation>
+<translation id="1270291881045478104">启用 JemaOS AI</translation>
+<translation id="2013780539677437932">启用或停用所有 JemaOS AI 相关功能</translation>
+<translation id="3398637633218757480">启用 JemaOS AI 快捷调用</translation>
+<translation id="8986197796475507452">按 Ctrl + C + C 快速调出所选内容的 JemaOS AI 选项</translation>
+<translation id="6407628130593274137">JemaOS AI 的其他设置和选项</translation>
+<translation id="4005574560653331142">要更改此本地账号的 PIN 码或登录密码，请前往<ph name="BEGIN_LINK" />隐私和安全<ph name="END_LINK" />设置。</translation>
+
+<!-- login_strings (JemaOS) -->
+<translation id="7386402409475121504">创建本地 JemaOS 帐户</translation>
+<translation id="3760308806144055927">登录本地 JemaOS 帐户</translation>
+<translation id="6419913024856619425">您可以<ph name="LINK_START" />使用 JemaOS 本地帐户登录<ph name="LINK_END" />。</translation>
+<translation id="4840454774882557974">如果您选择使用本地帐户，一些实用功能将无法使用，例如在多个设备之间同步您的数据和偏好设置，以及使用 JemaOS 帐户自动登录网页应用。</translation>
+<translation id="8951507920859729424">我们建议您使用在线帐户，以充分利用 JemaOS 的全部功能。</translation>
+<translation id="4519800823932975782">JemaOS 帮助中心</translation>
+<translation id="4737474693231655139">查找有关 JemaOS 常见问题的帮助文章和解答</translation>
 </translationbundle>

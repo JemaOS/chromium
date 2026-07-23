@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="ms">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Perihal Thot</translation>
+<translation id="5639860668557220477">Dapatkan bantuan dengan pelayar Thot</translation>
+<translation id="1692689520561928457">Perihal JemaOS</translation>
+<translation id="8692765844418174375">Versi JemaOS</translation>
+<translation id="2943260250558374955">Dapatkan bantuan dengan JemaOS</translation>
+<translation id="713321354492170993">Pelayar mengosongkan memori daripada tab tidak aktif. Ini memberikan tab aktif dan apl lain lebih banyak sumber pengkomputeran serta memastikan pelayar kekal pantas. Tab tidak aktif anda akan aktif semula secara automatik apabila anda kembali kepadanya.</translation>
+<translation id="1774190491044887444">Pelayar menjimatkan bateri dengan mengehadkan aktiviti latar belakang dan kesan visual, seperti skrol licin dan kadar bingkai video.</translation>
+<translation id="180121268008059459">Pelayar mempramuat halaman, menjadikan pelayaran dan carian lebih pantas.</translation>
+<translation id="7127093527178692287">Pulihkan sandaran (beta)</translation>
+<translation id="4439042171549201806">Untuk memulihkan JemaOS daripada fail sandaran, sila masukkan pemacu boleh alih yang mengandungi fail sandaran ke dalam peranti JemaOS anda sekarang dan tentukan fail sandaran yang ingin anda pulihkan. Sila ambil perhatian bahawa fail sandaran anda perlu berada dalam direktori akar pemacu boleh alih anda untuk dikesan oleh wizard ini.</translation>
+<translation id="2955409026764742995">Pilih fail sandaran untuk dipulihkan:</translation>
+<translation id="7040434808685140085">Maaf, fail sandaran yang dipilih tidak dapat dikenali; sila pilih yang baharu.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />Untuk memulihkan JemaOS daripada fail sandaran yang dipilih, maklumat tepat tentang sandaran semasa ia dibuat adalah penting. Jika tidak, proses pemulihan akan gagal.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"Nama akaun" ialah kelayakan log masuk utama akaun yang digunakan untuk membuat fail sandaran anda. Ia biasanya alamat e-mel yang anda gunakan untuk mendaftar akaun JemaOS/Google anda. Jika ia akaun tempatan, ia ialah nama pengguna yang ditambah dengan "@jemaos.local".<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Kata laluan ialah frasa laluan yang anda diminta masukkan semasa sandaran dibuat. Ia biasanya kata laluan yang sama yang anda gunakan untuk log masuk ke desktop JemaOS untuk akaun ini.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Nama akaun</translation>
+<translation id="5490570429039308155">Maaf, sila masukkan nama akaun yang betul</translation>
+<translation id="6657585470893396449">Kata laluan</translation>
+<translation id="8200189938001188563">Maaf, kata laluan tidak boleh kosong</translation>
+<translation id="3157931365184549694">Pulihkan</translation>
+<translation id="8556278756526311953">Memulihkan sandaran</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Kami sedang berusaha memulihkan fail sandaran anda; ini mungkin mengambil sedikit masa, jadi harap bersabar.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Sila ambil perhatian bahawa UI akan dimulakan semula secara automatik apabila proses pemulihan berjaya diselesaikan.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Pemulihan sandaran telah gagal</translation>
+<translation id="5003531399442003695">Untuk butiran lanjut, sila klik pautan di bawah untuk melihat log. Jika ralat ini berterusan, sila hubungi saluran sokongan teknikal JemaOS dan sediakan log ralat.</translation>
+<translation id="6363786367719063276">Lihat log</translation>
+<translation id="8730621377337864115">Selesai</translation>
+<translation id="975238173507911396">Data berjaya dipulihkan</translation>
+<translation id="6276879052695618521">Log pemulihan sandaran</translation>
+<translation id="4901207598072637766">JemaOS, disediakan oleh <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS dan perkhidmatannya mematuhi GDPR dan peruntukan undang-undang perlindungan data Eropah. Untuk maklumat lanjut, sila lihat <ph name="BEGIN_LINK_PRIVACY" />Dasar Privasi<ph name="END_LINK_PRIVACY" /> dan <ph name="BEGIN_LINK_TOS" />Terma Perkhidmatan<ph name="END_LINK_TOS" /> kami.</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, semua hak terpelihara.</translation>
+<translation id="370679569376308836">JemaOS ialah tawaran komersial berdasarkan peranti Jema dan SaaS-nya.</translation>
+<translation id="2773644194450163486">JemaOS dihasilkan hasil projek sumber terbuka <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" />.</translation>
+<translation id="2330680727776977160">Chromium turut dihasilkan hasil <ph name="BEGIN_LINK_1" />perisian sumber terbuka<ph name="END_LINK_1" /> lain dan <ph name="BEGIN_LINK_2" />perisian sumber terbuka tambahan<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Direka dan dihasilkan oleh Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, semua hak terpelihara.</translation>
+<translation id="6168072053306020326">Jema Technology ialah nama dagangan Jema Technology LTD dan Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD ialah syarikat yang berdaftar di England dan Wales dengan nombor syarikat 12273803.</translation>
+<translation id="1251589813188467292">Maklumat penting tentang waranti dan servis peranti</translation>
+<translation id="4851115775198886021">SN peranti:</translation>
+</translationbundle>

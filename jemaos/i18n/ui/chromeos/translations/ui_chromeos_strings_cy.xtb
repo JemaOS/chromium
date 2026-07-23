@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="cy">
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">Cofrestrwch â Nutstore i gysoni'ch ffeiliau yn y cwmwl yn JemaOS.</translation>
+<translation id="8672291834743661083">Cofrestrwch â Nutstore</translation>
+<translation id="5103639294476249880">Cliciwch y botwm "Ychwanegu Cais" yng ngosodiadau Diogelwch</translation>
+<translation id="8371020157576651120">Cynhyrchwch a chopïwch eich cyfrinair cais</translation>
+<translation id="3855250998276979579">Agorwch Ap Nutstore</translation>
+<translation id="6565655783894300125">a chysylltwch gyfrif Nutstore â JemaOS gyda'ch e-bost a'ch cyfrinair cais</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Yn dod yn fuan</translation>
+<translation id="4928968570611226525">I barhau â'r weithred hon bydd angen i chi <ph name="BEGIN_LINK_ARC_APP" />&gt;actifadu is-system Android<ph name="END_LINK_ARC_APP" /> ar eich dyfais JemaOS; hefyd mae angen i'ch dyfais JemaOS gael ei <ph name="BEGIN_LINK_HELP" />newid i'r Modd Datblygwr<ph name="END_LINK_HELP" />.</translation>
+<translation id="7395250550107972941">Methu llwytho ffeiliau .apk o'r ochr. Gwnewch yn siŵr bod yr is-system Android wedi'i actifadu a'ch bod yn modd Datblygwr JemaOS.</translation>
+<translation id="5690820326685091783">Agor gyda JemaOS AI</translation>
+</translationbundle>

@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="et">
+	<translation id="7386402409475121504">Looge oma kohalik JemaOS-i konto</translation>
+	<translation id="3760308806144055927">Logige sisse oma kohalikule JemaOS-i kontole</translation>
+	<translation id="3325117507482096812">Palun sisesta parool</translation>
+	<translation id="1838206877831947154">Teie paroolid ei ühti</translation>
+	<translation id="2158276988029582286">Create a new local account</translation>
+	<translation id="8592849747346274067">Logige sisse olemasolevale kontole</translation>
+	<translation id="482190417986201746">Sisestatud kasutajanimi või parool on vale</translation>
+	<translation id="6603987686259425085">Saate <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>sisse logida JemaOS-i kohaliku kontoga<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">E-post <ph name="EMAIL_ADDRESS">$1</ph> on juba olemas. Palun proovige uuesti teise meiliga.</translation>
+	<translation id="7215016743510876720">Kasutage kohalikku kontot</translation>
+	<translation id="6657635042185516718">Jätkake veebikonto kasutamist</translation>
+	<translation id="6867476688065565618">Kas lülituda kohalikule kontole?</translation>
+	<translation id="4840454774882557974">Kui otsustate kasutada kohalikku kontot, ei tööta kasulikud funktsioonid teie andmete ja eelistuste sünkroonimine mitme seadme vahel ning JemaOS-i kontoga veebirakendustesse automaatne sisselogimine.</translation>
+	<translation id="8951507920859729424">JemaOS-i täielikuks kasutamiseks soovitame kasutada veebikontot.</translation>
+	<translation id="479773200536372215">Te ei saa Google'i kontosid lisada, kuna Google'i API võtmed puuduvad. Üksikasju vaadake aadressilt <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph>.</translation>
+	<translation id="1198491307547164157">Te ei saa JemaOS-i kontosid lisada, kuna puuduvad JemaOS-i API võtmed. Üksikasju vaadake aadressilt <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph>.</translation>
+	<translation id="5042404702659901995">Privaatsusavaldus</translation>
+	<translation id="4907736162587268100">Privaatsusavalduse sisu</translation>
+	<translation id="5988344732274877691">Liituge JemaOS-i (väga harvaesineva, lubatud) uudiskirjaga</translation>
+	<translation id="1706203008474708805">Liituge JemaOS-i kasutajakogemuse parandamise kavaga</translation>
+	<translation id="1147139514756087229">Logige sisse kohaliku kontoga</translation>
+	<translation id="2054784944085654098">Varukoopiafaili loomine kohe. See võib veidi aega võtta; palun oota…</translation>
+	<translation id="3554401467586751874">Varufaili loomine õnnestus</translation>
+	<translation id="2349211327705667074">Kuva varukoopiafail</translation>
+	<translation id="6337433855796857931">Varundamine ebaõnnestus</translation>
+	<translation id="3049367131589710124">Kuva vealogi</translation>
+	<translation id="1079017345574916945">Kaugtöölaud</translation>
+	<translation id="3064478898280877715">Rakenduste pood</translation>
+	<translation id="2747689477259164256">JemaOS AI</translation>
+	<translation id="5890206344045530832">Installer</translation>
+	<translation id="2173278076276376488">See utiliit aitab teil installida <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> selle seadme sisemällu.</translation>
+	<translation id="5323182426977498659">Hoiatus! See protseduur on hävitav ja seda ei saa tagasi võtta. Pange tähele, et me ei vastuta teie võimaliku andmete kadumise eest ega paku kiiret tehnilist tuge, jätkake omal riisikol.</translation>
+	<translation id="8517836015601969896">Täielik ketta paigaldamine</translation>
+	<translation id="7300045760790370189">Terve kõvaketta hõivamiseks installige <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>, kustutatakse kõik sihtkõvaketta andmed.</translation>
+	<translation id="8762511733918256595">Mitme alglaadimise installimine</translation>
+	<translation id="248900698427753678">Installige <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> kõvaketta olemasolevasse partitsiooni, kus <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> võib eksisteerida paralleelselt muu OS-iga. Kõik sihtpartitsiooni andmed kustutatakse.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> installitakse teie valitud kõvakettale; kõik andmed sihtkettal kustutatakse.</translation>
+	<translation id="4039091757234555415">Ketas</translation>
+	<translation id="7783580523889684697">Ketast pole saadaval</translation>
+	<translation id="8217653566575018388">Installimine lõpetatud</translation>
+	<translation id="8846746259444262774">Installimine ebaõnnestus</translation>
+	<translation id="7263815009235541549">Installimine on edukalt lõppenud. Esmalt lülitage seade välja, seejärel eemaldage installikandja ja lülitage see uuesti sisse, et käivitada <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>.</translation>
+	<translation id="3380151284134965398">Vabandust, midagi läks valesti ja installimine ei lõppenud. Proovige protsessi uuesti. Kui sama viga püsib, võtke ülaloleva logi abil ühendust JemaOS-i toega.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> installitakse teie kõvaketta valitud partitsiooni. Praeguse mitme alglaadimise skeemi kohaselt saab seda teha ainult siis, kui teie seade toetab UEFI-d ja teie kõvakettad on vormindatud GPT-ga.</translation>
+	<translation id="7831363758161884243">Sihtpartitsioon kustutatakse; Samuti peate määrama oma aktiivse EFI-sektsiooni (tavaliselt tehakse seda automaatselt), kuna installija peab muutma süsteemi alglaadimise konfiguratsioone.</translation>
+	<translation id="5670799238446305550">Valige sihtpartitsioon <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph></translation>
+	<translation id="3695537760133394753">Vahesein</translation>
+	<translation id="5610519566593708119">Valige EFI partitsioon</translation>
+	<translation id="3367650349940010965">Valitud ketta jaoks pole partitsioone saadaval</translation>
+	<translation id="7453223384507098390">Valitud ketta jaoks pole saadaval ühtegi EFI-sektsiooni</translation>
+	<translation id="1854532683465500847">Valitud partitsiooni suurus on alla 20 GB, installimine võib ebaõnnestuda</translation>
+	<translation id="4144613075340468247">Valitud partitsioon on ühendatud <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> mitme alglaadimisega, uuesti installimine võib ebaõnnestuda</translation>
+	<translation id="5793361052649920836">Kuidas soovite pärast installimist käivitada <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>?</translation>
+	<translation id="4273235330352963866">Installige ja konfigureerige minu jaoks rEFInd (soovitatav)</translation>
+	<translation id="1858708492548921044">REFInd on alglaadimishalduri programm, mis pakub kena graafilist liidest OS-i alglaadimisvalikute jaoks, kui teie arvuti käivitub, saate valida soovitud OS-i, mida sellega käivitada. Lisateavet REFIndi kohta leiate selle kodulehelt.</translation>
+	<translation id="3861924051442564602">Lisage minu jaoks UEFI alglaadimismenüü valik</translation>
+	<translation id="8622370666798589804">Kui teie arvuti käivitub, võib teil olla võimalik siseneda UEFI alglaadimisvalikute menüüsse (tõenäoliselt kiirklahvi vajutades), lisab see valik <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> sellesse menüüsse kirjena. (Toetab ainult mõnda BIOS-i ja UEFI püsivara mudelit).</translation>
+	<translation id="1569398690544416170">Ärge tehke siin midagi, ma konfigureerin selle ise</translation>
+	<translation id="3554866444001249532">See installiskript lisab teie EFI-partitsioonile ainult vajalikud .efi-failid <ph name="DEVICE_OS">$1<ex>JemaOS-i</ex></ph> käivitamiseks. Peate konfigureerima, kuidas seda ise käivitada.</translation>
+	<translation id="7492832751164189534">Sundige loobuma</translation>
+	<translation id="5159534860632584026">Installiprotsess on lõpetatud</translation>
+	<translation id="8686749782014838344">Kettateabe hankimine ebaõnnestus</translation>
+	<translation id="5688543378771259173">Installimine lõpetatakse...</translation>
+	<translation id="5350452134936384991">Installige USB-sse</translation>
+	<translation id="8008470485414925603">Installige USB-kettale <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>; kõik andmed siht-USB-kettal kustutatakse.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> installitakse teie valitud USB-kettale; kõik andmed sihtkettal kustutatakse.</translation>
+	<translation id="5725593226060700263">USB-ketast pole saadaval</translation>
+	<translation id="4357040841587078287">Tuvastasime, et kasutate seda JemaOS-i koopiat allalaaditud pildifailist. Kõige põhjalikumate tugifunktsioonide (sealhulgas õhu kaudu värskenduste) kasutamiseks, mida JemaOS pakub, soovitame tungivalt käivitada funktsioon "Installer", et teostada JemaOS-i täiskettale installimine eraldi salvestusseadmesse.</translation>
+	<translation id="1246398339704431302">Saate <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>seda JemaOS-i eksemplari niikuinii edasi kasutada<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, installiprotsessi saab käivitada süsteemi hilisemas etapis, kuid pärast installimist kustutatakse kõik teie andmed uuesti sellelt lehelt ja te alustate.</translation>
+	<translation id="3654532222088291133">Selle asemel, et sisestada sisselogimiseks oma JemaOS-i konto parool, saate selle seadme jaoks luua <ph name="DEVICE_TYPE">$1<ex>Chromebooki</ex></ph> parooli</translation>
+	<translation id="8377684629839541977">Kasutage JemaOS-i konto parooli</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">Hoidke <ph name="DEVICE_OS" /> automaatselt ajakohasena</translation>
+<translation id="2347352406101856238"><ph name="DEVICE_OS" /> värskendus lubatud</translation>
+<translation id="185834232609012804"><ph name="DEVICE_OS" /> värskendus keelatud</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Platvorm <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Kaugtöölaud</translation>
+<translation id="6898090158927982244">Teie Linux on ajakohane</translation>
+<translation id="4886703929102211360">Linux (beta) komponendile on saadaval kriitiline värskendus. Soovitame tungivalt see värskendus võimalikult kiiresti installida, vastasel juhul võib teie Linux (beta) töötamise lõpetada.</translation>
+<translation id="6694016202036959050"><ph name="DEVICE_OS" /> seaded</translation>
+<translation id="8362858344151826493">JemaOS konto, varundus, muu</translation>
+<translation id="9150429437595727962">Wi-Fi seaded</translation>
+<translation id="4938972461544498524">Puuteplaadi seaded</translation>
+<translation id="1210024513248363065">Kaugteenused</translation>
+<translation id="2878862288885588535">Kaugdiagnostikateenus</translation>
+<translation id="7409197984340676806">Kaugdiagnostikateenus võimaldab JemaOS ametlikel tugiesindajatel tuvastada süsteemiprobleeme. Praegu saab kaugdiagnostikateenust käivitada ainult JemaOS ametlikud tugiesindajad.</translation>
+<translation id="1791028023086176332">Jagage see number JemaOS ametlike tugiesindajatega</translation>
+<translation id="6279304275399437025">Kaugdiagnostikateenuse käivitamine...</translation>
+<translation id="1501882165699826662">Peatage kaugdiagnostikateenus ja proovige uuesti</translation>
+<translation id="3100283258447375201">Lisateave</translation>
+<translation id="4070039109671307724">Muu</translation>
+<translation id="7326893024940073254">Nupp "Taaskäivita"</translation>
+<translation id="3002423764319968103">Kuva süsteemi menüüs nupp "Taaskäivita"</translation>
+<translation id="6243454903512423518">Nupp "Pööra ekraani"</translation>
+<translation id="6491049336868978729">Te ei ole praegu tahvelarvuti režiimis; nupp "Pööra ekraani" on peidetud</translation>
+<translation id="5496012402277579695">Kuva süsteemi menüüs nupp "Pööra ekraani"</translation>
+<translation id="5882838977344999606">Tahvel-/sülearvuti režiimi lüliti</translation>
+<translation id="472164133625585606">Kuva süsteemi menüüs tahvel-/sülearvuti režiimi lüliti</translation>
+<translation id="1851103550468466960">Luba Widevine</translation>
+<translation id="4058176713282795846">Lubage Widevine kaitstud premium-sisu voogesitamiseks. <ph name="BEGIN_LINK_LEARN_MORE" />Lisateave<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">Valige "libwidevine.so"</translation>
+<translation id="4838463656205005584">Widevine'i lubamine ebaõnnestus...</translation>
+<translation id="2164041826798266548">Widevine CDM-mooduli installimine ebaõnnestus. Kontrollige oma ühendust ja proovige uuesti.</translation>
+<translation id="4106982328079440606">JemaOS konto seaded</translation>
+<translation id="6468776556018764845">Katselised funktsioonid</translation>
+<translation id="3487615413425326553">Jäta vahele Trusted Platform Module (TPM) kontrollid</translation>
+<translation id="4817176087932811573">Mõned funktsioonid võivad ebaõnnestuda teie seadmes oleva ühildumatu TPM-kiibi tõttu; lahendusena saate TPM-kontrollid vahele jätta.</translation>
+<translation id="3356003366173774486">Automaatne sisselogimine</translation>
+<translation id="6218459410891191693">Luba praegusel kontol seadme taaskäivitamisel töölauale automaatselt sisse logida</translation>
+<translation id="6620839363422062843">Selle konto jaoks ei saa lubada; automaatne sisselogimine on selle seadme teiste kontode jaoks juba aktiivne</translation>
+<translation id="6734500226490446035">Selle konto jaoks ei saa lubada; selle konto failisüsteemide lähtestamisel ilmnes tundmatu viga. Proovige taaskäivitada või looge uus konto</translation>
+<translation id="5464880042146818691">Selle konto jaoks ei saa lubada; automaatse sisselogimise valik on saadaval ainult tüübi "Kohalik konto" jaoks.</translation>
+<translation id="3335654854106476749">Enne automaatse sisselogimise lubamist lisage sisselogimisparool seadetes <ph name="BEGIN_LINK" />Privaatsus ja turvalisus<ph name="END_LINK" />.</translation>
+<translation id="5586831602198585601">JemaOS-i uuem versioon on nüüd värskendamiseks saadaval. Teie JemaOS for You tellimus on aga aegunud; JemaOS-i värskendamiseks vajate aktiivset tellimust.</translation>
+<translation id="3869860597719956574">JemaOS-i uus põhiversioon on nüüd värskendamiseks saadaval. Selle värskendusega jätkamiseks peate maksma ühekordse tasu.</translation>
+<translation id="6523879681771260760">Määrake varufaili salvestamise tee</translation>
+<translation id="2036152819788683293">Looge selle konto jaoks varufail (beeta). <ph name="BEGIN_LINK_LEARN_MORE" />Lisateave<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Varunda</translation>
+<translation id="4267347174163690295">Looge selle konto jaoks varufail (beeta).</translation>
+<translation id="8112950994208888917">See toiming loob selle konto jaoks täieliku kettavarunduse, muutes JemaOS-i taastamise lihtsaks varunduse loomise ajal kehtinud olekusse, sealhulgas seaded, installitud brauseri laiendused ja alamsüsteemi rakendused. Olenevalt teie rakendustest ja kodukausta sisust võib varufail olla suur; soovitatav on salvestada varufail välisele salvestusseadmele. Kui teil on kaasaskantav USB-ketas, ühendage see nüüd. <ph name="BEGIN_LINK_LEARN_MORE" />Lisateave<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Sisestage selle konto sisselogimisparool</translation>
+<translation id="8663988871299316062">Pidage see parool meeles, sest seda on vaja selle varufaili taastamisel</translation>
+<translation id="6408904153044317846">Valige taastatav varufail</translation>
+<translation id="8062988348127771021">Taastage oma JemaOS-i andmed varufailist</translation>
+<translation id="7309192418866543730">Sisestage varunduse parool</translation>
+<translation id="3642408376366598984">Sisestage parool, mida kasutati selle varufaili krüptimiseks</translation>
+<translation id="7783974937157985523">Varunduse parool</translation>
+<translation id="6583780301401541007">Taastamine õnnestus</translation>
+<translation id="3514011352559420398">Taastamine ebaõnnestus</translation>
+<translation id="7535980903266533458">Salvestage varundus oma seadmesse või välisele salvestusseadmele</translation>
+<translation id="604001903249547235">Pilvevarundus</translation>
+<translation id="8885702701336541611">Laadige varundus JemaOS-i pilvesalvestusruumi</translation>
+<translation id="3939744430096549862">Varunda pilve</translation>
+<translation id="619129431573254316">Taasta kohalikust varufailist</translation>
+<translation id="1859592711955106569">Pilvest taastamine</translation>
+<translation id="38222223336741457">Laadige alla ja taastage JemaOS-i pilvest</translation>
+<translation id="1241089811244416179">Taasta pilvest</translation>
+<translation id="652479689372703360">Varundamine käib</translation>
+<translation id="3655220146274872918">Varundamine lõpetatud</translation>
+<translation id="4243579853635792694">Teie varundus loodi edukalt</translation>
+<translation id="4854179463174744546">Varundamise käigus ilmnes viga</translation>
+<translation id="2410668771600309999">Connect API kasutajateave</translation>
+<translation id="2223892939866251845">Kasutaja ID</translation>
+<translation id="3850846286480935456">Varunduse salvestusruumi analüüs</translation>
+<translation id="6244494465581273970">Kasutaja ID on nõutav</translation>
+<translation id="9204006549413740506">Viimati värskendatud</translation>
+<translation id="476642412165431515">Riistvaraseadmed</translation>
+<translation id="3386337985825120901">Varundusandmeid pole saadaval</translation>
+<translation id="8490990067870590760">Varufailide laadimine...</translation>
+<translation id="2955409026764742995">Valige taastatav varufail:</translation>
+<translation id="7414629348005657242">-- Valige varufail --</translation>
+<translation id="918246516374174381">Varufaile ei leitud. Looge kõigepealt varundus.</translation>
+<translation id="77997252117517973">Varsti saadaval</translation>
+<translation id="1930692852800776096">Lisa sõnastik</translation>
+<translation id="8793060353848771694">Vasaku kõrvaklapi pilt</translation>
+<translation id="6257440204887306255">Laadimiskarbi pilt</translation>
+<translation id="2754700616124958693">Parema kõrvaklapi pilt</translation>
+<translation id="1068676292264983586">Vaikimisi seadme pilt</translation>
+<translation id="6364075396486660405">Keelake meediafailide automaatne skannimine kõigil partitsioonidel aku kasutusea optimeerimiseks. <ph name="BEGIN_LINK_LEARN_MORE" />Lisateave<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Turbevalikud</translation>
+<translation id="5618366106086725045">Lubage selle <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> installi jaoks "Arendajarežiim" koos rohkemate arendajafunktsioonidega. <ph name="BEGIN_LINK_LEARN_MORE" />Lisateave<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Te olete juba "Arendajarežiimis"</translation>
+<translation id="6074549317340202195">Luba "Arendajarežiim"</translation>
+<translation id="418781258674176053">Hoiatus! "Arendajarežiimi" lubamine on pöördumatu toiming. Kui soovite "Arendajarežiimi" keelata, peate JemaOS-i uuesti installima, mis kustutab kõik andmed. Varundage oma andmed ja jätkake omal vastutusel.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Platvorm <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Praegu võrguühenduseta</translation>
+<translation id="2590678769628709242">Kontrollige oma JemaOS-i tellimust veebis</translation>
+<translation id="4701836089682883918">JemaOS-i tellimuse teave</translation>
+<translation id="5891566673089952188">Seadme ID hankimisel ilmnes viga</translation>
+<translation id="4685086787606104322">Tellimuse lõpp</translation>
+<translation id="3354919960795782984">Seadme ID</translation>
+<translation id="5758632069869992306">Kontrollige oma tellimust veebis</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Platvorm <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Proovitellimus</translation>
+<translation id="4362781408813685579">Aktiivne tellimus</translation>
+<translation id="1141274201089997510">Aegunud tellimus</translation>
+<translation id="2553683254139782404">Mittetulunduslik versioon</translation>
+<translation id="8466048683756385518">Ettevõtte litsentsitud versioon (proov)</translation>
+<translation id="2853871047705932424">Ettevõtte litsentsitud versioon</translation>
+<translation id="5239675900317881945">Ettevõtte litsentsitud versioon (aegunud)</translation>
+<translation id="189101945990408398">Pärand-Intel</translation>
+<translation id="6816405236809604904">Kaasaegne Intel</translation>
+<translation id="6169452478137972655">AMD graafika</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="1270291881045478104">Luba JemaOS AI</translation>
+<translation id="2013780539677437932">Lubage või keelake kõik JemaOS AI-ga seotud funktsioonid</translation>
+<translation id="3398637633218757480">Luba JemaOS AI Kiirkutse</translation>
+<translation id="8986197796475507452">Avage esiletõstetud sisu jaoks kiiresti JemaOS AI valikud, vajutades Ctrl + C + C</translation>
+<translation id="6407628130593274137">Muud JemaOS AI seaded ja valikud</translation>
+<translation id="4005574560653331142">Selle kohaliku konto PIN-koodi või sisselogimisparooli muutmiseks minge seadetesse <ph name="BEGIN_LINK" />Privaatsus ja turvalisus<ph name="END_LINK" />.</translation>
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">Võid <ph name="LINK_START" />sisse logida JemaOS-i kohaliku kontoga<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">E-posti aadress <ph name="EMAIL_ADDRESS" /> on juba olemas. Palun proovi teise e-posti aadressiga.</translation>
+<translation id="4519800823932975782">JemaOS-i abikeskus</translation>
+<translation id="4737474693231655139">Leia abiartikleid ja vastuseid levinud JemaOS-i küsimustele</translation>
+</translationbundle>

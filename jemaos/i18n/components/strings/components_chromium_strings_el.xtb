@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="el">
+
+
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">Το JemaOS δεν έχει ολοκληρώσει την αρχική του διαμόρφωση.</translation>
+<translation id="4257170804800372451">Το JemaOS και το Thot κατέστησαν δυνατά χάρη στο έργο ανοιχτού κώδικα <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> και σε άλλο <ph name="BEGIN_LINK_OSS" />λογισμικό ανοιχτού κώδικα<ph name="END_LINK_OSS" />.</translation>
+</translationbundle>

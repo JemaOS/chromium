@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="zu">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Mayelana ne-Thot</translation>
+<translation id="5639860668557220477">Thola usizo ngesiphequluli se-Thot</translation>
+<translation id="1692689520561928457">Mayelana ne-JemaOS</translation>
+<translation id="8692765844418174375">Inguqulo ye-JemaOS</translation>
+<translation id="2943260250558374955">Thola usizo nge-JemaOS</translation>
+<translation id="713321354492170993">Isiphequluli sikhulula imemori kumathebhu angasebenzi. Lokhu kunika amathebhu asebenzayo nezinye izinhlelo zokusebenza izinsiza zokubala ezingaphezulu futhi kwenza isiphequluli sihambe ngokushesha. Amathebhu akho angasebenzi aba nesebenza ngokuzenzakalelayo futhi lapho ubuyela kuwo.</translation>
+<translation id="1774190491044887444">Isiphequluli sigcina ibhethri ngokukhawulela umsebenzi wangemuva nemiphumela yokubuka, efana nokuskrola okusheshayo nezilinganiso zefreyimu yevidiyo.</translation>
+<translation id="180121268008059459">Isiphequluli silayisha amakhasi ngaphambi kwesikhathi, okwenza ukupheqa nokusesha kube ngokushesha.</translation>
+<translation id="7127093527178692287">Buyisela isipele (i-beta)</translation>
+<translation id="4439042171549201806">Ukuze ubuyisele i-JemaOS kusukela kufayela lesipele, sicela ufake manje idrayivu esuswayo equkethe ifayela lesipele kudivayisi yakho ye-JemaOS futhi ucace ukuthi yiliphi ifayela lesipele ongathanda ukulibuyisela. Sicela uqaphele ukuthi ifayela lakho lesipele kudingeka libe kwirekhodi eyinhloko (root directory) yedrayivu yakho esuswayo ukuze libonakale yilo mhlahlandlela.</translation>
+<translation id="2955409026764742995">Khetha ifayela lesipele okumele libuyiselwe:</translation>
+<translation id="7040434808685140085">Uxolo, ifayela lesipele elikhethiwe alikwazi ukuqashelwa; sicela ukhethe elisha.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />Ukuze ubuyisele i-JemaOS kusukela kufayela lesipele elikhethiwe, kubalulekile ukuba nemininingwane eqondile ngesipele ngesikhathi sidalwa. Uma kungenjalo, inqubo yokubuyisela izohluleka.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"Igama le-akhawunti" yisitifiketi esiyinhloko sokungena se-akhawunti lapho ifayela lakho lesipele lidalwe khona. Ngokuvamile, kuyikheli le-imeyili osebenzise lona ukubhalisela i-akhawunti yakho ye-JemaOS/Google. Ukuba bekuyi-akhawunti yendawo, bekuzoba yigama lomsebenzisi elene nge-"@jemaos.local".<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Iphasiwedi iyiphasiwedi owacelwa ukuyifaka lapho isipele sidalwa. Ngokuvamile, iyiphasiwedi efanayo owayisebenzisa ukungena ku-JemaOS desktop ye-akhawunti leyo.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Igama le-akhawunti</translation>
+<translation id="5490570429039308155">Uxolo, sicela ufake igama le-akhawunti elifanele</translation>
+<translation id="6657585470893396449">Iphasiwedi</translation>
+<translation id="8200189938001188563">Uxolo, iphasiwedi ayikwazi ukuba yize</translation>
+<translation id="3157931365184549694">Buyisela</translation>
+<translation id="8556278756526311953">Kubuyiselwa isipele</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Manje sisebenza ekubuyiseleni ifayela lakho lesipele; lokhu kungathatha isikhathi, ngakho sicela ube nesineke.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Sicela uqaphele ukuthi i-UI izoqala kabusha ngokuzenzakalelayo lapho inqubo yokubuyisela iqeda ngempumelelo.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Ukubuyisela isipele kuhlulekile</translation>
+<translation id="5003531399442003695">Ukuze uthole imininingwane eyengeziwe, sicela uchofoze isixhumanisi esingezansi ukuze ubuke amalogi. Uma leli phutha liqhubeka, sicela uxhumane neziteshi zokwesekwa kwezobuchwepheshe ze-JemaOS futhi ulinikeze amalogi amaphutha.</translation>
+<translation id="6363786367719063276">Buka amalogi</translation>
+<translation id="8730621377337864115">Kwenziwe</translation>
+<translation id="975238173507911396">Ukubuyisela idatha kuphumelele</translation>
+<translation id="6276879052695618521">Amalogi okubuyisela isipele</translation>
+<translation id="4901207598072637766">I-JemaOS, ehlinzekwa yi-<ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">I-JemaOS nezinsiza zayo ziyathobela i-GDPR kanye nezimiso zomthetho wokuvikelwa kwedatha waseYurophu. Ukuze uthole ulwazi olwengeziwe, sicela ubuke <ph name="BEGIN_LINK_PRIVACY" />Inqubomgomo Yobumfihlo<ph name="END_LINK_PRIVACY" /> yethu kanye <ph name="BEGIN_LINK_TOS" />neMigomo Yensiza.<ph name="END_LINK_TOS" /></translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, onke amalungelo agodliwe.</translation>
+<translation id="370679569376308836">I-JemaOS iwukunikezelwa kwezentengiso okusekelwe kudivayisi ye-Jema ne-SaaS yayo.</translation>
+<translation id="2773644194450163486">I-JemaOS yenziwe yaba khona yi-<ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> iphrojekthi yomthombo ovulekile.</translation>
+<translation id="2330680727776977160">I-Chromium nayo yenziwe yaba khona yezinye <ph name="BEGIN_LINK_1" />izofthiwe zomthombo ovulekile<ph name="END_LINK_1" /> kanye <ph name="BEGIN_LINK_2" />nezinye izofthiwe ezengeziwe zomthombo ovulekile<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Idizayinwe futhi yakhiwe yi-Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, onke amalungelo agodliwe.</translation>
+<translation id="6168072053306020326">I-Jema Technology iyigama lokuhweba le-Jema Technology LTD ne-Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        I-Jema Technology LTD iyinkampani ebhalisiwe e-England nase-Wales ngenombolo yenkampani engu-12273803.</translation>
+<translation id="1251589813188467292">Ulwazi olubalulekile lwewaranti yedivayisi nenkonzo</translation>
+<translation id="4851115775198886021">I-SN yedivayisi:</translation>
+</translationbundle>

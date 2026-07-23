@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="ms">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">Daftar Nutstore untuk menyegerakkan fail anda ke awan dalam JemaOS.</translation>
+<translation id="8672291834743661083">Daftar Nutstore</translation>
+<translation id="5103639294476249880">Klik butang "Tambah Aplikasi" dalam tetapan Keselamatan</translation>
+<translation id="8371020157576651120">Jana dan salin kata laluan aplikasi anda</translation>
+<translation id="3855250998276979579">Buka Apl Nutstore</translation>
+<translation id="6565655783894300125">dan hubungkan akaun Nutstore ke JemaOS dengan e-mel dan kata laluan aplikasi anda</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Akan datang</translation>
+<translation id="4928968570611226525">Untuk meneruskan tindakan ini, anda perlu <ph name="BEGIN_LINK_ARC_APP" />&gt;mengaktifkan subsistem Android<ph name="END_LINK_ARC_APP" /> pada peranti JemaOS anda; peranti JemaOS anda juga perlu <ph name="BEGIN_LINK_HELP" />ditukar kepada Mod Pembangun<ph name="END_LINK_HELP" />.</translation>
+<translation id="7395250550107972941">Tidak dapat memuat naik sisi fail .apk. Sila pastikan subsistem Android telah diaktifkan dan anda berada dalam mod Pembangun JemaOS.</translation>
+<translation id="5690820326685091783">Buka dengan JemaOS AI</translation>
+</translationbundle>

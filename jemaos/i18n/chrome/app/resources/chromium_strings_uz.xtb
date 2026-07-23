@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="uz">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Thot haqida</translation>
+<translation id="5639860668557220477">Thot brauzeri bo'yicha yordam olish</translation>
+<translation id="1692689520561928457">JemaOS haqida</translation>
+<translation id="8692765844418174375">JemaOS versiyasi</translation>
+<translation id="2943260250558374955">JemaOS bo'yicha yordam olish</translation>
+<translation id="713321354492170993">Brauzer faol bo'lmagan vkladkalardan xotirani bo'shatadi. Bu faol vkladkalar va boshqa ilovalarga ko'proq hisoblash resurslarini beradi va brauzerni tez ishlaydigan qiladi. Ularga qaytganingizda faol bo'lmagan vkladkalaringiz avtomatik ravishda yana faollashadi.</translation>
+<translation id="1774190491044887444">Brauzer fon faoliyatini va vizual effektlarni, masalan, silliq aylantirish va video kadr tezligini cheklash orqali batareyani tejaydi.</translation>
+<translation id="180121268008059459">Brauzer sahifalarni oldindan yuklab, ko'rish va qidiruvni tezlashtiradi.</translation>
+<translation id="7127093527178692287">Zaxira nusxasini tiklash (beta)</translation>
+<translation id="4439042171549201806">JemaOS'ni zaxira faylidan tiklash uchun zaxira fayli saqlangan almashtiriladigan diskni JemaOS qurilmangizga qo'ying va qaysi zaxira faylini tiklamoqchi ekanligingizni ko'rsating. Zaxira faylingiz ushbu usta tomonidan aniqlanishi uchun almashtiriladigan diskning ildiz katalogida bo'lishi kerakligini unutmang.</translation>
+<translation id="2955409026764742995">Tiklanadigan zaxira faylini tanlang:</translation>
+<translation id="7040434808685140085">Uzr, tanlangan zaxira fayli tanilmadi; yangisini tanlang.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />Tanlangan zaxira faylidan JemaOS'ni tiklash uchun zaxira yaratilgan paytdagi aniq ma'lumotlarga ega bo'lish juda muhim. Aks holda tiklash jarayoni muvaffaqiyatsiz bo'ladi.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"Hisob nomi" — zaxira faylingiz yaratilgan hisobning asosiy kirish ma'lumoti. Bu odatda JemaOS/Google hisobingizga ro'yxatdan o'tish uchun foydalangan elektron pochta manzilingizdir. Agar u mahalliy hisob bo'lsa, u "@jemaos.local" qo'shilgan foydalanuvchi nomi bo'ladi.<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Parol — zaxira yaratilganda kiritish so'ralgan parol. Bu odatda ushbu hisob uchun JemaOS ish stoliga kirishda foydalangan parol bilan bir xil.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Hisob nomi</translation>
+<translation id="5490570429039308155">Uzr, to'g'ri hisob nomini kiriting</translation>
+<translation id="6657585470893396449">Parol</translation>
+<translation id="8200189938001188563">Uzr, parol bo'sh bo'lmasligi kerak</translation>
+<translation id="3157931365184549694">Tiklash</translation>
+<translation id="8556278756526311953">Zaxira nusxasi tiklanmoqda</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Hozir zaxira faylingizni tiklash ustida ish olib boryapmiz; bu biroz vaqt olishi mumkin, shuning uchun sabr qiling.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Tiklash jarayoni muvaffaqiyatli yakunlanganda foydalanuvchi interfeysi avtomatik ravishda qayta ishga tushishini unutmang.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Zaxira nusxasini tiklash muvaffaqiyatsiz bo'ldi</translation>
+<translation id="5003531399442003695">Batafsil ma'lumot uchun jurnallarni ko'rish uchun quyidagi havolani bosing. Agar bu xato takrorlansa, JemaOS texnik qo'llab-quvvatlash kanallariga murojaat qiling va xato jurnallarini taqdim eting.</translation>
+<translation id="6363786367719063276">Jurnallarni ko'rish</translation>
+<translation id="8730621377337864115">Bajarildi</translation>
+<translation id="975238173507911396">Ma'lumotlar muvaffaqiyatli tiklandi</translation>
+<translation id="6276879052695618521">Zaxira nusxasini tiklash jurnallari</translation>
+<translation id="4901207598072637766">JemaOS, <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /> tomonidan taqdim etiladi</translation>
+<translation id="7894910504474624324">JemaOS va uning xizmatlari GDPR hamda Yevropa ma'lumotlarni himoya qilish qonunchiligi qoidalariga mos keladi. Qo'shimcha ma'lumot uchun bizning <ph name="BEGIN_LINK_PRIVACY" />Maxfiylik siyosati<ph name="END_LINK_PRIVACY" /> va <ph name="BEGIN_LINK_TOS" />Xizmat ko'rsatish shartlari.<ph name="END_LINK_TOS" /> bilan tanishing.</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, barcha huquqlar himoyalangan.</translation>
+<translation id="370679569376308836">JemaOS — Jema qurilmasi va uning SaaS'i asosidagi tijorat taklifi.</translation>
+<translation id="2773644194450163486">JemaOS <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> ochiq manbali loyihasi tufayli yaratilgan.</translation>
+<translation id="2330680727776977160">Chromium ham boshqa <ph name="BEGIN_LINK_1" />ochiq manbali dasturiy ta'minot<ph name="END_LINK_1" /> va <ph name="BEGIN_LINK_2" />qo'shimcha ochiq manbali dasturiy ta'minot<ph name="END_LINK_2" /> tufayli yaratilgan.</translation>
+<translation id="1419954813084261088">Jema Technology tomonidan ishlab chiqilgan va ishlab chiqarilgan.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, barcha huquqlar himoyalangan.</translation>
+<translation id="6168072053306020326">Jema Technology — Jema Technology LTD va Jema Technology (Beijing) Limited kompaniyalarining savdo nomi.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD — Angliya va Uelsda 12273803 kompaniya raqami bilan ro'yxatdan o'tgan kompaniya.</translation>
+<translation id="1251589813188467292">Qurilma kafolati va xizmat ko'rsatish haqida muhim ma'lumot</translation>
+<translation id="4851115775198886021">Qurilma seriya raqami:</translation>
+</translationbundle>

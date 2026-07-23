@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="ur">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Thot کے بارے میں</translation>
+<translation id="5639860668557220477">Thot براؤزر کے بارے میں مدد حاصل کریں</translation>
+<translation id="1692689520561928457">JemaOS کے بارے میں</translation>
+<translation id="8692765844418174375">JemaOS ورژن</translation>
+<translation id="2943260250558374955">JemaOS کے بارے میں مدد حاصل کریں</translation>
+<translation id="713321354492170993">براؤزر غیر فعال ٹیبز سے میموری خالی کرتا ہے۔ اس سے فعال ٹیبز اور دیگر ایپس کو زیادہ کمپیوٹنگ وسائل ملتے ہیں اور براؤزر تیز رہتا ہے۔ جب آپ ان پر واپس آتے ہیں تو آپ کے غیر فعال ٹیبز خودکار طور پر دوبارہ فعال ہو جاتے ہیں۔</translation>
+<translation id="1774190491044887444">براؤزر پس منظر کی سرگرمیوں اور بصری اثرات جیسے ہموار اسکرولنگ اور ویڈیو فریم ریٹس کو محدود کر کے بیٹری بچاتا ہے۔</translation>
+<translation id="180121268008059459">براؤزر صفحات پہلے سے لوڈ کرتا ہے، جس سے براؤزنگ اور تلاش تیز ہو جاتی ہے۔</translation>
+<translation id="7127093527178692287">بیک اپ بحال کریں (بیٹا)</translation>
+<translation id="4439042171549201806">بیک اپ فائل سے JemaOS کو بحال کرنے کے لیے، براہ کرم بیک اپ فائل والا ہٹانے والا ڈرائیو ابھی اپنے JemaOS ڈیوائس میں لگائیں اور بتائیں کہ آپ کون سی بیک اپ فائل بحال کرنا چاہتے ہیں۔ براہ کرم نوٹ کریں کہ آپ کی بیک اپ فائل کو اس وزرڈ کے ذریعے پتہ لگائے جانے کے لیے ہٹانے والے ڈرائیو کی روٹ ڈائریکٹری میں ہونا ضروری ہے۔</translation>
+<translation id="2955409026764742995">بحال کرنے کے لیے بیک اپ فائل منتخب کریں:</translation>
+<translation id="7040434808685140085">معذرت، منتخب کردہ بیک اپ فائل کو پہچانا نہیں جا سکا؛ براہ کرم نئی فائل منتخب کریں۔</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />منتخب کردہ بیک اپ فائل سے JemaOS کو بحال کرنے کے لیے، بیک اپ بننے کے وقت کے بارے میں درست معلومات کا ہونا ضروری ہے۔ بصورت دیگر، بحالی کا عمل ناکام ہو جائے گا۔<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"اکاؤنٹ کا نام" اس اکاؤنٹ کی بنیادی لاگ ان سند ہے جس کے تحت آپ کی بیک اپ فائل بنائی گئی تھی۔ یہ عام طور پر وہی ای میل ایڈریس ہے جو آپ نے اپنے JemaOS/Google اکاؤنٹ کے لیے سائن اپ کرنے کے لیے استعمال کیا تھا۔ اگر یہ مقامی اکاؤنٹ ہوتا، تو یہ "@jemaos.local" کے ساتھ ملا ہوا صارف نام ہوتا۔<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />پاس ورڈ وہی لفظ ہے جو بیک اپ بنائے جانے کے وقت آپ سے درج کرنے کو کہا گیا تھا۔ یہ عام طور پر وہی پاس ورڈ ہے جو آپ اس اکاؤنٹ کے لیے JemaOS ڈیسک ٹاپ میں سائن ان کرنے کے لیے استعمال کرتے تھے۔<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">اکاؤنٹ کا نام</translation>
+<translation id="5490570429039308155">معذرت، براہ کرم درست اکاؤنٹ نام درج کریں</translation>
+<translation id="6657585470893396449">پاس ورڈ</translation>
+<translation id="8200189938001188563">معذرت، پاس ورڈ خالی نہیں ہو سکتا</translation>
+<translation id="3157931365184549694">بحال کریں</translation>
+<translation id="8556278756526311953">بیک اپ بحال کیا جا رہا ہے</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />ہم ابھی آپ کی بیک اپ فائل کو بحال کرنے پر کام کر رہے ہیں؛ اس میں کچھ وقت لگ سکتا ہے، لہذا براہ کرم صبر کریں۔<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />براہ کرم نوٹ کریں کہ بحالی کا عمل کامیابی سے مکمل ہونے پر یوزر انٹرفیس خودکار طور پر دوبارہ شروع ہو جائے گا۔<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">بیک اپ کی بحالی ناکام ہو گئی</translation>
+<translation id="5003531399442003695">مزید تفصیلات کے لیے، براہ کرم لاگز دیکھنے کے لیے نیچے دیے گئے لنک پر کلک کریں۔ اگر یہ خرابی برقرار رہے تو، براہ کرم JemaOS تکنیکی معاونت کے چینلز سے رابطہ کریں اور خرابی کے لاگز فراہم کریں۔</translation>
+<translation id="6363786367719063276">لاگز دیکھیں</translation>
+<translation id="8730621377337864115">ہو گیا</translation>
+<translation id="975238173507911396">ڈیٹا کی بحالی کامیاب</translation>
+<translation id="6276879052695618521">بیک اپ بحالی کے لاگز</translation>
+<translation id="4901207598072637766">JemaOS، فراہم کردہ <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS اور اس کی خدمات GDPR اور یورپی ڈیٹا تحفظ کے قانون کی دفعات کی پابند ہیں۔ مزید معلومات کے لیے، براہ کرم ہماری <ph name="BEGIN_LINK_PRIVACY" />رازداری کی پالیسی<ph name="END_LINK_PRIVACY" /> اور ہماری <ph name="BEGIN_LINK_TOS" />خدمات کی شرائط۔<ph name="END_LINK_TOS" /> دیکھیں۔</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, جملہ حقوق محفوظ ہیں۔</translation>
+<translation id="370679569376308836">JemaOS ایک تجارتی پیشکش ہے جو Jema ڈیوائس اور اس کے SaaS پر مبنی ہے۔</translation>
+<translation id="2773644194450163486">JemaOS <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> اوپن سورس پراجیکٹ کے باعث ممکن ہوا ہے۔</translation>
+<translation id="2330680727776977160">Chromium بھی دیگر <ph name="BEGIN_LINK_1" />اوپن سورس سافٹ ویئر<ph name="END_LINK_1" /> اور <ph name="BEGIN_LINK_2" />اضافی اوپن سورس سافٹ ویئر<ph name="END_LINK_2" /> کے باعث ممکن ہوا ہے۔</translation>
+<translation id="1419954813084261088">Jema Technology کی طرف سے ڈیزائن اور تیار کردہ۔</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, جملہ حقوق محفوظ ہیں۔</translation>
+<translation id="6168072053306020326">Jema Technology، Jema Technology LTD اور Jema Technology (Beijing) Limited کا تجارتی نام ہے۔
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD انگلینڈ اور ویلز میں کمپنی نمبر 12273803 کے ساتھ رجسٹرڈ کمپنی ہے۔</translation>
+<translation id="1251589813188467292">ڈیوائس کی وارنٹی اور سروس کی اہم معلومات</translation>
+<translation id="4851115775198886021">ڈیوائس سیریل نمبر:</translation>
+</translationbundle>

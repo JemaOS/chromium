@@ -6,4 +6,10 @@
 <translation id="149079510776520692">JemaOS 尚未完成其初始设置。</translation>
 <translation id="3831483999456024710">openJema 和 Chromium 的诞生离不开 <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> 开放源代码项目以及其他<ph name="BEGIN_LINK_OSS" />开放源代码软件<ph name="END_LINK_OSS" />。</translation>
 <translation id="8936437031496374311">JemaOS 和 Chromium 的诞生离不开 <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> 开放源代码项目以及其他<ph name="BEGIN_LINK_OSS" />开放源代码软件<ph name="END_LINK_OSS" />。</translation>
+
+
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">JemaOS 尚未完成初始设置。</translation>
+<translation id="4257170804800372451">JemaOS 和 Thot 得益于 <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> 开源项目和其他<ph name="BEGIN_LINK_OSS" />开源软件<ph name="END_LINK_OSS" />。</translation>
 </translationbundle>

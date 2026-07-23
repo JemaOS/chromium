@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="eu">
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">Eman izena Nutstore-n zure fitxategiak JemaOS-en hodeian sinkronizatzeko.</translation>
+<translation id="8672291834743661083">Eman izena Nutstore-n</translation>
+<translation id="5103639294476249880">Egin klik "Gehitu aplikazioa" botoian Segurtasun-ezarpenetan</translation>
+<translation id="8371020157576651120">Sortu eta kopiatu zure aplikazio-pasahitza</translation>
+<translation id="3855250998276979579">Ireki Nutstore aplikazioa</translation>
+<translation id="6565655783894300125">eta konektatu Nutstore kontua JemaOS-era zure posta elektronikoarekin eta aplikazio-pasahitzarekin</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Laster</translation>
+<translation id="4928968570611226525">Ekintza honekin jarraitzeko, <ph name="BEGIN_LINK_ARC_APP" />&gt;Android azpisistema aktibatu<ph name="END_LINK_ARC_APP" /> beharko duzu zure JemaOS gailuan; gainera, zure JemaOS gailua <ph name="BEGIN_LINK_HELP" />Garatzaile-modura aldatu<ph name="END_LINK_HELP" /> behar da.</translation>
+<translation id="7395250550107972941">Ezin dira .apk fitxategiak alboko kargatik kargatu. Ziurtatu Android azpisistema aktibatuta dagoela eta JemaOS garatzaile-moduan zaudela.</translation>
+<translation id="5690820326685091783">Ireki JemaOS AI-rekin</translation>
+</translationbundle>

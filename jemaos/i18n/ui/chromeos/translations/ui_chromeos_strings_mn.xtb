@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="mn">
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">JemaOS дахь файлаа үүлэнд синхрончлохын тулд Nutstore-д бүртгүүлээрэй.</translation>
+<translation id="8672291834743661083">Nutstore-д бүртгүүлэх</translation>
+<translation id="5103639294476249880">Аюулгүй байдлын тохиргоонд "Апп нэмэх" товчийг дарна уу</translation>
+<translation id="8371020157576651120">Аппын нууц үгээ үүсгэж хуулна уу</translation>
+<translation id="3855250998276979579">Nutstore аппыг нээнэ үү</translation>
+<translation id="6565655783894300125">болон Nutstore бүртгэлээ и-мэйл болон аппын нууц үгээрээ JemaOS-тай холбоно уу</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Удахгүй</translation>
+<translation id="4928968570611226525">Энэ үйлдлийг үргэлжлүүлэхийн тулд та JemaOS төхөөрөмж дээрээ <ph name="BEGIN_LINK_ARC_APP" />&gt;Android дэд системийг идэвхжүүлэх<ph name="END_LINK_ARC_APP" /> хэрэгтэй; мөн таны JemaOS төхөөрөмж <ph name="BEGIN_LINK_HELP" />Хөгжүүлэгчийн горимд шилжсэн<ph name="END_LINK_HELP" /> байх шаардлагатай.</translation>
+<translation id="7395250550107972941">.apk файлуудыг суулгах боломжгүй байна. Android дэд систем идэвхжсэн болон та JemaOS Хөгжүүлэгчийн горимд байгаа эсэхийг шалгана уу.</translation>
+<translation id="5690820326685091783">JemaOS AI-аар нээх</translation>
+</translationbundle>

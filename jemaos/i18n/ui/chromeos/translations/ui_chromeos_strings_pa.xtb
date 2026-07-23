@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="pa">
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">JemaOS ਵਿੱਚ ਆਪਣੀਆਂ ਫ਼ਾਈਲਾਂ ਕਲਾਉਡ-ਸਿੰਕ ਕਰਨ ਲਈ Nutstore 'ਤੇ ਸਾਈਨ ਅੱਪ ਕਰੋ।</translation>
+<translation id="8672291834743661083">Nutstore 'ਤੇ ਸਾਈਨ ਅੱਪ ਕਰੋ</translation>
+<translation id="5103639294476249880">ਸੁਰੱਖਿਆ ਸੈਟਿੰਗਾਂ ਵਿੱਚ "Add Application" ਬਟਨ 'ਤੇ ਕਲਿੱਕ ਕਰੋ</translation>
+<translation id="8371020157576651120">ਆਪਣਾ ਐਪਲੀਕੇਸ਼ਨ ਪਾਸਵਰਡ ਬਣਾਓ ਅਤੇ ਕਾਪੀ ਕਰੋ</translation>
+<translation id="3855250998276979579">Nutstore ਐਪ ਖੋਲ੍ਹੋ</translation>
+<translation id="6565655783894300125">ਅਤੇ ਆਪਣੇ ਈਮੇਲ ਅਤੇ ਐਪਲੀਕੇਸ਼ਨ ਪਾਸਵਰਡ ਨਾਲ Nutstore ਖਾਤੇ ਨੂੰ JemaOS ਨਾਲ ਜੋੜੋ</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">ਜਲਦੀ ਆ ਰਿਹਾ ਹੈ</translation>
+<translation id="4928968570611226525">ਇਸ ਕਾਰਵਾਈ ਨੂੰ ਜਾਰੀ ਰੱਖਣ ਲਈ ਤੁਹਾਨੂੰ ਆਪਣੇ JemaOS ਡਿਵਾਈਸ 'ਤੇ <ph name="BEGIN_LINK_ARC_APP" />&gt;Android ਸਬਸਿਸਟਮ ਸਰਗਰਮ ਕਰਨਾ<ph name="END_LINK_ARC_APP" /> ਪਵੇਗਾ; ਨਾਲ ਹੀ ਤੁਹਾਡਾ JemaOS ਡਿਵਾਈਸ <ph name="BEGIN_LINK_HELP" />ਡਿਵੈਲਪਰ ਮੋਡ 'ਤੇ ਸਵਿੱਚ ਕੀਤਾ ਹੋਇਆ<ph name="END_LINK_HELP" /> ਹੋਣਾ ਚਾਹੀਦਾ ਹੈ।</translation>
+<translation id="7395250550107972941">.apk ਫ਼ਾਈਲਾਂ ਸਾਈਡਲੋਡ ਕਰਨ ਵਿੱਚ ਅਸਮਰੱਥ। ਕਿਰਪਾ ਕਰਕੇ ਯਕੀਨੀ ਬਣਾਓ ਕਿ Android ਸਬਸਿਸਟਮ ਸਰਗਰਮ ਕੀਤਾ ਗਿਆ ਹੈ ਅਤੇ ਤੁਸੀਂ JemaOS ਡਿਵੈਲਪਰ ਮੋਡ ਵਿੱਚ ਹੋ।</translation>
+<translation id="5690820326685091783">JemaOS AI ਨਾਲ ਖੋਲ੍ਹੋ</translation>
+</translationbundle>

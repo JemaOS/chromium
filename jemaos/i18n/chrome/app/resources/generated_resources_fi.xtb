@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="fi">
+	<translation id="7386402409475121504">Luo paikallinen JemaOS-tili</translation>
+	<translation id="3760308806144055927">Kirjaudu sisään paikalliseen JemaOS-tiliisi</translation>
+	<translation id="3325117507482096812">Anna salasana</translation>
+	<translation id="1838206877831947154">Salasanasi eivät täsmää</translation>
+	<translation id="2158276988029582286">Luo uusi paikallinen tili</translation>
+	<translation id="8592849747346274067">Kirjaudu sisään olemassa olevaan tiliin</translation>
+	<translation id="482190417986201746">Antamasi käyttäjätunnus tai salasana on virheellinen</translation>
+	<translation id="6603987686259425085">Voit <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>kirjautua sisään paikallisella JemaOS-tilillä<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">Sähköposti <ph name="EMAIL_ADDRESS">$1</ph> on jo olemassa. Yritä uudelleen toisella sähköpostilla.</translation>
+	<translation id="7215016743510876720">Käytä paikallista tiliä</translation>
+	<translation id="6657635042185516718">Jatka verkkotilin käyttöä</translation>
+	<translation id="6867476688065565618">Vaihdetaanko paikalliselle tilille?</translation>
+	<translation id="4840454774882557974">Jos päätät käyttää paikallista tiliä, hyödyllisiä ominaisuuksia ovat tietojen ja asetusten synkronointi useiden laitteiden välillä ja automaattinen kirjautuminen verkkosovelluksiin JemaOS-tililläsi ei toimi.</translation>
+	<translation id="8951507920859729424">Suosittelemme käyttämään online-tiliä JemaOS:n täysimittaiseen hyödyntämiseen.</translation>
+	<translation id="479773200536372215">Et voi lisätä Google-tilejä, koska Google-sovellusliittymäavaimet puuttuvat. Katso lisätietoja osoitteesta <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph>.</translation>
+	<translation id="1198491307547164157">Et voi lisätä JemaOS-tilejä, koska JemaOS API-avaimet puuttuvat. Katso lisätietoja osoitteesta <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph>.</translation>
+	<translation id="5042404702659901995">Tietosuojalausunto</translation>
+	<translation id="4907736162587268100">Tietosuojalausunnon sisältö</translation>
+	<translation id="5988344732274877691">Tilaa (erittäin harvoin luvattu) JemaOS-uutiskirje</translation>
+	<translation id="1706203008474708805">Liity JemaOS-käyttökokemuksen parantamissuunnitelmaan</translation>
+	<translation id="1147139514756087229">Kirjaudu sisään paikallisella tilillä</translation>
+	<translation id="2054784944085654098">Varmuuskopiotiedostoa luodaan nyt. Tämä voi kestää hetken; ole hyvä ja odota…</translation>
+	<translation id="3554401467586751874">Varmuuskopiotiedoston luominen onnistui</translation>
+	<translation id="2349211327705667074">Näytä varmuuskopiotiedosto</translation>
+	<translation id="3049367131589710124">Näytä virheloki</translation>
+	<translation id="1079017345574916945">Etätyöpöytä</translation>
+	<translation id="3064478898280877715">App Store</translation>
+	<translation id="5890206344045530832">Asentaja</translation>
+	<translation id="2173278076276376488">Tämä apuohjelma auttaa sinua asentamaan <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> tämän laitteen sisäiseen tallennustilaan.</translation>
+	<translation id="5323182426977498659">Varoitus! Tämä toimenpide on tuhoisa, eikä sitä voi peruuttaa. Huomaa, että emme ole vastuussa mahdollisista tietojen katoamisesta emmekä tarjoa kiireellistä teknistä tukea, toimi omalla vastuullasi.</translation>
+	<translation id="8517836015601969896">Koko levyn asennus</translation>
+	<translation id="7300045760790370189">Asenna <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> käyttääksesi koko kiintolevyn, kaikki kohdekiintolevyn tiedot pyyhitään.</translation>
+	<translation id="8762511733918256595">Usean käynnistyksen asennus</translation>
+	<translation id="248900698427753678">Asenna <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> kiintolevyn olemassa olevaan osioon, jossa <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> voi olla rinnakkain muiden käyttöjärjestelmien kanssa. Kaikki kohdeosion tiedot pyyhitään.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> asennetaan valitsemallesi kiintolevylle. kaikki kohdelevyn tiedot pyyhitään.</translation>
+	<translation id="4039091757234555415">Levy</translation>
+	<translation id="7783580523889684697">Levyä ei ole saatavilla</translation>
+	<translation id="8217653566575018388">Asennus valmis</translation>
+	<translation id="8846746259444262774">Asennus epäonnistui</translation>
+	<translation id="7263815009235541549">Asennus on päättynyt onnistuneesti. Katkaise ensin laitteesi virta, poista sitten kaikki asennusvälineet ja käynnistä se uudelleen käynnistääksesi <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>.</translation>
+	<translation id="3380151284134965398">Hups, jotain meni pieleen eikä asennus suoritettu loppuun. Yritä prosessia uudelleen. Jos sama virhe jatkuu, ota yhteyttä JemaOS-tukeen yllä olevan lokin avulla.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> asennetaan kiintolevysi valittuun osioon. Nykyisessä monikäynnistysmallissa tämä voi tapahtua vain, jos laitteesi tukee UEFI:tä ja kiintolevysi on alustettu GPT:llä.</translation>
+	<translation id="7831363758161884243">Kohdeosio pyyhitään; sinun on myös määritettävä aktiivinen EFI-osio (yleensä automaattisesti), koska asennusohjelman on muutettava järjestelmän käynnistysasetuksia.</translation>
+	<translation id="5670799238446305550">Valitse <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> -kohdeosio</translation>
+	<translation id="3695537760133394753">Osio</translation>
+	<translation id="5610519566593708119">Valitse EFI-osio</translation>
+	<translation id="3367650349940010965">Valitulle levylle ei ole saatavilla osioita</translation>
+	<translation id="7453223384507098390">Valitulle levylle ei ole saatavilla EFI-osioita</translation>
+	<translation id="1854532683465500847">Valitun osion koko on alle 20 Gt, asennus saattaa epäonnistua</translation>
+	<translation id="4144613075340468247">Valittu osio on liitetty <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>-monikäynnistykseen. Uudelleenasennus saattaa epäonnistua</translation>
+	<translation id="5793361052649920836">Kuinka haluaisit käynnistää <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>:n asennuksen jälkeen?</translation>
+	<translation id="4273235330352963866">Asenna ja määritä REFInd minulle (suositus)</translation>
+	<translation id="1858708492548921044">REFInd on käynnistyksenhallintaohjelma, joka tarjoaa mukavan graafisen käyttöliittymän käyttöjärjestelmän käynnistysasetuksiin, kun tietokoneesi käynnistyy. Voit valita haluamasi käyttöjärjestelmän käynnistystä varten. Lisätietoja rEFIndistä on sen kotisivulla.</translation>
+	<translation id="3861924051442564602">Lisää minulle UEFI-käynnistysvalikkovaihtoehto</translation>
+	<translation id="8622370666798589804">Kun tietokoneesi käynnistyy, saatat pystyä siirtymään UEFI-käynnistysasetusten valikkoon (todennäköisimmin painamalla pikanäppäintä), tämä vaihtoehto lisää <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>-merkinnän kyseiseen valikkoon. (Tukee vain joitakin BIOS- ja UEFI-laiteohjelmistomalleja).</translation>
+	<translation id="1569398690544416170">Älä tee täällä mitään, määritän sen itse</translation>
+	<translation id="3554866444001249532">Tämä asennusskripti asettaa vain tarvittavat .efi-tiedostot <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>-käynnistystä varten EFI-osioon. Sinun on määritettävä, kuinka se käynnistetään itse.</translation>
+	<translation id="7492832751164189534">Pakota lopettamaan</translation>
+	<translation id="5159534860632584026">Asennusprosessi on lopetettu</translation>
+	<translation id="8686749782014838344">Levytietojen hakeminen epäonnistui</translation>
+	<translation id="5688543378771259173">Asennusta lopetetaan...</translation>
+	<translation id="5350452134936384991">Asenna USB:hen</translation>
+	<translation id="8008470485414925603">Asenna <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> USB-levylle; kaikki kohde-USB-levyn tiedot pyyhitään.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> asennetaan valitsemallesi USB-levylle. kaikki kohdelevyn tiedot pyyhitään.</translation>
+	<translation id="5725593226060700263">USB-levyä ei ole saatavilla</translation>
+	<translation id="4357040841587078287">Olemme havainneet, että käytät tätä JemaOS-kopiota ladatusta kuvatiedostosta. Jos haluat hyödyntää JemaOS:n tarjoamia kattavimpia tukiominaisuuksia (mukaan lukien Over-The-Air-päivitykset), suosittelemme, että käynnistät "Installer"-toiminnon suorittaaksesi JemaOS:n koko levyn asennuksen erilliseen tallennuslaitteeseen.</translation>
+	<translation id="1246398339704431302">Voit <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>jatkaa tämän JemaOS-kopion käyttöä joka tapauksessa<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, asennus voidaan suorittaa myöhemmässä vaiheessa järjestelmässä, mutta kaikki tietosi pyyhitään uudelleen tältä sivulta asennuksen jälkeen.</translation>
+	<translation id="3654532222088291133">Sen sijaan, että kirjoittaisit JemaOS-tilisi salasanan kirjautumiseen, voit luoda <ph name="DEVICE_TYPE">$1<ex>Chromebookin</ex></ph> salasanan tälle laitteelle</translation>
+	<translation id="8377684629839541977">Käytä JemaOS-tilin salasanaa</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">Pidä <ph name="DEVICE_OS" /> automaattisesti ajan tasalla</translation>
+<translation id="2347352406101856238"><ph name="DEVICE_OS" />-päivitys käytössä</translation>
+<translation id="185834232609012804"><ph name="DEVICE_OS" />-päivitys pois käytöstä</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Alusta <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Etätyöpöytä</translation>
+<translation id="6898090158927982244">Linux on ajan tasalla</translation>
+<translation id="4886703929102211360">Linux (beta) -komponentille on saatavilla kriittinen päivitys. Päivitys kannattaa asentaa mahdollisimman pian, sillä muuten Linux (beta) saattaa lakata toimimasta.</translation>
+<translation id="6694016202036959050"><ph name="DEVICE_OS" />-asetukset</translation>
+<translation id="8362858344151826493">JemaOS-tili, varmuuskopiointi, muut</translation>
+<translation id="9150429437595727962">Wi-Fi-asetukset</translation>
+<translation id="4938972461544498524">Kosketuslevyn asetukset</translation>
+<translation id="1210024513248363065">Etäpalvelut</translation>
+<translation id="2878862288885588535">Etädiagnostiikkapalvelu</translation>
+<translation id="7409197984340676806">Etädiagnostiikkapalvelun avulla viralliset JemaOS-tukiedustajat voivat tunnistaa järjestelmän ongelmia. Tällä hetkellä etädiagnostiikkapalvelun voi käynnistää vain virallinen JemaOS-tukiedustaja.</translation>
+<translation id="1791028023086176332">Jaa tämä numero virallisten JemaOS-tukiedustajien kanssa</translation>
+<translation id="6279304275399437025">Käynnistetään etädiagnostiikkapalvelua...</translation>
+<translation id="1501882165699826662">Pysäytä etädiagnostiikkapalvelu ja yritä uudelleen</translation>
+<translation id="3100283258447375201">Lisätietoja</translation>
+<translation id="4070039109671307724">Muut</translation>
+<translation id="7326893024940073254">”Käynnistä uudelleen” -painike</translation>
+<translation id="3002423764319968103">Näytä ”Käynnistä uudelleen” -painike järjestelmävalikossa</translation>
+<translation id="6243454903512423518">”Kierrä näyttöä” -painike</translation>
+<translation id="6491049336868978729">Et ole tällä hetkellä tablet-tilassa, joten ”Kierrä näyttöä” -painike on piilotettu</translation>
+<translation id="5496012402277579695">Näytä ”Kierrä näyttöä” -painike järjestelmävalikossa</translation>
+<translation id="5882838977344999606">Tablet-/läppäritilan vaihto</translation>
+<translation id="472164133625585606">Näytä tablet-/läppäritilan vaihtopainike järjestelmävalikossa</translation>
+<translation id="1851103550468466960">Ota Widevine käyttöön</translation>
+<translation id="4058176713282795846">Ota Widevine käyttöön suojatun premium-sisällön suoratoistoa varten. <ph name="BEGIN_LINK_LEARN_MORE" />Lisätietoja<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">Valitse ”libwidevine.so”</translation>
+<translation id="4838463656205005584">Widevinen käyttöönotto epäonnistui...</translation>
+<translation id="2164041826798266548">Widevine CDM -moduulin asennus epäonnistui. Tarkista yhteys ja yritä uudelleen.</translation>
+<translation id="4106982328079440606">JemaOS-tilin asetukset</translation>
+<translation id="6468776556018764845">Kokeelliset ominaisuudet</translation>
+<translation id="3487615413425326553">Ohita Trusted Platform Module (TPM) -tarkistukset</translation>
+<translation id="4817176087932811573">Jotkin ominaisuudet voivat epäonnistua, jos laitteessa on yhteensopimaton TPM-siru; voit ohittaa TPM-tarkistukset kiertotienä.</translation>
+<translation id="3356003366173774486">Automaattinen kirjautuminen</translation>
+<translation id="6218459410891191693">Salli nykyisen tilin kirjautuvan automaattisesti työpöydälle, kun laite käynnistetään uudelleen</translation>
+<translation id="6620839363422062843">Ei voi ottaa käyttöön tälle tilille; automaattinen kirjautuminen on jo käytössä muilla tileillä tällä laitteella</translation>
+<translation id="6734500226490446035">Ei voi ottaa käyttöön tälle tilille; tilin tiedostojärjestelmiä alustettaessa tapahtui tuntematon virhe. Kokeile käynnistää laite uudelleen tai luoda uusi tili</translation>
+<translation id="5464880042146818691">Ei voi ottaa käyttöön tälle tilille; automaattinen kirjautuminen on käytettävissä vain tilityypille ”Paikallinen tili”.</translation>
+<translation id="3335654854106476749">Lisää kirjautumissalasana asetuksissa <ph name="BEGIN_LINK" />Tietosuoja ja turvallisuus<ph name="END_LINK" /> ennen automaattisen kirjautumisen käyttöönottoa.</translation>
+<translation id="5586831602198585601">JemaOS:n uudempi versio on nyt päivitettävissä. JemaOS sinulle -tilauksesi on kuitenkin vanhentunut; tarvitset aktiivisen tilauksen päivittääksesi JemaOS:n.</translation>
+<translation id="3869860597719956574">JemaOS:n uusi pääversio on nyt päivitettävissä. Sinun on maksettava kertamaksu jatkaaksesi tätä päivitystä.</translation>
+<translation id="6523879681771260760">Määritä polku, johon varmuuskopiotiedosto tallennetaan</translation>
+<translation id="2036152819788683293">Luo varmuuskopiotiedosto tälle tilille (beta). <ph name="BEGIN_LINK_LEARN_MORE" />Lisätietoja<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Varmuuskopioi</translation>
+<translation id="4267347174163690295">Luo varmuuskopiotiedosto tälle tilille (beta).</translation>
+<translation id="8112950994208888917">Tämä toiminto luo täyden levyvarmuuskopion tälle tilille, jolloin JemaOS on helppo palauttaa siihen tilaan, jossa se oli varmuuskopion luomishetkellä, mukaan lukien asetukset, asennetut selainlaajennukset ja alijärjestelmäsovellukset. Sovelluksistasi ja kotikansiosi sisällöstä riippuen varmuuskopiotiedosto voi olla suuri; varmuuskopiotiedosto kannattaa tallentaa ulkoiselle tallennuslaitteelle. Jos sinulla on kannettava USB-asema, liitä se nyt. <ph name="BEGIN_LINK_LEARN_MORE" />Lisätietoja<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Anna tämän tilin kirjautumissalasana</translation>
+<translation id="8663988871299316062">Muista tämä salasana, sillä sitä tarvitaan, kun tämä varmuuskopiotiedosto palautetaan</translation>
+<translation id="6408904153044317846">Valitse palautettava varmuuskopiotiedosto</translation>
+<translation id="8062988348127771021">Palauta JemaOS-tietosi varmuuskopiotiedostosta</translation>
+<translation id="7309192418866543730">Anna varmuuskopion salasana</translation>
+<translation id="3642408376366598984">Anna salasana, jolla tämä varmuuskopiotiedosto salattiin</translation>
+<translation id="7783974937157985523">Varmuuskopion salasana</translation>
+<translation id="6583780301401541007">Palautus onnistui</translation>
+<translation id="3514011352559420398">Palautus epäonnistui</translation>
+<translation id="7535980903266533458">Tallenna varmuuskopio laitteellesi tai ulkoiseen tallennustilaan</translation>
+<translation id="604001903249547235">Pilvivarmuuskopiointi</translation>
+<translation id="8885702701336541611">Lataa varmuuskopio JemaOS-pilvitallennustilaan</translation>
+<translation id="3939744430096549862">Varmuuskopioi pilveen</translation>
+<translation id="619129431573254316">Palauta paikallisesta varmuuskopiotiedostosta</translation>
+<translation id="1859592711955106569">Pilvipalautus</translation>
+<translation id="38222223336741457">Lataa ja palauta JemaOS-pilvestä</translation>
+<translation id="1241089811244416179">Palauta pilvestä</translation>
+<translation id="652479689372703360">Varmuuskopiointi käynnissä</translation>
+<translation id="3655220146274872918">Varmuuskopiointi valmis</translation>
+<translation id="4243579853635792694">Varmuuskopiosi luotiin onnistuneesti</translation>
+<translation id="6337433855796857931">Varmuuskopiointi epäonnistui</translation>
+<translation id="4854179463174744546">Varmuuskopioinnin aikana tapahtui virhe</translation>
+<translation id="2410668771600309999">Connect API -käyttäjätiedot</translation>
+<translation id="2223892939866251845">Käyttäjätunnus</translation>
+<translation id="3850846286480935456">Varmuuskopiointitallennustilan analyysi</translation>
+<translation id="6244494465581273970">Käyttäjätunnus vaaditaan</translation>
+<translation id="9204006549413740506">Viimeksi päivitetty</translation>
+<translation id="476642412165431515">Laitteistot</translation>
+<translation id="3386337985825120901">Varmuuskopiotietoja ei saatavilla</translation>
+<translation id="8490990067870590760">Ladataan varmuuskopiotiedostoja...</translation>
+<translation id="2955409026764742995">Valitse palautettava varmuuskopiotiedosto:</translation>
+<translation id="7414629348005657242">-- Valitse varmuuskopiotiedosto --</translation>
+<translation id="918246516374174381">Varmuuskopiotiedostoja ei löytynyt. Luo ensin varmuuskopio.</translation>
+<translation id="77997252117517973">Tulossa pian</translation>
+<translation id="1930692852800776096">Lisää sanakirja</translation>
+<translation id="8793060353848771694">Vasemman kuulokkeen kuva</translation>
+<translation id="6257440204887306255">Latauskotelon kuva</translation>
+<translation id="2754700616124958693">Oikean kuulokkeen kuva</translation>
+<translation id="1068676292264983586">Laitteen oletuskuva</translation>
+<translation id="6364075396486660405">Poista käytöstä kaikkien osioiden automaattinen mediatiedostojen tarkistus akun käyttöajan optimoimiseksi. <ph name="BEGIN_LINK_LEARN_MORE" />Lisätietoja<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Suojausasetukset</translation>
+<translation id="5618366106086725045">Ota käyttöön ”Kehittäjätila” tälle <ph name="IDS_SHORT_PRODUCT_OS_NAME" />-asennukselle, jolloin saat lisää kehittäjäominaisuuksia. <ph name="BEGIN_LINK_LEARN_MORE" />Lisätietoja<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Olet jo ”Kehittäjätilassa”</translation>
+<translation id="6074549317340202195">Ota käyttöön ”Kehittäjätila”</translation>
+<translation id="418781258674176053">Varoitus! ”Kehittäjätilan” käyttöönotto on peruuttamaton toimenpide. Jos haluat poistaa ”Kehittäjätilan” käytöstä, sinun on asennettava JemaOS uudelleen, mikä poistaa kaikki tiedot. Varmuuskopioi tietosi ja jatka omalla vastuullasi.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Alusta <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Ei verkkoyhteyttä tällä hetkellä</translation>
+<translation id="2590678769628709242">Tarkista JemaOS-tilauksesi verkossa</translation>
+<translation id="4701836089682883918">JemaOS-tilaustiedot</translation>
+<translation id="5891566673089952188">Laitetunnuksen hakemisessa tapahtui virhe</translation>
+<translation id="4685086787606104322">Tilauksen päättyminen</translation>
+<translation id="3354919960795782984">Laitetunnus</translation>
+<translation id="5758632069869992306">Tarkista tilauksesi verkossa</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Alusta <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Kokeilutilaus</translation>
+<translation id="4362781408813685579">Aktiivinen tilaus</translation>
+<translation id="1141274201089997510">Vanhentunut tilaus</translation>
+<translation id="2553683254139782404">Ei-kaupallinen versio</translation>
+<translation id="8466048683756385518">Enterprise-lisensoitu versio (kokeilu)</translation>
+<translation id="2853871047705932424">Enterprise-lisensoitu versio</translation>
+<translation id="5239675900317881945">Enterprise-lisensoitu versio (vanhentunut)</translation>
+<translation id="189101945990408398">Vanhempi Intel</translation>
+<translation id="6816405236809604904">Uudempi Intel</translation>
+<translation id="6169452478137972655">AMD-grafiikka</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="2747689477259164256">JemaOS AI</translation>
+<translation id="1270291881045478104">Ota JemaOS AI käyttöön</translation>
+<translation id="2013780539677437932">Ota käyttöön tai poista käytöstä kaikki JemaOS AI -ominaisuudet</translation>
+<translation id="3398637633218757480">Ota käyttöön JemaOS AI -pikakutsu</translation>
+<translation id="8986197796475507452">Tuo JemaOS AI -vaihtoehdot korostetulle sisällölle nopeasti esiin painamalla Ctrl + C + C</translation>
+<translation id="6407628130593274137">Muut JemaOS AI:n asetukset ja vaihtoehdot</translation>
+<translation id="4005574560653331142">Jos haluat vaihtaa tämän paikallisen tilin PIN-koodin tai kirjautumissalasanan, siirry asetuksiin <ph name="BEGIN_LINK" />Tietosuoja ja turvallisuus<ph name="END_LINK" />.</translation>
+
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">Voit <ph name="LINK_START" />kirjautua paikallisella JemaOS-tilillä<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">Sähköpostiosoite <ph name="EMAIL_ADDRESS" /> on jo olemassa. Yritä uudelleen toisella sähköpostiosoitteella.</translation>
+<translation id="4519800823932975782">JemaOS-ohjekeskus</translation>
+<translation id="4737474693231655139">Löydä ohjeartikkeleita ja vastauksia yleisiin JemaOS-kysymyksiin</translation>
+</translationbundle>

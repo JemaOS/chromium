@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="km">
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">JemaOS មិនទាន់បានបញ្ចប់ការដំឡើងដំបូងរបស់វាទេ។</translation>
+<translation id="4257170804800372451">JemaOS និង Thot អាចធ្វើទៅបានដោយគម្រោងចំណុះបើកចំហ <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> និង<ph name="BEGIN_LINK_OSS" />កម្មវិធីចំណុះបើកចំហផ្សេងទៀត<ph name="END_LINK_OSS" />។</translation>
+</translationbundle>

@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="vi">
+
+
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">JemaOS chưa hoàn tất thiết lập ban đầu.</translation>
+<translation id="4257170804800372451">JemaOS và Thot được hiện thực hóa nhờ dự án nguồn mở <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> và các <ph name="BEGIN_LINK_OSS" />phần mềm nguồn mở<ph name="END_LINK_OSS" /> khác.</translation>
+</translationbundle>

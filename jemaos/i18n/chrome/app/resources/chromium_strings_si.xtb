@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="si">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Thot පිළිබඳ</translation>
+<translation id="5639860668557220477">Thot බ්‍රවුසරය සමඟ උදව් ලබාගන්න</translation>
+<translation id="1692689520561928457">JemaOS පිළිබඳ</translation>
+<translation id="8692765844418174375">JemaOS අනුවාදය</translation>
+<translation id="2943260250558374955">JemaOS සමඟ උදව් ලබාගන්න</translation>
+<translation id="713321354492170993">බ්‍රවුසරය අක්‍රිය ටැබවලින් මතකය නිදහස් කරයි. මෙය සක්‍රිය ටැබ සහ වෙනත් යෙදුම්වලට වැඩි පරිගණන සම්පත් ලබා දෙන අතර බ්‍රවුසරය වේගවත්ව තබයි. ඔබ අක්‍රිය ටැබ වෙත ආපසු ආවිට ඒවා ස්වයංක්‍රීයව නැවත සක්‍රිය වේ.</translation>
+<translation id="1774190491044887444">බ්‍රවුසරය පසුබිම් ක්‍රියාකාරීත්වය සහ සුමට අනුචලනය වැනි දෘශ්‍ය ප්‍රභාව සහ වීඩියෝ රාමු අනුපාත සීමා කිරීමෙන් බැටරිය ඉතිරි කරයි.</translation>
+<translation id="180121268008059459">බ්‍රවුසරය පිටු කලින් පූරණය කරයි, එබැවින් ගවේෂණය සහ සෙවීම වේගවත් වේ.</translation>
+<translation id="7127093527178692287">උපස්ථය ප්‍රතිසාධනය කරන්න (බීටා)</translation>
+<translation id="4439042171549201806">උපස්ථ ගොනුවකින් JemaOS ප්‍රතිසාධනය කිරීමට, කරුණාකර උපස්ථ ගොනුව අඩංගු ඉවත් කළ හැකි ධාවකය දැන් ඔබගේ JemaOS උපකරණයට ඇතුළත් කර ඔබ ප්‍රතිසාධනය කිරීමට කැමති උපස්ථ ගොනුව සඳහන් කරන්න. මෙම විශාරදයට එය හඳුනාගැනීම සඳහා ඔබගේ උපස්ථ ගොනුව ඉවත් කළ හැකි ධාවකයේ මූල නාමාවලියේ තිබිය යුතු බව කරුණාකර සලකන්න.</translation>
+<translation id="2955409026764742995">ප්‍රතිසාධනය කිරීමට උපස්ථ ගොනුව තෝරන්න:</translation>
+<translation id="7040434808685140085">සමාවන්න, තෝරාගත් උපස්ථ ගොනුව හඳුනාගත නොහැක; කරුණාකර අලුත් එකක් තෝරන්න.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />තෝරාගත් උපස්ථ ගොනුවෙන් JemaOS ප්‍රතිසාධනය කිරීම සඳහා, උපස්ථය සාදන ලද අවස්ථාව පිළිබඳ නිවැරදි තොරතුරු තිබීම අත්‍යවශ්‍ය වේ. එසේ නොමැති නම්, ප්‍රතිසාධන ක්‍රියාවලිය අසාර්ථක වනු ඇත.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"ගිණුම් නම" යනු ඔබගේ උපස්ථ ගොනුව සාදන ලද ගිණුමේ මූලික පිවිසුම් අක්තපත්‍රයයි. එය සාමාන්‍යයෙන් ඔබගේ JemaOS/Google ගිණුමට ලියාපදිංචි වීමට භාවිත කළ විද්‍යුත් තැපැල් ලිපිනයයි. එය දේශීය ගිණුමක් නම්, එය "@jemaos.local" එකතු කළ පරිශීලක නම වනු ඇත.<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />මුරපදය යනු උපස්ථය සාදන විට ඔබෙන් ඇතුළත් කරන ලෙස ඉල්ලා සිටි මුරපද වාක්‍යයයි. එය සාමාන්‍යයෙන් මෙම ගිණුම සඳහා JemaOS ඩෙස්ක්ටොප් එකට පිවිසීමට භාවිත කළ එම මුරපදයම වේ.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">ගිණුම් නම</translation>
+<translation id="5490570429039308155">සමාවන්න, කරුණාකර නිවැරදි ගිණුම් නම ඇතුළත් කරන්න</translation>
+<translation id="6657585470893396449">මුරපදය</translation>
+<translation id="8200189938001188563">සමාවන්න, මුරපදය හිස් විය නොහැක</translation>
+<translation id="3157931365184549694">ප්‍රතිසාධනය කරන්න</translation>
+<translation id="8556278756526311953">උපස්ථය ප්‍රතිසාධනය වෙමින්</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />අපි දැන් ඔබගේ උපස්ථ ගොනුව ප්‍රතිසාධනය කිරීමේ කටයුතු සිදු කරමින් සිටිමු; මෙයට යම් කාලයක් ගත හැක, එබැවින් කරුණාකර ඉවසන්න.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />ප්‍රතිසාධන ක්‍රියාවලිය සාර්ථකව අවසන් වූ විට UI ස්වයංක්‍රීයව නැවත ආරම්භ වන බව කරුණාකර සලකන්න.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">උපස්ථය ප්‍රතිසාධනය අසාර්ථක විය</translation>
+<translation id="5003531399442003695">වැඩි විස්තර සඳහා, ලඝු සටහන් බැලීමට කරුණාකර පහත සබැඳිය ක්ලික් කරන්න. මෙම දෝෂය පවතී නම්, කරුණාකර JemaOS තාක්ෂණික සහාය නාලිකාවන් හා සම්බන්ධ වී දෝෂ ලඝු සටහන් ලබා දෙන්න.</translation>
+<translation id="6363786367719063276">ලඝු සටහන් බලන්න</translation>
+<translation id="8730621377337864115">අවසන්</translation>
+<translation id="975238173507911396">දත්ත ප්‍රතිසාධනය සාර්ථකයි</translation>
+<translation id="6276879052695618521">උපස්ථය ප්‍රතිසාධන ලඝු සටහන්</translation>
+<translation id="4901207598072637766">JemaOS, <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /> මඟින් සපයන ලදී</translation>
+<translation id="7894910504474624324">JemaOS සහ එහි සේවාවන් GDPR සහ යුරෝපීය දත්ත ආරක්ෂණ නීතියේ විධිවිධානවලට අනුකූල වේ. වැඩි විස්තර සඳහා, කරුණාකර අපගේ <ph name="BEGIN_LINK_PRIVACY" />රහස්‍යතා ප්‍රතිපත්තිය<ph name="END_LINK_PRIVACY" /> සහ අපගේ <ph name="BEGIN_LINK_TOS" />සේවා නියම<ph name="END_LINK_TOS" /> බලන්න.</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, සියලු හිමිකම් ඇවිරිණි.</translation>
+<translation id="370679569376308836">JemaOS යනු Jema උපකරණය සහ එහි SaaS මත පදනම් වූ වාණිජ පිරිනැමීමකි.</translation>
+<translation id="2773644194450163486">JemaOS <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> විවෘත මූලාශ්‍ර ව්‍යාපෘතිය මඟින් සෑදී ඇත.</translation>
+<translation id="2330680727776977160">Chromium ද වෙනත් <ph name="BEGIN_LINK_1" />විවෘත මූලාශ්‍ර මෘදුකාංග<ph name="END_LINK_1" /> සහ <ph name="BEGIN_LINK_2" />අතිරේක විවෘත මූලාශ්‍ර මෘදුකාංග<ph name="END_LINK_2" /> මඟින් සෑදී ඇත.</translation>
+<translation id="1419954813084261088">Jema Technology විසින් සැලසුම් කර නිෂ්පාදනය කරන ලදී.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, සියලු හිමිකම් ඇවිරිණි.</translation>
+<translation id="6168072053306020326">Jema Technology යනු Jema Technology LTD සහ Jema Technology (Beijing) Limited යන සමාගම්වල වෙළඳ නාමයයි.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD යනු සමාගම් අංක 12273803 යටතේ එංගලන්තයේ සහ වේල්ස්හි ලියාපදිංචි සමාගමකි.</translation>
+<translation id="1251589813188467292">වැදගත් උපකරණ වගකීම් සහ සේවා තොරතුරු</translation>
+<translation id="4851115775198886021">උපකරණ SN:</translation>
+</translationbundle>

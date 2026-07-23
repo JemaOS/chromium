@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="el">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">Εγγραφείτε στο Nutstore για να συγχρονίζετε τα αρχεία σας στο cloud στο JemaOS.</translation>
+<translation id="8672291834743661083">Εγγραφή στο Nutstore</translation>
+<translation id="5103639294476249880">Κάντε κλικ στο κουμπί «Προσθήκη εφαρμογής» στις ρυθμίσεις ασφαλείας</translation>
+<translation id="8371020157576651120">Δημιουργήστε και αντιγράψτε τον κωδικό πρόσβασης της εφαρμογής</translation>
+<translation id="3855250998276979579">Ανοίξτε την εφαρμογή Nutstore</translation>
+<translation id="6565655783894300125">και συνδέστε τον λογαριασμό Nutstore στο JemaOS με το email και τον κωδικό πρόσβασης της εφαρμογής σας</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Σύντομα κοντά σας</translation>
+<translation id="4928968570611226525">Για να συνεχίσετε με αυτήν την ενέργεια, θα χρειαστεί να <ph name="BEGIN_LINK_ARC_APP" />&gt;ενεργοποιήσετε το υποσύστημα Android<ph name="END_LINK_ARC_APP" /> στη συσκευή JemaOS σας. Επίσης, η συσκευή JemaOS πρέπει να <ph name="BEGIN_LINK_HELP" />έχει τεθεί σε Λειτουργία προγραμματιστή<ph name="END_LINK_HELP" />.</translation>
+<translation id="7395250550107972941">Δεν είναι δυνατή η πλευρική φόρτωση αρχείων .apk. Βεβαιωθείτε ότι το υποσύστημα Android έχει ενεργοποιηθεί και ότι βρίσκεστε σε Λειτουργία προγραμματιστή του JemaOS.</translation>
+<translation id="5690820326685091783">Άνοιγμα με JemaOS AI</translation>
+</translationbundle>

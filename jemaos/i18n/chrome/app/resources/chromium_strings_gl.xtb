@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="gl">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Acerca de Thot</translation>
+<translation id="5639860668557220477">Obter axuda co navegador Thot</translation>
+<translation id="1692689520561928457">Acerca de JemaOS</translation>
+<translation id="8692765844418174375">Versión de JemaOS</translation>
+<translation id="2943260250558374955">Obter axuda con JemaOS</translation>
+<translation id="713321354492170993">O navegador libera memoria das lapelas inactivas. Isto proporciona ás lapelas activas e a outras aplicacións máis recursos informáticos e mantén o navegador rápido. As túas lapelas inactivas volven activarse automaticamente cando regresas a elas.</translation>
+<translation id="1774190491044887444">O navegador aforra batería limitando a actividade en segundo plano e os efectos visuais, como o desprazamento suave e as taxas de fotogramas de vídeo.</translation>
+<translation id="180121268008059459">O navegador precarga páxinas, o que fai que a navegación e a busca sexan máis rápidas.</translation>
+<translation id="7127093527178692287">Restaurar copia de seguranza (beta)</translation>
+<translation id="4439042171549201806">Para restaurar JemaOS desde un ficheiro de copia de seguranza, insire agora a unidade extraíble que contén o ficheiro de copia de seguranza no teu dispositivo JemaOS e especifica que ficheiro de copia de seguranza queres restaurar. Ten en conta que o ficheiro de copia de seguranza debe estar no directorio raíz da unidade extraíble para que este asistente o detecte.</translation>
+<translation id="2955409026764742995">Selecciona o ficheiro de copia de seguranza que queres restaurar:</translation>
+<translation id="7040434808685140085">Sentímolo, non se pode recoñecer o ficheiro de copia de seguranza seleccionado. Selecciona un novo.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />Para restaurar JemaOS desde o ficheiro de copia de seguranza seleccionado, é esencial dispor de información precisa sobre cando se creou a copia de seguranza. Do contrario, o proceso de restauración fallará.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />O "nome da conta" é a credencial de acceso principal da conta coa que se creou o ficheiro de copia de seguranza. Normalmente é o enderezo de correo electrónico que usaches para te rexistrar na túa conta de JemaOS/Google. Se fose unha conta local, sería o nome de usuario seguido de "@jemaos.local".<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />O contrasinal é a frase de paso que se che pediu cando se creou a copia de seguranza. Normalmente é o mesmo contrasinal que usaches para iniciar sesión no escritorio de JemaOS con esta conta.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Nome da conta</translation>
+<translation id="5490570429039308155">Sentímolo, introduce o nome correcto da conta</translation>
+<translation id="6657585470893396449">Contrasinal</translation>
+<translation id="8200189938001188563">Sentímolo, o contrasinal non pode estar baleiro</translation>
+<translation id="3157931365184549694">Restaurar</translation>
+<translation id="8556278756526311953">Restaurando a copia de seguranza</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Estamos a traballar na restauración do teu ficheiro de copia de seguranza. Isto pode levar un anaco, así que ten paciencia.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Ten en conta que a interface se reiniciará automaticamente cando o proceso de restauración remate correctamente.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Fallou a restauración da copia de seguranza</translation>
+<translation id="5003531399442003695">Para obter máis detalles, preme na ligazón de abaixo para ver os rexistros. Se este erro persiste, ponte en contacto cos canles de asistencia técnica de JemaOS e fornece os rexistros de erros.</translation>
+<translation id="6363786367719063276">Ver rexistros</translation>
+<translation id="8730621377337864115">Feito</translation>
+<translation id="975238173507911396">Os datos restauráronse correctamente</translation>
+<translation id="6276879052695618521">Rexistros da restauración da copia de seguranza</translation>
+<translation id="4901207598072637766">JemaOS, fornecido por <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS e os seus servizos cumpren o GDPR e as disposicións da lexislación europea de protección de datos. Para obter máis información, consulta a nosa <ph name="BEGIN_LINK_PRIVACY" />Política de privacidade<ph name="END_LINK_PRIVACY" /> e as nosas <ph name="BEGIN_LINK_TOS" />Condicións do servizo.<ph name="END_LINK_TOS" /></translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, todos os dereitos reservados.</translation>
+<translation id="370679569376308836">JemaOS é unha oferta comercial baseada no dispositivo Jema e no seu SaaS.</translation>
+<translation id="2773644194450163486">JemaOS é posíbel grazas ao proxecto de código aberto <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" />.</translation>
+<translation id="2330680727776977160">Chromium tamén é posíbel grazas a outro <ph name="BEGIN_LINK_1" />software de código aberto<ph name="END_LINK_1" /> e a <ph name="BEGIN_LINK_2" />software de código aberto adicional<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Deseñado e fabricado por Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, todos os dereitos reservados.</translation>
+<translation id="6168072053306020326">Jema Technology é o nome comercial de Jema Technology LTD e Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD é unha empresa rexistrada en Inglaterra e Gales co número de empresa 12273803.</translation>
+<translation id="1251589813188467292">Información importante sobre a garantía e o servizo do dispositivo</translation>
+<translation id="4851115775198886021">Número de serie do dispositivo:</translation>
+</translationbundle>

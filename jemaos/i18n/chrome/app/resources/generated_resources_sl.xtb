@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="sl">
+	<translation id="7386402409475121504">Ustvarite svoj lokalni račun JemaOS</translation>
+	<translation id="3760308806144055927">Prijavite se v lokalni račun JemaOS</translation>
+	<translation id="3325117507482096812">Prosim vnesite geslo</translation>
+	<translation id="1838206877831947154">Vaši gesli se ne ujemata</translation>
+	<translation id="2158276988029582286">Ustvarite nov lokalni račun</translation>
+	<translation id="8592849747346274067">Prijavite se v obstoječi račun</translation>
+	<translation id="482190417986201746">Uporabniško ime ali geslo, ki ste ga vnesli, ni pravilno</translation>
+	<translation id="6603987686259425085">Lahko se <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>prijavite z lokalnim računom JemaOS<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">E-pošta <ph name="EMAIL_ADDRESS">$1</ph> že obstaja. Poskusite znova z drugim e-poštnim naslovom.</translation>
+	<translation id="7215016743510876720">Uporabite lokalni račun</translation>
+	<translation id="6657635042185516718">Še naprej uporabljajte spletni račun</translation>
+	<translation id="6867476688065565618">Preklop na lokalni račun?</translation>
+	<translation id="4840454774882557974">Če se odločite za uporabo lokalnega računa, uporabne funkcije vključujejo sinhronizacijo vaših podatkov in nastavitev v več napravah ter samodejno prijavljanje v spletne aplikacije z vašim računom JemaOS ne bodo delovale.</translation>
+	<translation id="8951507920859729424">Priporočamo uporabo spletnega računa, da v največji možni meri izkoristite JemaOS.</translation>
+	<translation id="479773200536372215">Google računov ne boste mogli dodati, ker manjkajo ključi Google API. Za podrobnosti glejte <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph>.</translation>
+	<translation id="1198491307547164157">Ne boste mogli dodati računov JemaOS, ker manjkajo ključi JemaOS API. Za podrobnosti glejte <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph>.</translation>
+	<translation id="5042404702659901995">Izjava o zasebnosti</translation>
+	<translation id="4907736162587268100">Vsebina izjave o zasebnosti</translation>
+	<translation id="5988344732274877691">Prijavite se na (zelo redko, obljubljeno) glasilo za JemaOS</translation>
+	<translation id="1706203008474708805">Pridružite se načrtu za izboljšanje uporabniške izkušnje JemaOS</translation>
+	<translation id="1147139514756087229">Prijavite se z lokalnim računom</translation>
+	<translation id="2054784944085654098">Ustvarjanje varnostne kopije. To lahko traja nekaj časa; prosim počakajte...</translation>
+	<translation id="3554401467586751874">Datoteka varnostne kopije je bila uspešno ustvarjena</translation>
+	<translation id="2349211327705667074">Ogled datoteke varnostne kopije</translation>
+	<translation id="3049367131589710124">Oglejte si dnevnik napak</translation>
+	<translation id="1079017345574916945">Oddaljeno namizje</translation>
+	<translation id="3064478898280877715">Trgovina z aplikacijami</translation>
+	<translation id="5890206344045530832">Namestitveni program</translation>
+	<translation id="2173278076276376488">Ta pripomoček vam bo pomagal namestiti <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> v notranji pomnilnik te naprave.</translation>
+	<translation id="5323182426977498659">Opozorilo! Ta postopek je uničujoč in ga ni mogoče razveljaviti. Upoštevajte, da ne prevzemamo nikakršne odgovornosti za vašo morebitno izgubo podatkov niti ne nudimo nujne tehnične podpore, nadaljujte na lastno odgovornost.</translation>
+	<translation id="8517836015601969896">Celotna namestitev diska</translation>
+	<translation id="7300045760790370189">Namestite <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>, da zavzamete celoten trdi disk, vsi podatki na ciljnem trdem disku bodo izbrisani.</translation>
+	<translation id="8762511733918256595">Namestitev z več zagoni</translation>
+	<translation id="248900698427753678">Namestite <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> na obstoječo particijo trdega diska, kjer lahko <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> obstaja vzporedno z drugimi operacijskimi sistemi. Vsi podatki na ciljni particiji bodo izbrisani.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> bo nameščen na vašem izbranem trdem disku; vsi podatki na ciljnem disku bodo izbrisani.</translation>
+	<translation id="4039091757234555415">Disk</translation>
+	<translation id="7783580523889684697">Disk ni na voljo</translation>
+	<translation id="8217653566575018388">Namestitev končana</translation>
+	<translation id="8846746259444262774">Namestitev ni uspela</translation>
+	<translation id="7263815009235541549">Namestitev se je uspešno končala. Najprej izklopite napravo, nato odstranite vse namestitvene medije in jo znova vklopite, da se zažene <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>.</translation>
+	<translation id="3380151284134965398">Ups, nekaj je šlo narobe in namestitev se ni dokončala. Poskusite znova. Če se ista napaka ponovi, se z zgornjim dnevnikom obrnite na podporo za JemaOS.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> bo nameščen na izbrano particijo vašega trdega diska. Po trenutni shemi več zagonov se to lahko izvede samo, če vaša naprava podpira UEFI in so vaši trdi diski formatirani z GPT.</translation>
+	<translation id="7831363758161884243">Ciljna particija bo izbrisana; določiti morate tudi vašo aktivno particijo EFI (običajno samodejno), saj mora namestitveni program spremeniti konfiguracije zagona sistema.</translation>
+	<translation id="5670799238446305550">Izberite <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ciljno particijo</translation>
+	<translation id="3695537760133394753">Particija</translation>
+	<translation id="5610519566593708119">Izberite particijo EFI</translation>
+	<translation id="3367650349940010965">Za izbrani disk ni razpoložljivih particij</translation>
+	<translation id="7453223384507098390">Za izbrani disk ni na voljo nobena particija EFI</translation>
+	<translation id="1854532683465500847">Velikost izbrane particije je manjša od 20 GB, namestitev morda ne bo uspela</translation>
+	<translation id="4144613075340468247">Izbrana particija je bila nameščena v <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> večkratni zagon, ponovna namestitev nanjo morda ne bo uspela</translation>
+	<translation id="5793361052649920836">Kako želite po namestitvi zagnati <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>?</translation>
+	<translation id="4273235330352963866">Namestite in konfigurirajte rEFInd zame (priporočeno)</translation>
+	<translation id="1858708492548921044">rEFInd je program za upravljanje zagona, ki ponuja prijeten grafični vmesnik za možnosti zagona operacijskega sistema, ko se vaš računalnik zažene, izbrali boste lahko želeni operacijski sistem za zagon z njim. Za več informacij o rEFInd obiščite njegovo domačo stran.</translation>
+	<translation id="3861924051442564602">Dodajte mi možnost zagonskega menija UEFI</translation>
+	<translation id="8622370666798589804">Ko se vaš računalnik zažene, boste morda lahko vstopili v meni z možnostmi zagona UEFI (najverjetneje s pritiskom na bližnjično tipko), ta možnost doda <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> kot vnos v ta meni. (Podpira samo nekatere modele vdelane programske opreme BIOS in UEFI).</translation>
+	<translation id="1569398690544416170">Tukaj ne storite ničesar, konfiguriral bom sam</translation>
+	<translation id="3554866444001249532">Ta namestitveni skript bo v vašo particijo EFI postavil samo potrebne datoteke .efi za zagon <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>; sami boste morali konfigurirati, kako ga zagnati.</translation>
+	<translation id="7492832751164189534">Prisilno odnehaj</translation>
+	<translation id="5159534860632584026">Postopek namestitve je prekinjen</translation>
+	<translation id="8686749782014838344">Podatkov o disku ni bilo mogoče pridobiti</translation>
+	<translation id="5688543378771259173">Namestitev se prekinja...</translation>
+	<translation id="5350452134936384991">Namestite v USB</translation>
+	<translation id="8008470485414925603">Namestite <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> na disk USB; vsi podatki na ciljnem disku USB bodo izbrisani.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> bo nameščen na vaš izbrani disk USB; vsi podatki na ciljnem disku bodo izbrisani.</translation>
+	<translation id="5725593226060700263">USB disk ni na voljo</translation>
+	<translation id="4357040841587078287">Zaznali smo, da uporabljate to kopijo JemaOS iz prenesene slikovne datoteke. Za uporabo najobsežnejših podpornih funkcij (vključno z brezžičnimi posodobitvami), ki jih lahko ponudi JemaOS, močno priporočamo, da zaženete funkcijo "Namestitveni program", da izvedete namestitev JemaOS-a na polni disk v ločeno napravo za shranjevanje.</translation>
+	<translation id="1246398339704431302">Vseeno lahko <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>še naprej uporabljate to kopijo JemaOS<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, postopek namestitve lahko izvedete pozneje v sistemu, vendar bodo vsi vaši podatki po namestitvi izbrisani in znova boste začeli s te strani.</translation>
+	<translation id="3654532222088291133">Namesto vnosa gesla za račun JemaOS za prijavo lahko ustvarite geslo za <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> za to napravo</translation>
+	<translation id="8377684629839541977">Uporabite geslo računa JemaOS</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">Samodejno posodabljaj <ph name="DEVICE_OS" /></translation>
+<translation id="2347352406101856238">Posodobitev <ph name="DEVICE_OS" /> omogočena</translation>
+<translation id="185834232609012804">Posodobitev <ph name="DEVICE_OS" /> onemogočena</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Platforma <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Oddaljeno namizje</translation>
+<translation id="6898090158927982244">Vaš Linux je posodobljen</translation>
+<translation id="4886703929102211360">Za komponento Linux (beta) je na voljo kritična posodobitev. Močno priporočamo, da to posodobitev namestite čim prej, sicer vaš Linux (beta) morda ne bo več deloval.</translation>
+<translation id="6694016202036959050">Nastavitve <ph name="DEVICE_OS" /></translation>
+<translation id="8362858344151826493">Račun JemaOS, varnostna kopija, razno</translation>
+<translation id="9150429437595727962">Nastavitve Wi-Fi</translation>
+<translation id="4938972461544498524">Nastavitve sledilne ploščice</translation>
+<translation id="1210024513248363065">Oddaljene storitve</translation>
+<translation id="2878862288885588535">Storitev oddaljene diagnostike</translation>
+<translation id="7409197984340676806">Storitev oddaljene diagnostike omogoča uradnim predstavnikom podpore JemaOS prepoznavanje težav sistema. Trenutno lahko storitev oddaljene diagnostike zaženejo samo uradni predstavniki podpore JemaOS.</translation>
+<translation id="1791028023086176332">To številko delite z uradnimi predstavniki podpore JemaOS</translation>
+<translation id="6279304275399437025">Zagon storitve oddaljene diagnostike ...</translation>
+<translation id="1501882165699826662">Ustavite storitev oddaljene diagnostike in poskusite znova</translation>
+<translation id="3100283258447375201">Več informacij</translation>
+<translation id="4070039109671307724">Razno</translation>
+<translation id="7326893024940073254">Gumb »Znova zaženi«</translation>
+<translation id="3002423764319968103">Prikaži gumb »Znova zaženi« v sistemskem meniju</translation>
+<translation id="6243454903512423518">Gumb »Zavrti zaslon«</translation>
+<translation id="6491049336868978729">Trenutno niste v tabličnem načinu, gumb »Zavrti zaslon« je skrit</translation>
+<translation id="5496012402277579695">Prikaži gumb »Zavrti zaslon« v sistemskem meniju</translation>
+<translation id="5882838977344999606">Stikalo za način tablica/prenosnik</translation>
+<translation id="472164133625585606">Prikaži stikalo za način tablica/prenosnik v sistemskem meniju</translation>
+<translation id="1851103550468466960">Omogoči Widevine</translation>
+<translation id="4058176713282795846">Omogočite Widevine za pretakanje zaščitenih vrhunskih vsebin. <ph name="BEGIN_LINK_LEARN_MORE" />Več informacij<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">Izberite »libwidevine.so«</translation>
+<translation id="4838463656205005584">Omogočanje Widevina ni uspelo ...</translation>
+<translation id="2164041826798266548">Namestitev modula Widevine CDM ni uspela. Preverite povezavo in poskusite znova.</translation>
+<translation id="4106982328079440606">Nastavitve računa JemaOS</translation>
+<translation id="6468776556018764845">Poskusne funkcije</translation>
+<translation id="3487615413425326553">Zaobidi preverjanja modula zaupanja vredne platforme (TPM)</translation>
+<translation id="4817176087932811573">Nekatere funkcije morda ne bodo delovale zaradi nezdružljivega čipa TPM v vaši napravi; kot zaobidno rešitev lahko zaobidete preverjanja TPM.</translation>
+<translation id="3356003366173774486">Samodejna prijava</translation>
+<translation id="6218459410891191693">Dovoli trenutnemu računu samodejno prijavo na namizje ob ponovnem zagonu naprave</translation>
+<translation id="6620839363422062843">Za ta račun ni mogoče omogočiti; samodejna prijava je že aktivna za druge račune na tej napravi</translation>
+<translation id="6734500226490446035">Za ta račun ni mogoče omogočiti; med inicializacijo datotečnih sistemov za ta račun je prišlo do neznane napake. Poskusite znova zagnati napravo ali ustvariti nov račun</translation>
+<translation id="5464880042146818691">Za ta račun ni mogoče omogočiti; možnost samodejne prijave je na voljo samo za račune vrste »Lokalni račun«.</translation>
+<translation id="3335654854106476749">Pred omogočanjem samodejne prijave dodajte geslo za prijavo v nastavitvah <ph name="BEGIN_LINK" />Zasebnost in varnost<ph name="END_LINK" />.</translation>
+<translation id="5586831602198585601">Zdaj je na voljo novejša različica JemaOS za posodobitev. Vendar pa je vaša naročnina JemaOS for You potekla; za posodobitev JemaOS potrebujete aktivno naročnino.</translation>
+<translation id="3869860597719956574">Zdaj je na voljo nova glavna različica JemaOS za posodobitev. Za nadaljevanje te posodobitve morate plačati enkratno pristojbino.</translation>
+<translation id="6523879681771260760">Navedite pot za shranjevanje datoteke varnostne kopije</translation>
+<translation id="2036152819788683293">Ustvarite datoteko varnostne kopije za ta račun (beta). <ph name="BEGIN_LINK_LEARN_MORE" />Več informacij<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Ustvari varnostno kopijo</translation>
+<translation id="4267347174163690295">Ustvarite datoteko varnostne kopije za ta račun (beta).</translation>
+<translation id="8112950994208888917">Ta postopek ustvari popolno varnostno kopijo diska za ta račun, kar olajša obnovitev JemaOS v stanje, v katerem je bil ob ustvarjanju varnostne kopije, vključno z nastavitvami, nameščenimi razširitvami brskalnika in aplikacijami podsistema. Odvisno od vaših aplikacij in vsebine domače mape je datoteka varnostne kopije lahko velika; priporočljivo je shraniti datoteko varnostne kopije na zunanjo pomnilniško napravo. Če imate prenosni pogon USB, ga zdaj priključite. <ph name="BEGIN_LINK_LEARN_MORE" />Več informacij<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Vnesite geslo za prijavo za ta račun</translation>
+<translation id="8663988871299316062">Zapomnite si to geslo, saj bo potrebno pri obnovi te datoteke varnostne kopije</translation>
+<translation id="6408904153044317846">Izberite datoteko varnostne kopije za obnovitev</translation>
+<translation id="8062988348127771021">Obnovite podatke JemaOS iz datoteke varnostne kopije</translation>
+<translation id="7309192418866543730">Vnesite geslo varnostne kopije</translation>
+<translation id="3642408376366598984">Vnesite geslo, uporabljeno za šifriranje te datoteke varnostne kopije</translation>
+<translation id="7783974937157985523">Geslo varnostne kopije</translation>
+<translation id="6583780301401541007">Obnova uspešna</translation>
+<translation id="3514011352559420398">Obnova ni uspela</translation>
+<translation id="7535980903266533458">Shranite varnostno kopijo v napravo ali zunanji pomnilnik</translation>
+<translation id="604001903249547235">Varnostna kopija v oblaku</translation>
+<translation id="8885702701336541611">Naložite varnostno kopijo v oblačno shrambo JemaOS</translation>
+<translation id="3939744430096549862">Ustvari varnostno kopijo v oblaku</translation>
+<translation id="619129431573254316">Obnovi iz lokalne datoteke varnostne kopije</translation>
+<translation id="1859592711955106569">Obnova iz oblaka</translation>
+<translation id="38222223336741457">Prenesite in obnovite iz oblaka JemaOS</translation>
+<translation id="1241089811244416179">Obnovi iz oblaka</translation>
+<translation id="652479689372703360">Ustvarjanje varnostne kopije v teku</translation>
+<translation id="3655220146274872918">Varnostna kopija dokončana</translation>
+<translation id="4243579853635792694">Vaša varnostna kopija je bila uspešno ustvarjena</translation>
+<translation id="6337433855796857931">Ustvarjanje varnostne kopije ni uspelo</translation>
+<translation id="4854179463174744546">Med ustvarjanjem varnostne kopije je prišlo do napake</translation>
+<translation id="2410668771600309999">Informacije o uporabniku Connect API</translation>
+<translation id="2223892939866251845">ID uporabnika</translation>
+<translation id="3850846286480935456">Analiza shrambe varnostnih kopij</translation>
+<translation id="6244494465581273970">Potreben je ID uporabnika</translation>
+<translation id="9204006549413740506">Zadnja posodobitev</translation>
+<translation id="476642412165431515">Strojne naprave</translation>
+<translation id="3386337985825120901">Ni razpoložljivih podatkov varnostne kopije</translation>
+<translation id="8490990067870590760">Nalaganje datotek varnostnih kopij ...</translation>
+<translation id="2955409026764742995">Izberite datoteko varnostne kopije za obnovitev:</translation>
+<translation id="7414629348005657242">-- Izberite datoteko varnostne kopije --</translation>
+<translation id="918246516374174381">Ni najdenih datotek varnostnih kopij. Najprej ustvarite varnostno kopijo.</translation>
+<translation id="77997252117517973">Kmalu na voljo</translation>
+<translation id="1930692852800776096">Dodaj slovar</translation>
+<translation id="8793060353848771694">Slika leve ušesne slušalke</translation>
+<translation id="6257440204887306255">Slika polnilnega etuija</translation>
+<translation id="2754700616124958693">Slika desne ušesne slušalke</translation>
+<translation id="1068676292264983586">Privzeta slika naprave</translation>
+<translation id="6364075396486660405">Onemogočite samodejno pregledovanje medijskih datotek za vse particije za optimizacijo trajanja baterije. <ph name="BEGIN_LINK_LEARN_MORE" />Več informacij<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Varnostne možnosti</translation>
+<translation id="5618366106086725045">Omogočite »Način za razvijalce« za to namestitev <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> z več funkcijami za razvijalce. <ph name="BEGIN_LINK_LEARN_MORE" />Več informacij<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Že ste v »Načinu za razvijalce«</translation>
+<translation id="6074549317340202195">Omogoči »Način za razvijalce«</translation>
+<translation id="418781258674176053">Opozorilo! Omogočanje »Načina za razvijalce« je nepovraten postopek. Če želite onemogočiti »Način za razvijalce«, morate znova namestiti JemaOS, kar bo izbrisalo vse podatke. Ustvarite varnostno kopijo podatkov in nadaljujte na lastno odgovornost.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Platforma <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Trenutno brez povezave</translation>
+<translation id="2590678769628709242">Preverite svojo naročnino JemaOS na spletu</translation>
+<translation id="4701836089682883918">Informacije o naročnini JemaOS</translation>
+<translation id="5891566673089952188">Pri pridobivanju ID-ja vaše naprave je prišlo do napake</translation>
+<translation id="4685086787606104322">Konec naročnine</translation>
+<translation id="3354919960795782984">ID naprave</translation>
+<translation id="5758632069869992306">Preverite svojo naročnino na spletu</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Platforma <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Preizkusna naročnina</translation>
+<translation id="4362781408813685579">Aktivna naročnina</translation>
+<translation id="1141274201089997510">Potekla naročnina</translation>
+<translation id="2553683254139782404">Nekomercialna izdaja</translation>
+<translation id="8466048683756385518">Licencirana različica Enterprise (preizkusna)</translation>
+<translation id="2853871047705932424">Licencirana različica Enterprise</translation>
+<translation id="5239675900317881945">Licencirana različica Enterprise (potekla)</translation>
+<translation id="189101945990408398">Starejši Intel</translation>
+<translation id="6816405236809604904">Sodobni Intel</translation>
+<translation id="6169452478137972655">Grafika AMD</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="2747689477259164256">JemaOS AI</translation>
+<translation id="1270291881045478104">Omogoči JemaOS AI</translation>
+<translation id="2013780539677437932">Omogočite ali onemogočite vse funkcije, povezane z JemaOS AI</translation>
+<translation id="3398637633218757480">Omogoči hitri klic JemaOS AI</translation>
+<translation id="8986197796475507452">Hitro prikličite možnosti JemaOS AI za označeno vsebino s pritiskom na Ctrl + C + C</translation>
+<translation id="6407628130593274137">Druge nastavitve in možnosti za JemaOS AI</translation>
+<translation id="4005574560653331142">Če želite spremeniti PIN ali geslo za prijavo tega lokalnega računa, pojdite v nastavitve <ph name="BEGIN_LINK" />Zasebnost in varnost<ph name="END_LINK" />.</translation>
+
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">Lahko se <ph name="LINK_START" />prijavite z lokalnim računom JemaOS<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">E-pošta <ph name="EMAIL_ADDRESS" /> že obstaja. Poskusite znova z drugo e-pošto.</translation>
+<translation id="4519800823932975782">Center za pomoč JemaOS</translation>
+<translation id="4737474693231655139">Poiščite članke pomoči in odgovore na pogosta vprašanja o JemaOS</translation>
+</translationbundle>

@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="bg">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">Регистрирайте се в Nutstore, за да синхронизирате вашите файлове в облака в JemaOS.</translation>
+<translation id="8672291834743661083">Регистрирайте се в Nutstore</translation>
+<translation id="5103639294476249880">Щракнете върху бутона „Добавяне на приложение“ в настройките за сигурност</translation>
+<translation id="8371020157576651120">Генерирайте и копирайте паролата си за приложението</translation>
+<translation id="3855250998276979579">Отворете приложението Nutstore</translation>
+<translation id="6565655783894300125">и свържете акаунта Nutstore с JemaOS с вашия имейл и парола за приложението</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Очаквайте скоро</translation>
+<translation id="4928968570611226525">За да продължите с това действие, ще трябва да <ph name="BEGIN_LINK_ARC_APP" />&gt;активирате подсистемата Android<ph name="END_LINK_ARC_APP" /> на вашето устройство JemaOS; също така вашето устройство JemaOS трябва да бъде <ph name="BEGIN_LINK_HELP" />превключено в режим за разработчици<ph name="END_LINK_HELP" />.</translation>
+<translation id="7395250550107972941">Не могат да се инсталират файлове .apk от страничен източник. Моля, уверете се, че подсистемата Android е активирана и че сте в режим за разработчици на JemaOS.</translation>
+<translation id="5690820326685091783">Отваряне с JemaOS AI</translation>
+</translationbundle>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="fa">
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">برای همگام‌سازی ابری فایل‌های خود در JemaOS در Nutstore ثبت‌نام کنید.</translation>
+<translation id="8672291834743661083">ثبت‌نام در Nutstore</translation>
+<translation id="5103639294476249880">روی دکمه «افزودن برنامه» در تنظیمات امنیتی کلیک کنید</translation>
+<translation id="8371020157576651120">گذرواژه برنامه خود را ایجاد و کپی کنید</translation>
+<translation id="3855250998276979579">برنامه Nutstore را باز کنید</translation>
+<translation id="6565655783894300125">و حساب Nutstore را با ایمیل و گذرواژه برنامه خود به JemaOS متصل کنید</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">به‌زودی</translation>
+<translation id="4928968570611226525">برای ادامه این کار باید در دستگاه JemaOS خود <ph name="BEGIN_LINK_ARC_APP" />&gt;زیرسیستم Android را فعال کنید<ph name="END_LINK_ARC_APP" />؛ همچنین دستگاه JemaOS شما باید <ph name="BEGIN_LINK_HELP" />به حالت توسعه‌دهنده تغییر وضعیت داده شده باشد<ph name="END_LINK_HELP" />.</translation>
+<translation id="7395250550107972941">بارگذاری جانبی فایل‌های .apk ممکن نیست. لطفاً مطمئن شوید که زیرسیستم Android فعال شده و شما در حالت توسعه‌دهنده JemaOS هستید.</translation>
+<translation id="5690820326685091783">باز کردن با JemaOS AI</translation>
+</translationbundle>

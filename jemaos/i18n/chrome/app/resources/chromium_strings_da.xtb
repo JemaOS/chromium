@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="da">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Om Thot</translation>
+<translation id="5639860668557220477">Få hjælp til Thot-browseren</translation>
+<translation id="1692689520561928457">Om JemaOS</translation>
+<translation id="8692765844418174375">JemaOS-version</translation>
+<translation id="2943260250558374955">Få hjælp til JemaOS</translation>
+<translation id="713321354492170993">Browseren frigør hukommelse fra inaktive faner. Det giver aktive faner og andre apps flere computerressourcer og holder browseren hurtig. Dine inaktive faner bliver automatisk aktive igen, når du vender tilbage til dem.</translation>
+<translation id="1774190491044887444">Browseren sparer batteri ved at begrænse baggrundsaktivitet og visuelle effekter, f.eks. jævn rulning og billedfrekvenser for video.</translation>
+<translation id="180121268008059459">Browseren indlæser sider på forhånd, hvilket gør browsing og søgning hurtigere.</translation>
+<translation id="7127093527178692287">Gendan sikkerhedskopi (beta)</translation>
+<translation id="4439042171549201806">For at gendanne JemaOS fra en sikkerhedskopifil skal du nu sætte det flytbare drev, der indeholder sikkerhedskopifilen, i din JemaOS-enhed og angive, hvilken sikkerhedskopifil du vil gendanne. Bemærk, at sikkerhedskopifilen skal ligge i rodmappen på det flytbare drev for at blive registreret af denne guide.</translation>
+<translation id="2955409026764742995">Vælg den sikkerhedskopifil, der skal gendannes:</translation>
+<translation id="7040434808685140085">Den valgte sikkerhedskopifil kan desværre ikke genkendes. Vælg en ny.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />For at gendanne JemaOS fra den valgte sikkerhedskopifil er det afgørende at have nøjagtige oplysninger om, hvornår sikkerhedskopien blev oprettet. Ellers mislykkes gendannelsen.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"Kontonavnet" er den primære loginoplysning for den konto, som sikkerhedskopifilen blev oprettet under. Det er normalt den e-mailadresse, du brugte til at tilmelde dig din JemaOS-/Google-konto. Hvis det var en lokal konto, er det brugernavnet efterfulgt af "@jemaos.local".<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Adgangskoden er den adgangsfrase, du blev bedt om at indtaste, da sikkerhedskopien blev oprettet. Det er normalt den samme adgangskode, som du brugte til at logge på JemaOS-skrivebordet for denne konto.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Kontonavn</translation>
+<translation id="5490570429039308155">Indtast det korrekte kontonavn</translation>
+<translation id="6657585470893396449">Adgangskode</translation>
+<translation id="8200189938001188563">Adgangskoden må ikke være tom</translation>
+<translation id="3157931365184549694">Gendan</translation>
+<translation id="8556278756526311953">Gendanner sikkerhedskopi</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Vi arbejder nu på at gendanne din sikkerhedskopifil. Det kan tage et stykke tid, så vær tålmodig.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Bemærk, at brugergrænsefladen genstarter automatisk, når gendannelsen er fuldført.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Gendannelsen af sikkerhedskopien mislykkedes</translation>
+<translation id="5003531399442003695">Klik på linket nedenfor for at se logfilerne og få flere oplysninger. Hvis fejlen fortsætter, skal du kontakte JemaOS' tekniske support og angive fejllogfilerne.</translation>
+<translation id="6363786367719063276">Vis logfiler</translation>
+<translation id="8730621377337864115">Færdig</translation>
+<translation id="975238173507911396">Data gendannet</translation>
+<translation id="6276879052695618521">Logfiler for gendannelse af sikkerhedskopi</translation>
+<translation id="4901207598072637766">JemaOS, leveret af <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS og dets tjenester overholder GDPR og bestemmelserne i europæisk databeskyttelseslovgivning. Du kan finde flere oplysninger i vores <ph name="BEGIN_LINK_PRIVACY" />privatlivspolitik<ph name="END_LINK_PRIVACY" /> og vores <ph name="BEGIN_LINK_TOS" />servicevilkår.<ph name="END_LINK_TOS" /></translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, alle rettigheder forbeholdes.</translation>
+<translation id="370679569376308836">JemaOS er et kommercielt tilbud baseret på Jema-enheden og dens SaaS.</translation>
+<translation id="2773644194450163486">JemaOS er muliggjort af open source-projektet <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" />.</translation>
+<translation id="2330680727776977160">Chromium er også muliggjort af anden <ph name="BEGIN_LINK_1" />open source-software<ph name="END_LINK_1" /> og <ph name="BEGIN_LINK_2" />yderligere open source-software<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Designet og fremstillet af Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, alle rettigheder forbeholdes.</translation>
+<translation id="6168072053306020326">Jema Technology er handelsnavnet for Jema Technology LTD og Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD er et selskab registreret i England og Wales med selskabsnummer 12273803.</translation>
+<translation id="1251589813188467292">Vigtige oplysninger om enhedens garanti og service</translation>
+<translation id="4851115775198886021">Enhedens serienummer:</translation>
+</translationbundle>

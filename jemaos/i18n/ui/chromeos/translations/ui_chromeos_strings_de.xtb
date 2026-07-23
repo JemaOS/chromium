@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="de">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">Registrieren Sie sich bei Nutstore, um Ihre Dateien in JemaOS über die Cloud zu synchronisieren.</translation>
+<translation id="8672291834743661083">Bei Nutstore registrieren</translation>
+<translation id="5103639294476249880">Klicken Sie in den Sicherheitseinstellungen auf die Schaltfläche „Anwendung hinzufügen“</translation>
+<translation id="8371020157576651120">Generieren und kopieren Sie Ihr Anwendungspasswort</translation>
+<translation id="3855250998276979579">Öffnen Sie die Nutstore-App</translation>
+<translation id="6565655783894300125">und verbinden Sie Ihr Nutstore-Konto mit Ihrer E-Mail-Adresse und Ihrem Anwendungspasswort mit JemaOS</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Demnächst verfügbar</translation>
+<translation id="4928968570611226525">Um mit dieser Aktion fortzufahren, müssen Sie auf Ihrem JemaOS-Gerät <ph name="BEGIN_LINK_ARC_APP" />&gt;das Android-Subsystem aktivieren<ph name="END_LINK_ARC_APP" />; außerdem muss Ihr JemaOS-Gerät <ph name="BEGIN_LINK_HELP" />in den Entwicklermodus versetzt werden<ph name="END_LINK_HELP" />.</translation>
+<translation id="7395250550107972941">.apk-Dateien können nicht per Sideload installiert werden. Stellen Sie sicher, dass das Android-Subsystem aktiviert ist und sich Ihr JemaOS-Gerät im Entwicklermodus befindet.</translation>
+<translation id="5690820326685091783">Mit JemaOS AI öffnen</translation>
+</translationbundle>

@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="sq">
+	<translation id="7386402409475121504">Krijoni llogarinë tuaj lokale JemaOS</translation>
+	<translation id="3760308806144055927">Hyni në llogarinë tuaj lokale JemaOS</translation>
+	<translation id="3325117507482096812">Ju lutemi futni një fjalëkalim</translation>
+	<translation id="1838206877831947154">Fjalëkalimet tuaja nuk përputhen</translation>
+	<translation id="2158276988029582286">Krijo një llogari të re lokale</translation>
+	<translation id="8592849747346274067">Hyni në një llogari ekzistuese</translation>
+	<translation id="482190417986201746">Emri i përdoruesit ose fjalëkalimi që futët është i pasaktë</translation>
+	<translation id="6603987686259425085">Ju mund <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>të identifikoheni me një llogari lokale JemaOS<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">Email <ph name="EMAIL_ADDRESS">$1</ph> ekziston tashmë. Ju lutemi riprovoni me një email tjetër.</translation>
+	<translation id="7215016743510876720">Përdorni llogarinë lokale</translation>
+	<translation id="6657635042185516718">Vazhdoni të përdorni llogarinë në internet</translation>
+	<translation id="6867476688065565618">Të kalosh në llogarinë lokale?</translation>
+	<translation id="4840454774882557974">Nëse vendosni të përdorni një llogari lokale, veçoritë e dobishme përfshijnë sinkronizimin e të dhënave dhe preferencave tuaja nëpër pajisje të shumta dhe identifikimi automatik në aplikacionet e uebit duke përdorur llogarinë tuaj JemaOS nuk do të funksionojë.</translation>
+	<translation id="8951507920859729424">Ne rekomandojmë përdorimin e një llogarie në internet për të përdorur JemaOS në maksimum.</translation>
+	<translation id="479773200536372215">Nuk do të mund të shtoni llogari Google sepse mungojnë çelësat e Google API. Shikoni <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> për detaje.</translation>
+	<translation id="1198491307547164157">Nuk do të mund të shtoni llogari JemaOS sepse mungojnë çelësat e JemaOS API. Shikoni <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> për detaje.</translation>
+	<translation id="5042404702659901995">Deklarata e privatësisë</translation>
+	<translation id="4907736162587268100">Përmbajtja e deklaratës së privatësisë</translation>
+	<translation id="5988344732274877691">Regjistrohu për buletinin (shumë të rrallë, të premtuar) për JemaOS</translation>
+	<translation id="1706203008474708805">Bashkohuni me planin e përmirësimit të përvojës së përdoruesit të JemaOS</translation>
+	<translation id="1147139514756087229">Hyni me një llogari lokale</translation>
+	<translation id="2054784944085654098">Tani po krijohet skedari rezervë. Kjo mund të marrë pak kohë; ju lutem prisni…</translation>
+	<translation id="3554401467586751874">Skedari rezervë u krijua me sukses</translation>
+	<translation id="2349211327705667074">Shikoni skedarin rezervë</translation>
+	<translation id="6337433855796857931">Rezervimi dështoi</translation>
+	<translation id="3049367131589710124">Shiko regjistrin e gabimeve</translation>
+	<translation id="1079017345574916945">Desktop në distancë</translation>
+	<translation id="3064478898280877715">Dyqani i aplikacioneve</translation>
+	<translation id="2747689477259164256">JemaOS AI</translation>
+	<translation id="5890206344045530832">Instalues</translation>
+	<translation id="2173278076276376488">Ky mjet do t'ju ndihmojë të instaloni <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> në hapësirën ruajtëse të brendshme të kësaj pajisjeje.</translation>
+	<translation id="5323182426977498659">Paralajmërim! Kjo procedurë është shkatërruese dhe nuk mund të zhbëhet. Ju lutemi vini re se ne nuk do të mbajmë asnjë përgjegjësi për humbjen e mundshme të të dhënave tuaja dhe as nuk do të ofrojmë ndonjë mbështetje teknike urgjente, vazhdoni me rrezikun tuaj.</translation>
+	<translation id="8517836015601969896">Instalimi i plotë i diskut</translation>
+	<translation id="7300045760790370189">Instaloni <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> për të zënë një hard disk të tërë, të gjitha të dhënat e diskut të ngurtë të synuar do të fshihen.</translation>
+	<translation id="8762511733918256595">Instalimi me shumë boot</translation>
+	<translation id="248900698427753678">Instaloni <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> në një ndarje ekzistuese të një hard disk, ku <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> mund të ekzistojë paralelisht me OS të tjera. Të gjitha të dhënat në ndarjen e synuar do të fshihen.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> do të instalohet në hard diskun tuaj të zgjedhur; të gjitha të dhënat në diskun e synuar do të fshihen.</translation>
+	<translation id="4039091757234555415">Disk</translation>
+	<translation id="7783580523889684697">Asnjë disk i disponueshëm</translation>
+	<translation id="8217653566575018388">Instalimi përfundoi</translation>
+	<translation id="8846746259444262774">Instalimi dështoi</translation>
+	<translation id="7263815009235541549">Instalimi ka përfunduar me sukses. Fikeni pajisjen tuaj në fillim, më pas hiqni çdo media instalimi dhe ndizeni përsëri për të nisur <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>.</translation>
+	<translation id="3380151284134965398">Mos, diçka shkoi keq dhe instalimi nuk përfundoi. Ju lutemi riprovoni procesin. Nëse i njëjti gabim vazhdon, ju lutemi kontaktoni për Mbështetjen e JemaOS me regjistrin e mësipërm.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> do të instalohet në ndarjen e zgjedhur të hard drive-it tuaj. Sipas skemës aktuale të shumë-boot, kjo mund të vazhdojë vetëm nëse pajisja juaj mbështet UEFI dhe disqet e ngurtë tuaj janë të formatuar me GPT.</translation>
+	<translation id="7831363758161884243">Ndarja e synuar do të fshihet; ju gjithashtu duhet të specifikoni ndarjen tuaj aktive EFI (zakonisht bëhet automatikisht) pasi Instaluesi duhet të modifikojë konfigurimet e nisjes së sistemit.</translation>
+	<translation id="5670799238446305550">Zgjidh ndarjen e synuar <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph></translation>
+	<translation id="3695537760133394753">Ndarje</translation>
+	<translation id="5610519566593708119">Zgjidhni ndarjen EFI</translation>
+	<translation id="3367650349940010965">Nuk ka ndarje të disponueshme për diskun e zgjedhur</translation>
+	<translation id="7453223384507098390">Nuk ka ndarje EFI të disponueshme për diskun e zgjedhur</translation>
+	<translation id="1854532683465500847">Madhësia e ndarjes së zgjedhur është më pak se 20 GB, instalimi mund të dështojë</translation>
+	<translation id="4144613075340468247">Ndarja e zgjedhur është montuar në <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> multi-boot, instalimi në të përsëri mund të dështojë</translation>
+	<translation id="5793361052649920836">Pas instalimit, si dëshironi të nisni <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>?</translation>
+	<translation id="4273235330352963866">Instalo dhe konfiguro rEFInd për mua (rekomandohet)</translation>
+	<translation id="1858708492548921044">rEFInd është një program i menaxhimit të nisjes që ofron një ndërfaqe të këndshme grafike për opsionet e nisjes së OS kur kompjuteri juaj niset, ju do të jeni në gjendje të zgjidhni OS-in tuaj të dëshiruar për të nisur me të. Për më shumë informacion në lidhje me reFInd, ju lutemi referojuni faqes së tij kryesore.</translation>
+	<translation id="3861924051442564602">Shto një opsion të menysë së nisjes UEFI për mua</translation>
+	<translation id="8622370666798589804">Kur kompjuteri juaj niset, ju mund të jeni në gjendje të hyni në menynë e opsioneve të nisjes UEFI (me shumë mundësi duke shtypur një çelës kyç), ky opsion shton <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> si hyrje në atë meny. (Mbështet vetëm disa modele të firmuerit BIOS dhe UEFI).</translation>
+	<translation id="1569398690544416170">Mos bëni asgjë këtu, unë do ta konfiguroj vetë</translation>
+	<translation id="3554866444001249532">Ky skrip instalimi do të vendosë vetëm skedarët e nevojshëm .efi për të nisur <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> në ndarjen tuaj EFI, do t'ju duhet të konfiguroni vetë se si ta nisni atë.</translation>
+	<translation id="7492832751164189534">Të heq dorë me forcë</translation>
+	<translation id="5159534860632584026">Procesi i instalimit ka përfunduar</translation>
+	<translation id="8686749782014838344">Dështoi në marrjen e informacionit të diskut</translation>
+	<translation id="5688543378771259173">Instalimi po përfundon...</translation>
+	<translation id="5350452134936384991">Instaloni në USB</translation>
+	<translation id="8008470485414925603">Instaloni <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> në një disk USB; të gjitha të dhënat në diskun USB të synuar do të fshihen.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> do të instalohet në diskun tuaj të zgjedhur USB; të gjitha të dhënat në diskun e synuar do të fshihen.</translation>
+	<translation id="5725593226060700263">Asnjë disk USB i disponueshëm</translation>
+	<translation id="4357040841587078287">Kemi zbuluar se po ekzekutoni këtë kopje të JemaOS nga një skedar imazhi i shkarkuar. Për të përdorur veçoritë më të plota të mbështetjes (përfshirë përditësimet Over-The-Air) që JemaOS mund të ofrojë, ju rekomandojmë fuqimisht të hapni funksionin "Installer" për të kryer një instalim të plotë të JemaOS në diskun e plotë të JemaOS në një pajisje ruajtëse të veçantë.</translation>
+	<translation id="1246398339704431302">Ju mund <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>të vazhdoni të përdorni këtë kopje të JemaOS gjithsesi<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, procesi i instalimit mund të ekzekutohet në një fazë të mëvonshme në sistem, megjithatë, të gjitha të dhënat tuaja do të rifillojnë pas instalimit dhe ju do të rifilloni nga kjo faqe.</translation>
+	<translation id="3654532222088291133">Në vend që të futni fjalëkalimin e llogarisë tuaj JemaOS për t'u identifikuar, mund të krijoni një fjalëkalim <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> për këtë pajisje</translation>
+	<translation id="8377684629839541977">Përdorni fjalëkalimin e llogarisë JemaOS</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">Mbani <ph name="DEVICE_OS" /> automatikisht të përditësuar</translation>
+<translation id="2347352406101856238">Përditësimi i <ph name="DEVICE_OS" /> i aktivizuar</translation>
+<translation id="185834232609012804">Përditësimi i <ph name="DEVICE_OS" /> i çaktivizuar</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Platforma <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Desktopi i largët</translation>
+<translation id="6898090158927982244">Linux-i juaj është i përditësuar</translation>
+<translation id="4886703929102211360">Një përditësim kritik është i disponueshëm për komponentin Linux (beta). Rekomandohet fuqishëm ta instaloni këtë përditësim sa më shpejt, përndryshe Linux-i juaj (beta) mund të ndalojë së funksionuari.</translation>
+<translation id="6694016202036959050">Cilësimet e <ph name="DEVICE_OS" /></translation>
+<translation id="8362858344151826493">Llogaria JemaOS, kopjimi rezervë, të ndryshme</translation>
+<translation id="9150429437595727962">Cilësimet e Wi-Fi</translation>
+<translation id="4938972461544498524">Cilësimet e touchpad-it</translation>
+<translation id="1210024513248363065">Shërbimet e largëta</translation>
+<translation id="2878862288885588535">Shërbimi i diagnostikimit të largët</translation>
+<translation id="7409197984340676806">Shërbimi i diagnostikimit të largët u lejon përfaqësuesve zyrtarë të mbështetjes JemaOS të identifikojnë problemet e sistemit. Aktualisht, shërbimi i diagnostikimit të largët mund të niset vetëm nga përfaqësuesit zyrtarë të mbështetjes JemaOS.</translation>
+<translation id="1791028023086176332">Ju lutemi ndajeni këtë numër me përfaqësuesit zyrtarë të mbështetjes JemaOS</translation>
+<translation id="6279304275399437025">Duke nisur shërbimin e diagnostikimit të largët...</translation>
+<translation id="1501882165699826662">Ju lutemi ndaloni shërbimin e diagnostikimit të largët dhe provoni përsëri</translation>
+<translation id="3100283258447375201">Më shumë informacion</translation>
+<translation id="4070039109671307724">Të ndryshme</translation>
+<translation id="7326893024940073254">Butoni "Rinis"</translation>
+<translation id="3002423764319968103">Shfaq një buton "Rinis" në menynë e sistemit</translation>
+<translation id="6243454903512423518">Butoni "Rrotullo ekranin"</translation>
+<translation id="6491049336868978729">Nuk jeni në modalitetin e tabletit tani; butoni "Rrotullo ekranin" është i fshehur</translation>
+<translation id="5496012402277579695">Shfaq një buton "Rrotullo ekranin" në menynë e sistemit</translation>
+<translation id="5882838977344999606">Çelësi i modalitetit tablet/laptop</translation>
+<translation id="472164133625585606">Shfaq një çelës të modalitetit tablet/laptop në menynë e sistemit</translation>
+<translation id="1851103550468466960">Aktivizo Widevine</translation>
+<translation id="4058176713282795846">Aktivizoni Widevine për të transmetuar përmbajtje premium të mbrojtur. <ph name="BEGIN_LINK_LEARN_MORE" />Mëso më shumë<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">Zgjidhni "libwidevine.so"</translation>
+<translation id="4838463656205005584">Aktivizimi i Widevine dështoi...</translation>
+<translation id="2164041826798266548">Instalimi i modulit Widevine CDM dështoi. Ju lutemi kontrolloni lidhjen tuaj dhe provoni përsëri.</translation>
+<translation id="4106982328079440606">Cilësimet e llogarisë JemaOS</translation>
+<translation id="6468776556018764845">Veçoritë eksperimentale</translation>
+<translation id="3487615413425326553">Anashkalo kontrollet e Trusted Platform Module (TPM)</translation>
+<translation id="4817176087932811573">Disa veçori mund të dështojnë për shkak të një çipi TPM të papajtueshëm në pajisjen tuaj; si zgjidhje të përkohshme mund t'i anashkaloni kontrollet TPM.</translation>
+<translation id="3356003366173774486">Hyrja automatike</translation>
+<translation id="6218459410891191693">Lejo llogarinë aktuale të hyjë automatikisht në desktop kur pajisja riniset</translation>
+<translation id="6620839363422062843">Nuk mund të aktivizohet për këtë llogari; hyrja automatike është tashmë aktive për llogari të tjera në këtë pajisje</translation>
+<translation id="6734500226490446035">Nuk mund të aktivizohet për këtë llogari; ndodhi një gabim i panjohur gjatë inicializimit të sistemeve të skedarëve për këtë llogari. Ju lutemi provoni të rinisni ose të krijoni një llogari të re</translation>
+<translation id="5464880042146818691">Nuk mund të aktivizohet për këtë llogari; opsioni i hyrjes automatike është i disponueshëm vetëm për llojin "Llogari lokale".</translation>
+<translation id="3335654854106476749">Ju lutemi shtoni një fjalëkalim hyrjeje te cilësimet <ph name="BEGIN_LINK" />Privatësia dhe siguria<ph name="END_LINK" /> përpara se të aktivizoni hyrjen automatike.</translation>
+<translation id="5586831602198585601">Një version më i ri i JemaOS është i disponueshëm për përditësim tani. Megjithatë, abonimi juaj JemaOS for You ka skaduar; ju nevojitet një abonim aktiv për të përditësuar JemaOS-in tuaj.</translation>
+<translation id="3869860597719956574">Një version i ri kryesor i JemaOS është i disponueshëm për përditësim tani. Duhet të paguani një tarifë njëherësh për të vazhduar me këtë përditësim.</translation>
+<translation id="6523879681771260760">Ju lutemi specifikoni shtegun ku të ruhet skedari i kopjimit rezervë</translation>
+<translation id="2036152819788683293">Krijo një skedar kopjimi rezervë për këtë llogari (beta). <ph name="BEGIN_LINK_LEARN_MORE" />Mëso më shumë<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Kopjo rezervë</translation>
+<translation id="4267347174163690295">Krijo një skedar kopjimi rezervë për këtë llogari (beta).</translation>
+<translation id="8112950994208888917">Ky operacion krijon një kopje rezervë të plotë të diskut për këtë llogari, duke e bërë të lehtë rikthimin e JemaOS-it tuaj në gjendjen në të cilën ishte kur u krijua kopja rezervë, duke përfshirë cilësimet, zgjerimet e instaluara të shfletuesit dhe aplikacionet e nënsistemit. Në varësi të aplikacioneve tuaja dhe përmbajtjes së dosjes suaj bazë, skedari i kopjimit rezervë mund të jetë i madh; rekomandohet ta ruani atë në një pajisje ruajtjeje të jashtme. Nëse keni një disk USB portativ, ju lutemi lidheni tani. <ph name="BEGIN_LINK_LEARN_MORE" />Mëso më shumë<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Ju lutemi shkruani fjalëkalimin e hyrjes për këtë llogari</translation>
+<translation id="8663988871299316062">Ju lutemi mbani mend këtë fjalëkalim, pasi do të kërkohet gjatë rikthimit të këtij skedari kopjimi rezervë</translation>
+<translation id="6408904153044317846">Zgjidhni skedarin e kopjimit rezervë për të rikthyer</translation>
+<translation id="8062988348127771021">Rikthe të dhënat e JemaOS-it tuaj nga një skedar kopjimi rezervë</translation>
+<translation id="7309192418866543730">Shkruani fjalëkalimin e kopjimit rezervë</translation>
+<translation id="3642408376366598984">Shkruani fjalëkalimin e përdorur për të enkriptuar këtë skedar kopjimi rezervë</translation>
+<translation id="7783974937157985523">Fjalëkalimi i kopjimit rezervë</translation>
+<translation id="6583780301401541007">Rikthimi i suksesshëm</translation>
+<translation id="3514011352559420398">Rikthimi dështoi</translation>
+<translation id="7535980903266533458">Ruani kopjen rezervë në pajisjen tuaj ose në ruajtje të jashtme</translation>
+<translation id="604001903249547235">Kopjimi rezervë në cloud</translation>
+<translation id="8885702701336541611">Ngarkoni kopjen rezervë në ruajtjen cloud të JemaOS</translation>
+<translation id="3939744430096549862">Kopjo rezervë në cloud</translation>
+<translation id="619129431573254316">Rikthe nga një skedar lokal kopjimi rezervë</translation>
+<translation id="1859592711955106569">Rikthimi nga cloud</translation>
+<translation id="38222223336741457">Shkarkoni dhe riktheni nga cloud-i i JemaOS</translation>
+<translation id="1241089811244416179">Rikthe nga cloud-i</translation>
+<translation id="652479689372703360">Kopjimi rezervë në progres</translation>
+<translation id="3655220146274872918">Kopjimi rezervë përfundoi</translation>
+<translation id="4243579853635792694">Kopja juaj rezervë u krijua me sukses</translation>
+<translation id="4854179463174744546">Ndodhi një gabim gjatë procesit të kopjimit rezervë</translation>
+<translation id="2410668771600309999">Informacioni i përdoruesit të Connect API</translation>
+<translation id="2223892939866251845">ID-ja e përdoruesit</translation>
+<translation id="3850846286480935456">Analiza e ruajtjes së kopjimit rezervë</translation>
+<translation id="6244494465581273970">Kërkohet ID-ja e përdoruesit</translation>
+<translation id="9204006549413740506">Përditësuar së fundmi</translation>
+<translation id="476642412165431515">Pajisjet harduerike</translation>
+<translation id="3386337985825120901">Nuk ka të dhëna kopjimi rezervë të disponueshme</translation>
+<translation id="8490990067870590760">Duke ngarkuar skedarët e kopjimit rezervë...</translation>
+<translation id="2955409026764742995">Zgjidhni skedarin e kopjimit rezervë për të rikthyer:</translation>
+<translation id="7414629348005657242">-- Zgjidhni një skedar kopjimi rezervë --</translation>
+<translation id="918246516374174381">Nuk u gjetën skedarë kopjimi rezervë. Ju lutemi krijoni së pari një kopje rezervë.</translation>
+<translation id="77997252117517973">Së shpejti</translation>
+<translation id="1930692852800776096">Shto një fjalor</translation>
+<translation id="8793060353848771694">Imazhi i kufjes së majtë</translation>
+<translation id="6257440204887306255">Imazhi i kutisë së karikimit</translation>
+<translation id="2754700616124958693">Imazhi i kufjes së djathtë</translation>
+<translation id="1068676292264983586">Imazhi i parazgjedhur i pajisjes</translation>
+<translation id="6364075396486660405">Çaktivizoni skanimin automatik të skedarëve mediatikë për të gjitha ndarjet për të optimizuar jetëgjatësinë e baterisë. <ph name="BEGIN_LINK_LEARN_MORE" />Mëso më shumë<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Opsionet e sigurisë</translation>
+<translation id="5618366106086725045">Aktivizoni "Modalitetin e zhvilluesit" për këtë instalim të <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> me më shumë veçori për zhvillues. <ph name="BEGIN_LINK_LEARN_MORE" />Mëso më shumë<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Jeni tashmë në "Modalitetin e zhvilluesit"</translation>
+<translation id="6074549317340202195">Aktivizo "Modalitetin e zhvilluesit"</translation>
+<translation id="418781258674176053">Paralajmërim! Aktivizimi i "Modalitetit të zhvilluesit" është një operacion i pakthyeshëm. Nëse doni të çaktivizoni "Modalitetin e zhvilluesit", duhet të riinstaloni JemaOS, gjë që do të fshijë të gjitha të dhënat. Ju lutemi kopjoni të dhënat tuaja dhe vazhdoni me përgjegjësinë tuaj.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Platforma <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Aktualisht jashtë linje</translation>
+<translation id="2590678769628709242">Kontrolloni abonimin tuaj JemaOS në internet</translation>
+<translation id="4701836089682883918">Informacioni i abonimit JemaOS</translation>
+<translation id="5891566673089952188">Pati një gabim gjatë marrjes së ID-së së pajisjes suaj</translation>
+<translation id="4685086787606104322">Fundi i abonimit</translation>
+<translation id="3354919960795782984">ID-ja e pajisjes</translation>
+<translation id="5758632069869992306">Kontrolloni abonimin tuaj në internet</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Platforma <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Abonim prove</translation>
+<translation id="4362781408813685579">Abonim aktiv</translation>
+<translation id="1141274201089997510">Abonim i skaduar</translation>
+<translation id="2553683254139782404">Botim jokomercial</translation>
+<translation id="8466048683756385518">Version i licencuar për ndërmarrje (provë)</translation>
+<translation id="2853871047705932424">Version i licencuar për ndërmarrje</translation>
+<translation id="5239675900317881945">Version i licencuar për ndërmarrje (i skaduar)</translation>
+<translation id="189101945990408398">Intel i vjetër</translation>
+<translation id="6816405236809604904">Intel modern</translation>
+<translation id="6169452478137972655">Grafika AMD</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="1270291881045478104">Aktivizo JemaOS AI</translation>
+<translation id="2013780539677437932">Aktivizoni ose çaktivizoni të gjitha veçoritë e lidhura me JemaOS AI</translation>
+<translation id="3398637633218757480">Aktivizo Thirrjen e Shpejtë të JemaOS AI</translation>
+<translation id="8986197796475507452">Paraqitni shpejt opsionet e JemaOS AI për përmbajtjen e theksuar duke shtypur Ctrl + C + C</translation>
+<translation id="6407628130593274137">Cilësime dhe opsione të tjera për JemaOS AI</translation>
+<translation id="4005574560653331142">Për të ndryshuar PIN-in ose fjalëkalimin e hyrjes së kësaj llogarie lokale, shkoni te cilësimet <ph name="BEGIN_LINK" />Privatësia dhe siguria<ph name="END_LINK" />.</translation>
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">Mund të <ph name="LINK_START" />identifikohuni me një llogari lokale JemaOS<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">Email-i <ph name="EMAIL_ADDRESS" /> ekziston tashmë. Ju lutemi provoni sërish me një email tjetër.</translation>
+<translation id="4519800823932975782">Qendra e Ndihmës JemaOS</translation>
+<translation id="4737474693231655139">Gjeni artikuj ndihme dhe përgjigje për pyetjet e zakonshme të JemaOS</translation>
+</translationbundle>

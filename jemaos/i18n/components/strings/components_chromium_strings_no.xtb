@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="no">
+
+
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">JemaOS har ikke fullført førstegangsoppsettet.</translation>
+<translation id="4257170804800372451">JemaOS og Thot er muliggjort av åpen kildekode-prosjektet <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> og annen <ph name="BEGIN_LINK_OSS" />programvare med åpen kildekode<ph name="END_LINK_OSS" />.</translation>
+</translationbundle>

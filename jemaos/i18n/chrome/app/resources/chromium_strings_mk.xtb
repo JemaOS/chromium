@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="mk">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">За Thot</translation>
+<translation id="5639860668557220477">Добијте помош со прелистувачот Thot</translation>
+<translation id="1692689520561928457">За JemaOS</translation>
+<translation id="8692765844418174375">JemaOS верзија</translation>
+<translation id="2943260250558374955">Добијте помош со JemaOS</translation>
+<translation id="713321354492170993">Прелистувачот ослободува меморија од неактивните јазичиња. Ова им дава на активните јазичиња и другите апликации повеќе компјутерски ресурси и го одржува прелистувачот брз. Вашите неактивни јазичиња автоматски повторно стануваат активни кога ќе се вратите на нив.</translation>
+<translation id="1774190491044887444">Прелистувачот заштедува батерија со ограничување на позадинската активност и визуелните ефекти, како што се мазното лизгање и брзината на видео рамките.</translation>
+<translation id="180121268008059459">Прелистувачот ги вчитува страниците однапред, што го прави прелистувањето и пребарувањето побрзо.</translation>
+<translation id="7127093527178692287">Обновете резервна копија (бета)</translation>
+<translation id="4439042171549201806">За да го обновите JemaOS од резервна датотека, вметнете го преносниот диск што ја содржи резервната датотека во вашиот JemaOS уред сега и наведете која резервна датотека сакате да ја обновите. Имајте предвид дека вашата резервна датотека треба да биде во коренскиот директориум на преносниот диск за да биде откриена од овој волшебник.</translation>
+<translation id="2955409026764742995">Изберете ја резервната датотека за обновување:</translation>
+<translation id="7040434808685140085">За жал, избраната резервна датотека не може да се препознае; изберете нова.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />За да го обновите JemaOS од избраната резервна датотека, од суштинско значење е да имате точни информации за резервната копија кога била создадена. Во спротивно, процесот на обновување ќе не успее.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"Името на сметката" е примарната акредитива за најава на сметката под која била создадена вашата резервна датотека. Тоа обично е адресата на е-пошта што ја користевте за да се регистрирате за вашата JemaOS/Google сметка. Ако била локална сметка, тоа би било корисничкото име со додадено "@jemaos.local".<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Лозинката е фразата за лозинка што ви беше побарано да ја внесете кога беше создадена резервната копија. Обично е иста лозинка што ја користевте за да се најавите на JemaOS работната површина за оваа сметка.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Име на сметка</translation>
+<translation id="5490570429039308155">За жал, внесете го точното име на сметката</translation>
+<translation id="6657585470893396449">Лозинка</translation>
+<translation id="8200189938001188563">За жал, лозинката не може да биде празна</translation>
+<translation id="3157931365184549694">Обнови</translation>
+<translation id="8556278756526311953">Обновување на резервна копија</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Сега работиме на обновување на вашата резервна датотека; ова може да потрае, затоа ве молиме бидете трпеливи.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Имајте предвид дека корисничкиот интерфејс автоматски ќе се рестартира кога процесот на обновување ќе заврши успешно.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Обновувањето на резервната копија не успеа</translation>
+<translation id="5003531399442003695">За повеќе детали, кликнете на врската подолу за да ги видите дневниците. Ако оваа грешка продолжи, контактирајте ги каналите за техничка поддршка на JemaOS и обезбедете ги дневниците на грешки.</translation>
+<translation id="6363786367719063276">Погледнете дневници</translation>
+<translation id="8730621377337864115">Готово</translation>
+<translation id="975238173507911396">Обновувањето на податоците е успешно</translation>
+<translation id="6276879052695618521">Дневници за обновување на резервна копија</translation>
+<translation id="4901207598072637766">JemaOS, обезбедено од <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS и неговите услуги се во согласност со GDPR и одредбите на европскиот закон за заштита на податоци. За повеќе информации, погледнете ја нашата <ph name="BEGIN_LINK_PRIVACY" />Политика за приватност<ph name="END_LINK_PRIVACY" /> и нашите <ph name="BEGIN_LINK_TOS" />Услови за користење.<ph name="END_LINK_TOS" /></translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, сите права задржани.</translation>
+<translation id="370679569376308836">JemaOS е комерцијална понуда базирана на Jema уредот и неговиот SaaS.</translation>
+<translation id="2773644194450163486">JemaOS е овозможен од <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> проектот со отворен код.</translation>
+<translation id="2330680727776977160">Chromium исто така е овозможен од друг <ph name="BEGIN_LINK_1" />софтвер со отворен код<ph name="END_LINK_1" /> и <ph name="BEGIN_LINK_2" />дополнителен софтвер со отворен код<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Дизајнирано и произведено од Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, сите права задржани.</translation>
+<translation id="6168072053306020326">Jema Technology е трговско име на Jema Technology LTD и Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD е компанија регистрирана во Англија и Велс со број на компанија 12273803.</translation>
+<translation id="1251589813188467292">Важни информации за гаранција и сервис на уредот</translation>
+<translation id="4851115775198886021">SN на уредот:</translation>
+</translationbundle>

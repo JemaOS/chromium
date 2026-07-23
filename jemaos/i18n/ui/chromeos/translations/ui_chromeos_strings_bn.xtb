@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="bn">
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">JemaOS-এ আপনার ফাইলগুলি ক্লাউড-সিঙ্ক করতে Nutstore-এ সাইন-আপ করুন।</translation>
+<translation id="8672291834743661083">Nutstore-এ সাইন-আপ করুন</translation>
+<translation id="5103639294476249880">নিরাপত্তা সেটিংসে "Add Application" বোতামে ক্লিক করুন</translation>
+<translation id="8371020157576651120">আপনার অ্যাপ্লিকেশন পাসওয়ার্ড তৈরি করুন এবং কপি করুন</translation>
+<translation id="3855250998276979579">Nutstore অ্যাপ খুলুন</translation>
+<translation id="6565655783894300125">এবং আপনার ইমেল এবং অ্যাপ্লিকেশন পাসওয়ার্ড দিয়ে Nutstore অ্যাকাউন্টটি JemaOS-এর সাথে সংযুক্ত করুন</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">শীঘ্রই আসছে</translation>
+<translation id="4928968570611226525">এই কাজটি চালিয়ে যেতে আপনাকে আপনার JemaOS ডিভাইসে <ph name="BEGIN_LINK_ARC_APP" />&gt;Android সাবসিস্টেম সক্রিয় করতে হবে<ph name="END_LINK_ARC_APP" />; এছাড়াও আপনার JemaOS ডিভাইসটি <ph name="BEGIN_LINK_HELP" />ডেভেলপার মোডে স্যুইচ করতে হবে<ph name="END_LINK_HELP" />।</translation>
+<translation id="7395250550107972941">.apk ফাইলগুলি সাইডলোড করা যাচ্ছে না। অনুগ্রহ করে নিশ্চিত করুন যে Android সাবসিস্টেম সক্রিয় করা হয়েছে এবং আপনি JemaOS ডেভেলপার মোডে আছেন।</translation>
+<translation id="5690820326685091783">JemaOS AI দিয়ে খুলুন</translation>
+</translationbundle>

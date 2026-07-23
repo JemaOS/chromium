@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="ml">
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">JemaOS അതിന്റെ പ്രാരംഭ സെറ്റപ്പ് പൂർത്തിയാക്കിയിട്ടില്ല.</translation>
+<translation id="4257170804800372451">JemaOS-ഉം Thot-ഉം സാധ്യമാക്കിയിരിക്കുന്നത് <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> ഓപ്പൺ സോഴ്‌സ് പ്രോജക്റ്റും മറ്റ് <ph name="BEGIN_LINK_OSS" />ഓപ്പൺ സോഴ്‌സ് സോഫ്റ്റ്‌വെയർ<ph name="END_LINK_OSS" />-ഉം വഴിയാണ്.</translation>
+</translationbundle>

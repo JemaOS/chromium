@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="uz">
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">JemaOS'dagi fayllaringizni bulut bilan sinxronlash uchun Nutstore'ga ro'yxatdan o'ting.</translation>
+<translation id="8672291834743661083">Nutstore'ga ro'yxatdan o'tish</translation>
+<translation id="5103639294476249880">Xavfsizlik sozlamalaridagi "Ilova qo'shish" tugmasini bosing</translation>
+<translation id="8371020157576651120">Ilova parolingizni yarating va nusxalang</translation>
+<translation id="3855250998276979579">Nutstore ilovasini oching</translation>
+<translation id="6565655783894300125">va Nutstore hisobingizni elektron pochtangiz va ilova parolingiz bilan JemaOS'ga ulang</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Tez kunda</translation>
+<translation id="4928968570611226525">Ushbu amalni davom ettirish uchun JemaOS qurilmangizda <ph name="BEGIN_LINK_ARC_APP" />&gt;Android quyi tizimini faollashtirishingiz<ph name="END_LINK_ARC_APP" /> kerak; shuningdek, JemaOS qurilmangiz <ph name="BEGIN_LINK_HELP" />Dasturchi rejimiga o'tkazilgan<ph name="END_LINK_HELP" /> bo'lishi kerak.</translation>
+<translation id="7395250550107972941">.apk fayllarini yuklab olish mumkin emas. Android quyi tizimi faollashtirilganiga va JemaOS Dasturchi rejimida ekanligingizga ishonch hosil qiling.</translation>
+<translation id="5690820326685091783">JemaOS AI bilan ochish</translation>
+</translationbundle>

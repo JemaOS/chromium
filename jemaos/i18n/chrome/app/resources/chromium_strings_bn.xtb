@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="bn">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Thot সম্পর্কে</translation>
+<translation id="5639860668557220477">Thot ব্রাউজারে সহায়তা পান</translation>
+<translation id="1692689520561928457">JemaOS সম্পর্কে</translation>
+<translation id="8692765844418174375">JemaOS সংস্করণ</translation>
+<translation id="2943260250558374955">JemaOS-এ সহায়তা পান</translation>
+<translation id="713321354492170993">ব্রাউজারটি নিষ্ক্রিয় ট্যাব থেকে মেমরি খালাস করে। এটি সক্রিয় ট্যাব এবং অন্যান্য অ্যাপকে আরও কম্পিউটিং সংস্থান দেয় এবং ব্রাউজারকে দ্রুত রাখে। আপনি যখন সেগুলিতে ফিরে আসেন তখন আপনার নিষ্ক্রিয় ট্যাবগুলি স্বয়ংক্রিয়ভাবে আবার সক্রিয় হয়ে যায়।</translation>
+<translation id="1774190491044887444">ব্রাউজারটি ব্যাকগ্রাউন্ড কার্যকলাপ এবং ভিজ্যুয়াল ইফেক্ট, যেমন মসৃণ স্ক্রলিং এবং ভিডিও ফ্রেম রেট সীমিত করে ব্যাটারি সাশ্রয় করে।</translation>
+<translation id="180121268008059459">ব্রাউজারটি পৃষ্ঠাগুলি প্রিলোড করে, যা ব্রাউজিং এবং অনুসন্ধানকে দ্রুত করে তোলে।</translation>
+<translation id="7127093527178692287">ব্যাকআপ পুনরুদ্ধার করুন (বিটা)</translation>
+<translation id="4439042171549201806">একটি ব্যাকআপ ফাইল থেকে JemaOS পুনরুদ্ধার করতে, অনুগ্রহ করে এখন ব্যাকআপ ফাইলটি রয়েছে এমন অপসারণযোগ্য ড্রাইভটি আপনার JemaOS ডিভাইসে ঢোকান এবং আপনি কোন ব্যাকআপ ফাইলটি পুনরুদ্ধার করতে চান তা নির্দিষ্ট করুন। অনুগ্রহ করে মনে রাখবেন যে এই উইজার্ড দ্বারা সনাক্ত করতে হলে আপনার ব্যাকআপ ফাইলটি আপনার অপসারণযোগ্য ড্রাইভের রুট ডিরেক্টরিতে থাকা প্রয়োজন।</translation>
+<translation id="2955409026764742995">পুনরুদ্ধার করার জন্য ব্যাকআপ ফাইলটি নির্বাচন করুন:</translation>
+<translation id="7040434808685140085">দুঃখিত, নির্বাচিত ব্যাকআপ ফাইলটি চেনা যায়নি; অনুগ্রহ করে একটি নতুনটি নির্বাচন করুন।</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />নির্বাচিত ব্যাকআপ ফাইল থেকে JemaOS পুনরুদ্ধার করতে, ব্যাকআপ তৈরি হওয়ার সময় সম্পর্কে সঠিক তথ্য থাকা অপরিহার্য। অন্যথায়, পুনরুদ্ধার প্রক্রিয়া ব্যর্থ হবে।<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"অ্যাকাউন্টের নাম" হল সেই অ্যাকাউন্টের প্রাথমিক লগইন শংসাপত্র যার অধীনে আপনার ব্যাকআপ ফাইলটি তৈরি হয়েছিল। এটি সাধারণত সেই ইমেল ঠিকানা যা আপনি আপনার JemaOS/Google অ্যাকাউন্টে সাইন আপ করতে ব্যবহার করেছিলেন। যদি এটি একটি স্থানীয় অ্যাকাউন্ট হয়, তবে এটি ব্যবহারকারীর নামের সাথে "@jemaos.local" যুক্ত হবে।<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />পাসওয়ার্ডটি হল সেই পাসফ্রেজ যা ব্যাকআপ তৈরি হওয়ার সময় আপনাকে দিতে বলা হয়েছিল। এটি সাধারণত এই অ্যাকাউন্টের জন্য JemaOS ডেস্কটপে সাইন ইন করতে ব্যবহৃত একই পাসওয়ার্ড।<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">অ্যাকাউন্টের নাম</translation>
+<translation id="5490570429039308155">দুঃখিত, অনুগ্রহ করে সঠিক অ্যাকাউন্টের নাম লিখুন</translation>
+<translation id="6657585470893396449">পাসওয়ার্ড</translation>
+<translation id="8200189938001188563">দুঃখিত, পাসওয়ার্ড খালি থাকতে পারে না</translation>
+<translation id="3157931365184549694">পুনরুদ্ধার করুন</translation>
+<translation id="8556278756526311953">ব্যাকআপ পুনরুদ্ধার করা হচ্ছে</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />আমরা এখন আপনার ব্যাকআপ ফাইল পুনরুদ্ধার করার কাজ করছি; এতে কিছু সময় লাগতে পারে, তাই অনুগ্রহ করে ধৈর্য ধরুন।<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />অনুগ্রহ করে মনে রাখবেন যে পুনরুদ্ধার প্রক্রিয়া সফলভাবে সম্পন্ন হলে UI স্বয়ংক্রিয়ভাবে পুনরায় চালু হবে।<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">ব্যাকআপ পুনরুদ্ধার ব্যর্থ হয়েছে</translation>
+<translation id="5003531399442003695">আরও বিস্তারিত জানার জন্য, লগগুলি দেখতে অনুগ্রহ করে নীচের লিঙ্কটিতে ক্লিক করুন। এই ত্রুটিটি অব্যাহত থাকলে, অনুগ্রহ করে JemaOS প্রযুক্তিগত সহায়তা চ্যানেলগুলির সাথে যোগাযোগ করুন এবং ত্রুটি লগগুলি প্রদান করুন।</translation>
+<translation id="6363786367719063276">লগ দেখুন</translation>
+<translation id="8730621377337864115">সম্পন্ন</translation>
+<translation id="975238173507911396">ডেটা পুনরুদ্ধার সফল হয়েছে</translation>
+<translation id="6276879052695618521">ব্যাকআপ পুনরুদ্ধার লগ</translation>
+<translation id="4901207598072637766">JemaOS, <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /> দ্বারা প্রদত্ত</translation>
+<translation id="7894910504474624324">JemaOS এবং এর পরিষেবাগুলি GDPR এবং ইউরোপীয় ডেটা সুরক্ষা আইনের বিধান মেনে চলে। আরও তথ্যের জন্য, অনুগ্রহ করে আমাদের <ph name="BEGIN_LINK_PRIVACY" />গোপনীয়তা নীতি<ph name="END_LINK_PRIVACY" /> এবং আমাদের <ph name="BEGIN_LINK_TOS" />পরিষেবার শর্তাবলী।<ph name="END_LINK_TOS" /> দেখুন।</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, সর্বস্বত্ব সংরক্ষিত।</translation>
+<translation id="370679569376308836">JemaOS হল Jema ডিভাইস এবং এর SaaS-এর উপর ভিত্তি করে একটি বাণিজ্যিক অফার।</translation>
+<translation id="2773644194450163486">JemaOS <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> ওপেন সোর্স প্রজেক্ট দ্বারা সম্ভব হয়েছে।</translation>
+<translation id="2330680727776977160">Chromium অন্যান্য <ph name="BEGIN_LINK_1" />ওপেন সোর্স সফটওয়্যার<ph name="END_LINK_1" /> এবং <ph name="BEGIN_LINK_2" />অতিরিক্ত ওপেন সোর্স সফটওয়্যার<ph name="END_LINK_2" /> দ্বারাও সম্ভব হয়েছে।</translation>
+<translation id="1419954813084261088">Jema Technology দ্বারা ডিজাইন এবং উৎপাদিত।</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, সর্বস্বত্ব সংরক্ষিত।</translation>
+<translation id="6168072053306020326">Jema Technology হল Jema Technology LTD এবং Jema Technology (Beijing) Limited-এর ট্রেডিং নাম।
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD হল ইংল্যান্ড ও ওয়েলসে 12273803 কোম্পানি নম্বর সহ নিবন্ধিত একটি কোম্পানি।</translation>
+<translation id="1251589813188467292">গুরুত্বপূর্ণ ডিভাইস ওয়ারেন্টি এবং পরিষেবা তথ্য</translation>
+<translation id="4851115775198886021">ডিভাইস SN:</translation>
+</translationbundle>

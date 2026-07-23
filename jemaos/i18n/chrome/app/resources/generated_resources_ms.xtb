@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="ms">
+	<translation id="7386402409475121504">Buat akaun JemaOS tempatan anda</translation>
+	<translation id="3760308806144055927">Log masuk akaun JemaOS tempatan anda</translation>
+	<translation id="3325117507482096812">Sila masukkan kata laluan</translation>
+	<translation id="1838206877831947154">Kata laluan anda tidak sepadan</translation>
+	<translation id="2158276988029582286">Buat akaun tempatan baharu</translation>
+	<translation id="8592849747346274067">Log masuk ke akaun sedia ada</translation>
+	<translation id="482190417986201746">Nama pengguna atau kata laluan yang anda masukkan adalah salah</translation>
+	<translation id="6603987686259425085">Anda boleh <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>log masuk dengan akaun setempat JemaOS<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">E-mel <ph name="EMAIL_ADDRESS">$1</ph> sudah wujud. Sila cuba semula dengan e-mel lain.</translation>
+	<translation id="7215016743510876720">Gunakan akaun tempatan</translation>
+	<translation id="6657635042185516718">Teruskan menggunakan akaun dalam talian</translation>
+	<translation id="6867476688065565618">Tukar ke akaun tempatan?</translation>
+	<translation id="4840454774882557974">Jika anda memilih untuk menggunakan akaun setempat, ciri berguna termasuk menyegerakkan data dan pilihan anda merentas berbilang peranti dan log masuk secara automatik apl web menggunakan akaun JemaOS anda tidak akan berfungsi.</translation>
+	<translation id="8951507920859729424">Kami mengesyorkan menggunakan akaun dalam talian untuk menggunakan JemaOS sepenuhnya.</translation>
+	<translation id="479773200536372215">Anda tidak akan dapat menambah akaun Google kerana kunci API Google tiada. Lihat <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> untuk mendapatkan butiran.</translation>
+	<translation id="1198491307547164157">Anda tidak akan dapat menambah akaun JemaOS kerana kunci API JemaOS tiada. Lihat <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> untuk mendapatkan butiran.</translation>
+	<translation id="5042404702659901995">Kenyataan privasi</translation>
+	<translation id="4907736162587268100">Kandungan pernyataan privasi</translation>
+	<translation id="5988344732274877691">Daftar untuk surat berita (sangat jarang, dijanjikan) untuk JemaOS</translation>
+	<translation id="1706203008474708805">Sertai pelan peningkatan pengalaman pengguna JemaOS</translation>
+	<translation id="1147139514756087229">Log masuk dengan akaun tempatan</translation>
+	<translation id="2054784944085654098">Mencipta fail sandaran sekarang. Ini mungkin mengambil sedikit masa; sila tunggu…</translation>
+	<translation id="3554401467586751874">Fail sandaran telah berjaya dibuat</translation>
+	<translation id="2349211327705667074">Lihat fail sandaran</translation>
+	<translation id="3049367131589710124">Lihat log ralat</translation>
+	<translation id="1079017345574916945">Desktop jauh</translation>
+	<translation id="3064478898280877715">Kedai aplikasi</translation>
+	<translation id="5890206344045530832">Pemasang</translation>
+	<translation id="2173278076276376488">Utiliti ini akan membantu anda memasang <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> pada storan dalaman peranti ini.</translation>
+	<translation id="5323182426977498659">Amaran! Prosedur ini merosakkan dan tidak boleh dibuat asal. Sila ambil perhatian bahawa kami tidak akan bertanggungjawab untuk potensi kehilangan data anda atau memberikan sebarang sokongan teknikal segera, teruskan atas risiko anda sendiri.</translation>
+	<translation id="8517836015601969896">Pemasangan cakera penuh</translation>
+	<translation id="7300045760790370189">Pasang <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> untuk menduduki keseluruhan cakera keras, semua data cakera keras sasaran akan dipadamkan.</translation>
+	<translation id="8762511733918256595">Pemasangan berbilang but</translation>
+	<translation id="248900698427753678">Pasang <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> pada partition cakera keras sedia ada, di mana <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> boleh wujud selari dengan OS lain. Semua data pada partition sasaran akan dipadamkan.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> akan dipasang pada pemacu keras pilihan anda; semua data pada cakera sasaran akan dipadamkan.</translation>
+	<translation id="4039091757234555415">Cakera</translation>
+	<translation id="7783580523889684697">Tiada cakera tersedia</translation>
+	<translation id="8217653566575018388">Pemasangan selesai</translation>
+	<translation id="8846746259444262774">Pemasangan gagal</translation>
+	<translation id="7263815009235541549">Pemasangan telah berjaya diselesaikan. Sila matikan peranti anda dahulu, kemudian alih keluar sebarang media pemasangan dan hidupkan semula untuk but <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>.</translation>
+	<translation id="3380151284134965398">Oops, sesuatu telah berlaku dan pemasangan tidak selesai. Sila cuba semula proses tersebut. Jika ralat yang sama berterusan, sila hubungi Sokongan JemaOS dengan log di atas.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> akan dipasang pada partition yang dipilih pada pemacu keras anda. Di bawah skema berbilang but semasa, ini hanya boleh diteruskan jika peranti anda menyokong UEFI dan cakera keras anda diformatkan dengan GPT.</translation>
+	<translation id="7831363758161884243">Partition sasaran akan dipadamkan; anda juga perlu menentukan partition EFI aktif anda (biasanya dilakukan secara automatik) kerana Pemasang perlu mengubah suai konfigurasi but sistem.</translation>
+	<translation id="5670799238446305550">Pilih <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> partition sasaran</translation>
+	<translation id="3695537760133394753">Pembahagian</translation>
+	<translation id="5610519566593708119">Pilih partition EFI</translation>
+	<translation id="3367650349940010965">Tiada sekatan tersedia untuk cakera yang dipilih</translation>
+	<translation id="7453223384507098390">Tiada partition EFI tersedia untuk cakera yang dipilih</translation>
+	<translation id="1854532683465500847">Saiz partition yang dipilih adalah kurang daripada 20GB, pemasangan mungkin gagal</translation>
+	<translation id="4144613075340468247">Partition yang dipilih telah dipasang pada <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> berbilang but, pemasangan padanya sekali lagi mungkin gagal</translation>
+	<translation id="5793361052649920836">Selepas pemasangan, bagaimana anda ingin but <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>?</translation>
+	<translation id="4273235330352963866">Pasang dan konfigurasikan REFInd untuk saya (disyorkan)</translation>
+	<translation id="1858708492548921044">rEFInd ialah program pengurus but yang menawarkan antara muka grafik yang bagus untuk pilihan but OS apabila PC anda dimulakan, anda akan dapat memilih OS yang anda inginkan untuk but dengannya. Untuk mendapatkan maklumat lanjut mengenai rEFInd, sila rujuk halaman utamanya.</translation>
+	<translation id="3861924051442564602">Tambah pilihan menu but UEFI untuk saya</translation>
+	<translation id="8622370666798589804">Apabila PC anda dimulakan, anda mungkin boleh memasuki menu pilihan but UEFI (kemungkinan besar dengan menekan kekunci pintas), pilihan ini menambahkan <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> sebagai entri pada menu tersebut. (Hanya menyokong beberapa model perisian tegar BIOS dan UEFI).</translation>
+	<translation id="1569398690544416170">Jangan lakukan apa-apa di sini, saya akan mengkonfigurasinya sendiri</translation>
+	<translation id="3554866444001249532">Skrip pemasangan ini hanya akan meletakkan fail .efi yang diperlukan untuk but <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ke partition EFI anda, anda perlu mengkonfigurasi cara untuk but sendiri.</translation>
+	<translation id="7492832751164189534">Berhenti paksa</translation>
+	<translation id="5159534860632584026">Proses pemasangan telah ditamatkan</translation>
+	<translation id="8686749782014838344">Gagal mendapatkan maklumat cakera</translation>
+	<translation id="5688543378771259173">Pemasangan sedang ditamatkan...</translation>
+	<translation id="5350452134936384991">Pasang dalam USB</translation>
+	<translation id="8008470485414925603">Pasang <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> pada cakera USB; semua data pada cakera USB sasaran akan dipadamkan.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> akan dipasang pada cakera USB pilihan anda; semua data pada cakera sasaran akan dipadamkan.</translation>
+	<translation id="5725593226060700263">Tiada cakera USB tersedia</translation>
+	<translation id="4357040841587078287">Kami telah mengesan bahawa anda menjalankan salinan JemaOS ini daripada fail imej yang dimuat turun. Untuk menggunakan ciri sokongan yang paling komprehensif (termasuk kemas kini Over-The-Air) yang boleh ditawarkan oleh JemaOS, kami amat mengesyorkan anda melancarkan fungsi "Pemasang" untuk melaksanakan pemasangan cakera penuh JemaOS ke peranti storan yang berasingan.</translation>
+	<translation id="1246398339704431302">Anda boleh <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>terus menggunakan salinan JemaOS ini juga<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, proses pemasangan boleh dilaksanakan pada peringkat seterusnya dalam sistem, walau bagaimanapun, semua data anda akan dipadamkan semula selepas pemasangan ini dan anda akan mula dipadam semula.</translation>
+	<translation id="3654532222088291133">Daripada memasukkan kata laluan akaun JemaOS anda untuk log masuk, anda boleh membuat kata laluan <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> untuk peranti ini</translation>
+	<translation id="8377684629839541977">Gunakan kata laluan akaun JemaOS</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">Pastikan <ph name="DEVICE_OS" /> sentiasa dikemas kini secara automatik</translation>
+<translation id="2347352406101856238">Kemas kini <ph name="DEVICE_OS" /> didayakan</translation>
+<translation id="185834232609012804">Kemas kini <ph name="DEVICE_OS" /> dinyahdayakan</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Platform <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Desktop Jauh</translation>
+<translation id="6898090158927982244">Linux anda adalah terkini</translation>
+<translation id="4886703929102211360">Kemas kini kritikal tersedia untuk komponen Linux (beta). Anda amat disyorkan untuk memasang kemas kini ini secepat mungkin, jika tidak Linux (beta) anda mungkin berhenti berfungsi.</translation>
+<translation id="6694016202036959050">Tetapan <ph name="DEVICE_OS" /></translation>
+<translation id="8362858344151826493">Akaun JemaOS, sandaran, pelbagai</translation>
+<translation id="9150429437595727962">Tetapan Wi-Fi</translation>
+<translation id="4938972461544498524">Tetapan pad sentuh</translation>
+<translation id="1210024513248363065">Perkhidmatan jauh</translation>
+<translation id="2878862288885588535">Perkhidmatan diagnostik jauh</translation>
+<translation id="7409197984340676806">Perkhidmatan diagnostik jauh membolehkan wakil sokongan rasmi JemaOS mengenal pasti isu sistem. Pada masa ini, perkhidmatan diagnostik jauh hanya boleh dimulakan oleh wakil sokongan rasmi JemaOS.</translation>
+<translation id="1791028023086176332">Sila kongsikan nombor ini dengan wakil sokongan rasmi JemaOS</translation>
+<translation id="6279304275399437025">Memulakan perkhidmatan diagnostik jauh...</translation>
+<translation id="1501882165699826662">Sila hentikan perkhidmatan diagnostik jauh dan cuba lagi</translation>
+<translation id="3100283258447375201">Maklumat lanjut</translation>
+<translation id="4070039109671307724">Pelbagai</translation>
+<translation id="7326893024940073254">Butang "Mula semula"</translation>
+<translation id="3002423764319968103">Tunjukkan butang "Mula semula" dalam menu sistem</translation>
+<translation id="6243454903512423518">Butang "Putar skrin"</translation>
+<translation id="6491049336868978729">Anda tidak berada dalam mod tablet sekarang, butang "Putar skrin" disembunyikan</translation>
+<translation id="5496012402277579695">Tunjukkan butang "Putar skrin" dalam menu sistem</translation>
+<translation id="5882838977344999606">Suis mod tablet/komputer riba</translation>
+<translation id="472164133625585606">Tunjukkan suis mod tablet/komputer riba dalam menu sistem</translation>
+<translation id="1851103550468466960">Dayakan Widevine</translation>
+<translation id="4058176713282795846">Dayakan Widevine untuk menstrim kandungan premium yang dilindungi. <ph name="BEGIN_LINK_LEARN_MORE" />Ketahui lebih lanjut<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">Pilih "libwidevine.so"</translation>
+<translation id="4838463656205005584">Gagal mendayakan Widevine...</translation>
+<translation id="2164041826798266548">Pemasangan modul Widevine CDM gagal. Sila semak sambungan anda dan cuba lagi.</translation>
+<translation id="4106982328079440606">Tetapan akaun JemaOS</translation>
+<translation id="6468776556018764845">Ciri percubaan</translation>
+<translation id="3487615413425326553">Pintas semakan Trusted Platform Module (TPM)</translation>
+<translation id="4817176087932811573">Sesetengah ciri mungkin gagal disebabkan cip TPM yang tidak serasi dalam peranti anda; anda boleh memintas semakan TPM sebagai jalan keluar.</translation>
+<translation id="3356003366173774486">Log masuk automatik</translation>
+<translation id="6218459410891191693">Benarkan akaun semasa log masuk secara automatik ke desktop apabila peranti dimulakan semula</translation>
+<translation id="6620839363422062843">Tidak dapat didayakan untuk akaun ini; log masuk automatik sudah aktif untuk akaun lain pada peranti ini</translation>
+<translation id="6734500226490446035">Tidak dapat didayakan untuk akaun ini; ralat tidak diketahui berlaku semasa memulakan sistem fail untuk akaun ini. Sila cuba mulakan semula atau cipta akaun baharu</translation>
+<translation id="5464880042146818691">Tidak dapat didayakan untuk akaun ini; pilihan log masuk automatik hanya tersedia untuk jenis "Akaun tempatan".</translation>
+<translation id="3335654854106476749">Sila tambah kata laluan log masuk dalam tetapan <ph name="BEGIN_LINK" />Privasi dan keselamatan<ph name="END_LINK" /> sebelum mendayakan log masuk automatik.</translation>
+<translation id="5586831602198585601">Versi JemaOS yang lebih baharu tersedia untuk dikemas kini sekarang. Walau bagaimanapun, langganan JemaOS for You anda telah tamat tempoh; anda memerlukan langganan aktif untuk mengemas kini JemaOS anda.</translation>
+<translation id="3869860597719956574">Versi utama baharu JemaOS tersedia untuk dikemas kini sekarang. Anda mesti membayar yuran sekali sahaja untuk meneruskan kemas kini ini.</translation>
+<translation id="6523879681771260760">Sila nyatakan laluan untuk menyimpan fail sandaran</translation>
+<translation id="2036152819788683293">Cipta fail sandaran untuk akaun ini (beta). <ph name="BEGIN_LINK_LEARN_MORE" />Ketahui lebih lanjut<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Sandarkan</translation>
+<translation id="4267347174163690295">Cipta fail sandaran untuk akaun ini (beta).</translation>
+<translation id="8112950994208888917">Operasi ini mencipta sandaran cakera penuh untuk akaun ini, memudahkan pemulihan JemaOS anda kepada keadaan semasa sandaran dicipta, termasuk tetapan, sambungan pelayar yang dipasang dan aplikasi subsistem. Bergantung pada aplikasi anda dan kandungan folder rumah anda, fail sandaran mungkin besar; anda disyorkan menyimpan fail sandaran pada peranti storan luaran. Jika anda mempunyai pemacu USB mudah alih, sila sambungkannya sekarang. <ph name="BEGIN_LINK_LEARN_MORE" />Ketahui lebih lanjut<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Sila masukkan kata laluan log masuk untuk akaun ini</translation>
+<translation id="8663988871299316062">Sila ingat kata laluan ini, kerana ia akan diperlukan semasa memulihkan fail sandaran ini</translation>
+<translation id="6408904153044317846">Pilih fail sandaran untuk dipulihkan</translation>
+<translation id="8062988348127771021">Pulihkan data JemaOS anda daripada fail sandaran</translation>
+<translation id="7309192418866543730">Masukkan kata laluan sandaran</translation>
+<translation id="3642408376366598984">Masukkan kata laluan yang digunakan untuk menyulitkan fail sandaran ini</translation>
+<translation id="7783974937157985523">Kata laluan sandaran</translation>
+<translation id="6583780301401541007">Pemulihan berjaya</translation>
+<translation id="3514011352559420398">Pemulihan gagal</translation>
+<translation id="7535980903266533458">Simpan sandaran pada peranti atau storan luaran anda</translation>
+<translation id="604001903249547235">Sandaran awan</translation>
+<translation id="8885702701336541611">Muat naik sandaran ke storan awan JemaOS</translation>
+<translation id="3939744430096549862">Sandarkan ke awan</translation>
+<translation id="619129431573254316">Pulihkan daripada fail sandaran tempatan</translation>
+<translation id="1859592711955106569">Pemulihan awan</translation>
+<translation id="38222223336741457">Muat turun dan pulihkan daripada awan JemaOS</translation>
+<translation id="1241089811244416179">Pulihkan daripada awan</translation>
+<translation id="652479689372703360">Sandaran sedang berjalan</translation>
+<translation id="3655220146274872918">Sandaran selesai</translation>
+<translation id="4243579853635792694">Sandaran anda berjaya dicipta</translation>
+<translation id="6337433855796857931">Sandaran gagal</translation>
+<translation id="4854179463174744546">Ralat berlaku semasa proses sandaran</translation>
+<translation id="2410668771600309999">Maklumat pengguna Connect API</translation>
+<translation id="2223892939866251845">ID pengguna</translation>
+<translation id="3850846286480935456">Analisis storan sandaran</translation>
+<translation id="6244494465581273970">ID pengguna diperlukan</translation>
+<translation id="9204006549413740506">Kemas kini terakhir</translation>
+<translation id="476642412165431515">Peranti perkakasan</translation>
+<translation id="3386337985825120901">Tiada data sandaran tersedia</translation>
+<translation id="8490990067870590760">Memuatkan fail sandaran...</translation>
+<translation id="2955409026764742995">Pilih fail sandaran untuk dipulihkan:</translation>
+<translation id="7414629348005657242">-- Pilih fail sandaran --</translation>
+<translation id="918246516374174381">Tiada fail sandaran ditemui. Sila cipta sandaran dahulu.</translation>
+<translation id="77997252117517973">Akan datang</translation>
+<translation id="1930692852800776096">Tambah kamus</translation>
+<translation id="8793060353848771694">Imej fon telinga kiri</translation>
+<translation id="6257440204887306255">Imej bekas pengecas</translation>
+<translation id="2754700616124958693">Imej fon telinga kanan</translation>
+<translation id="1068676292264983586">Imej peranti lalai</translation>
+<translation id="6364075396486660405">Nyahdayakan pengimbasan automatik fail media untuk semua partisi bagi mengoptimumkan hayat bateri. <ph name="BEGIN_LINK_LEARN_MORE" />Ketahui lebih lanjut<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Pilihan keselamatan</translation>
+<translation id="5618366106086725045">Dayakan "Mod Pembangun" untuk pemasangan <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> ini dengan lebih banyak ciri pembangun. <ph name="BEGIN_LINK_LEARN_MORE" />Ketahui lebih lanjut<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Anda sudah berada dalam "Mod Pembangun"</translation>
+<translation id="6074549317340202195">Dayakan "Mod Pembangun"</translation>
+<translation id="418781258674176053">Amaran! Mendayakan "Mod Pembangun" ialah operasi yang tidak boleh diterbalikkan. Jika anda ingin menyahdayakan "Mod Pembangun", anda mesti memasang semula JemaOS, yang akan memadam semua data. Sila sandarkan data anda dan teruskan atas risiko anda sendiri.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Platform <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Sedang luar talian</translation>
+<translation id="2590678769628709242">Semak langganan JemaOS anda dalam talian</translation>
+<translation id="4701836089682883918">Maklumat langganan JemaOS</translation>
+<translation id="5891566673089952188">Berlaku ralat semasa mendapatkan ID peranti anda</translation>
+<translation id="4685086787606104322">Tamat langganan</translation>
+<translation id="3354919960795782984">ID peranti</translation>
+<translation id="5758632069869992306">Semak langganan anda dalam talian</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Platform <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Langganan percubaan</translation>
+<translation id="4362781408813685579">Langganan aktif</translation>
+<translation id="1141274201089997510">Langganan tamat tempoh</translation>
+<translation id="2553683254139782404">Edisi bukan komersial</translation>
+<translation id="8466048683756385518">Versi berlesen Enterprise (percubaan)</translation>
+<translation id="2853871047705932424">Versi berlesen Enterprise</translation>
+<translation id="5239675900317881945">Versi berlesen Enterprise (tamat tempoh)</translation>
+<translation id="189101945990408398">Intel legasi</translation>
+<translation id="6816405236809604904">Intel moden</translation>
+<translation id="6169452478137972655">Grafik AMD</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="2747689477259164256">AI JemaOS</translation>
+<translation id="1270291881045478104">Dayakan AI JemaOS</translation>
+<translation id="2013780539677437932">Dayakan atau nyahdayakan semua ciri berkaitan AI JemaOS</translation>
+<translation id="3398637633218757480">Dayakan Panggilan Pantas AI JemaOS</translation>
+<translation id="8986197796475507452">Paparkan pilihan AI JemaOS dengan cepat untuk kandungan yang diserlahkan dengan menekan Ctrl + C + C</translation>
+<translation id="6407628130593274137">Tetapan dan pilihan lain untuk AI JemaOS</translation>
+<translation id="4005574560653331142">Untuk menukar PIN atau kata laluan log masuk akaun tempatan ini, pergi ke tetapan <ph name="BEGIN_LINK" />Privasi dan keselamatan<ph name="END_LINK" />.</translation>
+
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">Anda boleh <ph name="LINK_START" />log masuk dengan akaun setempat JemaOS<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">E-mel <ph name="EMAIL_ADDRESS" /> sudah wujud. Sila cuba semula dengan e-mel lain.</translation>
+<translation id="4519800823932975782">Pusat Bantuan JemaOS</translation>
+<translation id="4737474693231655139">Cari artikel bantuan dan jawapan kepada soalan lazim JemaOS</translation>
+</translationbundle>

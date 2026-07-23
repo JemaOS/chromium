@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="zh-TW">
+	<translation id="7386402409475121504">建立您的本地 JemaOS 帳戶</translation>
+	<translation id="3760308806144055927">登入您本地的 JemaOS 帳戶</translation>
+	<translation id="3325117507482096812">請輸入密碼</translation>
+	<translation id="1838206877831947154">您的密碼不匹配</translation>
+	<translation id="2158276988029582286">建立一個新的本機帳戶</translation>
+	<translation id="8592849747346274067">登入現有帳戶</translation>
+	<translation id="482190417986201746">您輸入的使用者名稱或密碼不正確</translation>
+	<translation id="6603987686259425085">您可以<ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>使用 JemaOS 本機帳號<ph name="LINK_END">$2<ex>&amp;gt;/a</ex></ph>登入。</translation>
+	<translation id="3598802966230712759">電子郵件 <ph name="EMAIL_ADDRESS">$1</ph> 已存在。請使用另一封電子郵件重試。</translation>
+	<translation id="7215016743510876720">使用本機帳戶</translation>
+	<translation id="6657635042185516718">繼續使用線上帳戶</translation>
+	<translation id="6867476688065565618">切換到本機帳戶？</translation>
+	<translation id="4840454774882557974">如果您選擇使用本機帳戶，則有用的功能（包括跨多個裝置同步資料和首選項以及使用 JemaOS 帳戶自動登入 Web 應用程式）將無法運作。</translation>
+	<translation id="8951507920859729424">我們建議使用線上帳戶來充分利用 JemaOS。</translation>
+	<translation id="479773200536372215">您將無法新增 Google 帳戶，因為缺少 Google API 金鑰。有關詳細信息，請參閱 <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph>。</translation>
+	<translation id="1198491307547164157">您將無法新增 JemaOS 帳戶，因為缺少 JemaOS API 金鑰。有關詳細信息，請參閱 <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph>。</translation>
+	<translation id="5042404702659901995">隱私權聲明</translation>
+	<translation id="4907736162587268100">隱私權聲明內容</translation>
+	<translation id="5988344732274877691">訂閱（非常罕見，承諾的）JemaOS 時事通訊</translation>
+	<translation id="1706203008474708805">加入JemaOS用戶體驗改善計劃</translation>
+	<translation id="1147139514756087229">使用本機帳號登入</translation>
+	<translation id="2054784944085654098">現在建立備份檔案。這可能需要一段時間；請稍等...</translation>
+	<translation id="3554401467586751874">備份檔案建立成功</translation>
+	<translation id="2349211327705667074">查看備份文件</translation>
+	<translation id="3049367131589710124">查看錯誤日誌</translation>
+	<translation id="1079017345574916945">遠端桌面</translation>
+	<translation id="3064478898280877715">應用程式商店</translation>
+	<translation id="5890206344045530832">安裝人員</translation>
+	<translation id="2173278076276376488">此實用程式將協助您將 <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> 安裝到該裝置的內部儲存空間。</translation>
+	<translation id="5323182426977498659">警告！此過程具有破壞性且無法撤銷。請注意，我們不會對您潛在的資料遺失承擔任何責任，也不提供任何緊急技術支持，您需自行承擔風險。</translation>
+	<translation id="8517836015601969896">全盤安裝</translation>
+	<translation id="7300045760790370189">安裝 <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> 佔用整個硬碟，目標硬碟的所有資料將會被清除。</translation>
+	<translation id="8762511733918256595">多重啟動安裝</translation>
+	<translation id="248900698427753678">將 <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> 安裝到硬碟的現有分割區，其中 <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> 可以與其他作業系統並行存在。目標分區上的所有資料都將被擦除。</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> 將安裝在您選擇的硬碟上；目標磁碟上的所有資料將會被清除。</translation>
+	<translation id="4039091757234555415">磁碟</translation>
+	<translation id="7783580523889684697">沒有可用磁碟</translation>
+	<translation id="8217653566575018388">安裝完成</translation>
+	<translation id="8846746259444262774">安裝失敗</translation>
+	<translation id="7263815009235541549">安裝已成功完成。請先關閉您的裝置電源，然後取出所有安裝介質，然後再次開啟裝置以啟動 <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>。</translation>
+	<translation id="3380151284134965398">糟糕，出了點問題，安裝沒有完成。請重試該過程。如果相同的錯誤仍然存在，請使用上述日誌聯絡 JemaOS 支援。</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> 將安裝在您硬碟的選取分割區上。在目前的多重啟動方案下，只有當您的裝置支援 UEFI 且硬碟採用 GPT 格式化時，才能進行此操作。</translation>
+	<translation id="7831363758161884243">目標分割區將會被擦除；您還需要指定活動 EFI 分割區（通常會自動完成），因為安裝程式需要修改系統開機設定。</translation>
+	<translation id="5670799238446305550">選擇 <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> 目標分區</translation>
+	<translation id="3695537760133394753">分割區</translation>
+	<translation id="5610519566593708119">選擇EFI分割區</translation>
+	<translation id="3367650349940010965">所選磁碟沒有可用分割區</translation>
+	<translation id="7453223384507098390">所選磁碟沒有可用的 EFI 分割區</translation>
+	<translation id="1854532683465500847">所選分割區大小小於20GB，安裝可能會失敗</translation>
+	<translation id="4144613075340468247">所選分區已安裝至 <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> 多重啟動，再次安裝可能會失敗</translation>
+	<translation id="5793361052649920836">安裝後，您希望如何啟動 <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>？</translation>
+	<translation id="4273235330352963866">為我安裝和設定 rEFInd（推薦）</translation>
+	<translation id="1858708492548921044">rEFInd 是一個啟動管理器程序，它為作業系統啟動選項提供了一個漂亮的圖形介面，當您的電腦啟動時，您將能夠選擇您想要的作業系統來啟動它。有關 rEFInd 的更多信息，請參閱其主頁。</translation>
+	<translation id="3861924051442564602">為我新增 UEFI 啟動選單選項</translation>
+	<translation id="8622370666798589804">當您的電腦啟動時，您也許能夠進入 UEFI 啟動選項選單（最有可能透過按熱鍵），此選項將 <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> 新增為該選單的一個條目。 （僅支援部分型號的BIOS和UEFI韌體）。</translation>
+	<translation id="1569398690544416170">這裡什麼都不做，我自己配置</translation>
+	<translation id="3554866444001249532">此安裝腳本只會將啟動 <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> 所需的 .efi 檔案放入您的 EFI 分割區，您需要自行設定如何啟動它。</translation>
+	<translation id="7492832751164189534">強制退出</translation>
+	<translation id="5159534860632584026">安裝程序已終止</translation>
+	<translation id="8686749782014838344">取得磁碟資訊失敗</translation>
+	<translation id="5688543378771259173">安裝正在終止...</translation>
+	<translation id="5350452134936384991">安裝在 USB 中</translation>
+	<translation id="8008470485414925603">將 <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> 安裝到 USB 磁碟上；目標 USB 磁碟上的所有資料將會被清除。</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> 將安裝在您選擇的 USB 磁碟上；目標磁碟上的所有資料將會被清除。</translation>
+	<translation id="5725593226060700263">沒有可用的 USB 磁碟</translation>
+	<translation id="4357040841587078287">我們偵測到您正在從下載的映像檔執行此 JemaOS 副本。為了利用 JemaOS 提供的最全面的支援功能（包括無線更新），我們強烈建議您啟動「安裝程式」功能，將 JemaOS 全磁碟安裝到單獨的儲存裝置上。</translation>
+	<translation id="1246398339704431302">您可以<ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>繼續使用此 JemaOS 副本<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>，安裝程序可以稍後在系統中執行，但是安裝後將擦除您的所有資料都將從該頁面重新開始。</translation>
+	<translation id="3654532222088291133">您可以為此裝置建立一個 <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> 密碼，而無需輸入 JemaOS 帳戶密碼進行登入</translation>
+	<translation id="8377684629839541977">使用JemaOS帳號密碼</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">自動讓 <ph name="DEVICE_OS" /> 保持最新狀態</translation>
+<translation id="2347352406101856238">已啟用 <ph name="DEVICE_OS" /> 更新</translation>
+<translation id="185834232609012804">已停用 <ph name="DEVICE_OS" /> 更新</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" />（<ph name="PRODUCT_CHANNEL" />）平台 <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">遠端桌面</translation>
+<translation id="6898090158927982244">你的 Linux 已是最新狀態</translation>
+<translation id="4886703929102211360">Linux（Beta 版）元件有重大更新可用。強烈建議你盡快安裝此更新，否則 Linux（Beta 版）可能會停止運作。</translation>
+<translation id="6694016202036959050"><ph name="DEVICE_OS" /> 設定</translation>
+<translation id="8362858344151826493">JemaOS 帳戶、備份、其他</translation>
+<translation id="9150429437595727962">Wi-Fi 設定</translation>
+<translation id="4938972461544498524">觸控板設定</translation>
+<translation id="1210024513248363065">遠端服務</translation>
+<translation id="2878862288885588535">遠端診斷服務</translation>
+<translation id="7409197984340676806">遠端診斷服務可讓 JemaOS 官方支援人員識別系統問題。目前，遠端診斷服務只能由 JemaOS 官方支援人員啟動。</translation>
+<translation id="1791028023086176332">請將此號碼提供給 JemaOS 官方支援人員</translation>
+<translation id="6279304275399437025">正在啟動遠端診斷服務...</translation>
+<translation id="1501882165699826662">請停止遠端診斷服務，然後再試一次</translation>
+<translation id="3100283258447375201">更多資訊</translation>
+<translation id="4070039109671307724">其他</translation>
+<translation id="7326893024940073254">「重新啟動」按鈕</translation>
+<translation id="3002423764319968103">在系統選單中顯示「重新啟動」按鈕</translation>
+<translation id="6243454903512423518">「旋轉螢幕」按鈕</translation>
+<translation id="6491049336868978729">你目前不在平板電腦模式，「旋轉螢幕」按鈕已隱藏</translation>
+<translation id="5496012402277579695">在系統選單中顯示「旋轉螢幕」按鈕</translation>
+<translation id="5882838977344999606">平板電腦/筆記型電腦模式切換</translation>
+<translation id="472164133625585606">在系統選單中顯示平板電腦/筆記型電腦模式切換</translation>
+<translation id="1851103550468466960">啟用 Widevine</translation>
+<translation id="4058176713282795846">啟用 Widevine 即可串流受保護的付費內容。<ph name="BEGIN_LINK_LEARN_MORE" />瞭解詳情<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">選取「libwidevine.so」</translation>
+<translation id="4838463656205005584">無法啟用 Widevine...</translation>
+<translation id="2164041826798266548">Widevine CDM 模組安裝失敗。請檢查你的連線，然後再試一次。</translation>
+<translation id="4106982328079440606">JemaOS 帳戶設定</translation>
+<translation id="6468776556018764845">實驗性功能</translation>
+<translation id="3487615413425326553">略過信賴平台模組（TPM）檢查</translation>
+<translation id="4817176087932811573">由於裝置中的 TPM 晶片不相容，部分功能可能會失敗；你可以略過 TPM 檢查作為變通方法。</translation>
+<translation id="3356003366173774486">自動登入</translation>
+<translation id="6218459410891191693">允許目前的帳戶在裝置重新啟動時自動登入桌面</translation>
+<translation id="6620839363422062843">無法為此帳戶啟用；此裝置上的其他帳戶已啟用自動登入</translation>
+<translation id="6734500226490446035">無法為此帳戶啟用；初始化此帳戶的檔案系統時發生未知錯誤。請嘗試重新啟動或建立新帳戶</translation>
+<translation id="5464880042146818691">無法為此帳戶啟用；自動登入選項僅適用於「本機帳戶」類型。</translation>
+<translation id="3335654854106476749">啟用自動登入前，請先在<ph name="BEGIN_LINK" />隱私權與安全性<ph name="END_LINK" />設定中新增登入密碼。</translation>
+<translation id="5586831602198585601">現在有較新版本的 JemaOS 可供更新。不過，你的 JemaOS for You 訂閱已到期；你需要有效的訂閱才能更新 JemaOS。</translation>
+<translation id="3869860597719956574">現在有新的主要版本 JemaOS 可供更新。你必須支付一次性費用才能繼續此更新。</translation>
+<translation id="6523879681771260760">請指定儲存備份檔案的路徑</translation>
+<translation id="2036152819788683293">為此帳戶建立備份檔案（Beta 版）。<ph name="BEGIN_LINK_LEARN_MORE" />瞭解詳情<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">備份</translation>
+<translation id="4267347174163690295">為此帳戶建立備份檔案（Beta 版）。</translation>
+<translation id="8112950994208888917">此操作會為此帳戶建立完整磁碟備份，讓你輕鬆將 JemaOS 還原到建立備份時的狀態，包括設定、已安裝的瀏覽器擴充功能和子系統應用程式。視你的應用程式和主資料夾內容而定，備份檔案可能會很大；建議將備份檔案儲存在外接儲存裝置上。如果你有可攜式 USB 隨身碟，請立即連接。<ph name="BEGIN_LINK_LEARN_MORE" />瞭解詳情<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">請輸入此帳戶的登入密碼</translation>
+<translation id="8663988871299316062">請記住此密碼，因為還原此備份檔案時需要用到</translation>
+<translation id="6408904153044317846">選取要還原的備份檔案</translation>
+<translation id="8062988348127771021">從備份檔案還原你的 JemaOS 資料</translation>
+<translation id="7309192418866543730">輸入備份密碼</translation>
+<translation id="3642408376366598984">輸入用於加密此備份檔案的密碼</translation>
+<translation id="7783974937157985523">備份密碼</translation>
+<translation id="6583780301401541007">還原成功</translation>
+<translation id="3514011352559420398">還原失敗</translation>
+<translation id="7535980903266533458">將備份儲存到你的裝置或外接儲存空間</translation>
+<translation id="604001903249547235">雲端備份</translation>
+<translation id="8885702701336541611">將備份上傳到 JemaOS 雲端儲存空間</translation>
+<translation id="3939744430096549862">備份到雲端</translation>
+<translation id="619129431573254316">從本機備份檔案還原</translation>
+<translation id="1859592711955106569">雲端還原</translation>
+<translation id="38222223336741457">從 JemaOS 雲端下載並還原</translation>
+<translation id="1241089811244416179">從雲端還原</translation>
+<translation id="652479689372703360">正在備份</translation>
+<translation id="3655220146274872918">備份完成</translation>
+<translation id="4243579853635792694">已成功建立你的備份</translation>
+<translation id="6337433855796857931">備份失敗</translation>
+<translation id="4854179463174744546">備份過程中發生錯誤</translation>
+<translation id="2410668771600309999">Connect API 使用者資訊</translation>
+<translation id="2223892939866251845">使用者 ID</translation>
+<translation id="3850846286480935456">備份儲存空間分析</translation>
+<translation id="6244494465581273970">需要使用者 ID</translation>
+<translation id="9204006549413740506">上次更新時間</translation>
+<translation id="476642412165431515">硬體裝置</translation>
+<translation id="3386337985825120901">沒有可用的備份資料</translation>
+<translation id="8490990067870590760">正在載入備份檔案...</translation>
+<translation id="2955409026764742995">選取要還原的備份檔案：</translation>
+<translation id="7414629348005657242">-- 選取備份檔案 --</translation>
+<translation id="918246516374174381">找不到備份檔案。請先建立備份。</translation>
+<translation id="77997252117517973">即將推出</translation>
+<translation id="1930692852800776096">新增字典</translation>
+<translation id="8793060353848771694">左耳機圖片</translation>
+<translation id="6257440204887306255">充電盒圖片</translation>
+<translation id="2754700616124958693">右耳機圖片</translation>
+<translation id="1068676292264983586">預設裝置圖片</translation>
+<translation id="6364075396486660405">停用所有分割區的媒體檔案自動掃描，以最佳化電池續航力。<ph name="BEGIN_LINK_LEARN_MORE" />瞭解詳情<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">安全性選項</translation>
+<translation id="5618366106086725045">為此 <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> 安裝啟用「開發人員模式」，即可使用更多開發人員功能。<ph name="BEGIN_LINK_LEARN_MORE" />瞭解詳情<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">你已處於「開發人員模式」</translation>
+<translation id="6074549317340202195">啟用「開發人員模式」</translation>
+<translation id="418781258674176053">警告！啟用「開發人員模式」是不可逆的操作。如要停用「開發人員模式」，你必須重新安裝 JemaOS，這會清除所有資料。請先備份資料，並自行承擔風險繼續操作。</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />，<ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    平台 <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">目前離線</translation>
+<translation id="2590678769628709242">在線上查看你的 JemaOS 訂閱</translation>
+<translation id="4701836089682883918">JemaOS 訂閱資訊</translation>
+<translation id="5891566673089952188">取得你的裝置 ID 時發生錯誤</translation>
+<translation id="4685086787606104322">訂閱結束日期</translation>
+<translation id="3354919960795782984">裝置 ID</translation>
+<translation id="5758632069869992306">在線上查看你的訂閱</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />，<ph name="JEMAOS_MAJOR_VERSION" />，<ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     平台 <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">試用訂閱</translation>
+<translation id="4362781408813685579">有效訂閱</translation>
+<translation id="1141274201089997510">已到期訂閱</translation>
+<translation id="2553683254139782404">非商業版</translation>
+<translation id="8466048683756385518">企業授權版（試用）</translation>
+<translation id="2853871047705932424">企業授權版</translation>
+<translation id="5239675900317881945">企業授權版（已到期）</translation>
+<translation id="189101945990408398">舊款 Intel</translation>
+<translation id="6816405236809604904">新款 Intel</translation>
+<translation id="6169452478137972655">AMD 顯示卡</translation>
+<translation id="6183637837838262693">Intel 輕薄款</translation>
+<translation id="2747689477259164256">JemaOS AI</translation>
+<translation id="1270291881045478104">啟用 JemaOS AI</translation>
+<translation id="2013780539677437932">啟用或停用所有 JemaOS AI 相關功能</translation>
+<translation id="3398637633218757480">啟用 JemaOS AI 快速呼叫</translation>
+<translation id="8986197796475507452">按下 Ctrl + C + C 即可快速叫出醒目提示內容的 JemaOS AI 選項</translation>
+<translation id="6407628130593274137">JemaOS AI 的其他設定和選項</translation>
+<translation id="4005574560653331142">如要變更此本機帳戶的 PIN 碼或登入密碼，請前往<ph name="BEGIN_LINK" />隱私權與安全性<ph name="END_LINK" />設定。</translation>
+
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">您可以<ph name="LINK_START" />使用 JemaOS 本機帳戶登入<ph name="LINK_END" />。</translation>
+<translation id="5291842596976929391">電子郵件地址 <ph name="EMAIL_ADDRESS" /> 已存在。請改用其他電子郵件地址重試。</translation>
+<translation id="4519800823932975782">JemaOS 說明中心</translation>
+<translation id="4737474693231655139">尋找 JemaOS 常見問題的說明文章和解答</translation>
+</translationbundle>

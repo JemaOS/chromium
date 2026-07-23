@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="nl">
+	<translation id="7386402409475121504">Maak uw lokale JemaOS-account aan</translation>
+	<translation id="3760308806144055927">Log in op uw lokale JemaOS-account</translation>
+	<translation id="3325117507482096812">Voer een wachtwoord in</translation>
+	<translation id="1838206877831947154">Uw wachtwoorden komen niet overeen</translation>
+	<translation id="2158276988029582286">Maak een nieuw lokaal account aan</translation>
+	<translation id="8592849747346274067">Meld u aan bij een bestaand account</translation>
+	<translation id="482190417986201746">De gebruikersnaam of het wachtwoord dat u heeft ingevoerd, is onjuist</translation>
+	<translation id="6603987686259425085">Je kunt <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>inloggen met een lokaal JemaOS-account<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">E-mailadres <ph name="EMAIL_ADDRESS">$1</ph> bestaat al. Probeer het opnieuw met een ander e-mailadres.</translation>
+	<translation id="7215016743510876720">Gebruik een lokaal account</translation>
+	<translation id="6657635042185516718">Blijf het online account gebruiken</translation>
+	<translation id="6867476688065565618">Overschakelen naar een lokaal account?</translation>
+	<translation id="4840454774882557974">Als u ervoor kiest om een lokaal account te gebruiken, zijn nuttige functies onder meer het synchroniseren van uw gegevens en voorkeuren op meerdere apparaten en het automatisch aanmelden bij webapps met uw JemaOS-account werkt niet.</translation>
+	<translation id="8951507920859729424">We raden u aan een online account te gebruiken om JemaOS optimaal te kunnen benutten.</translation>
+	<translation id="479773200536372215">U kunt geen Google-accounts toevoegen omdat de Google API-sleutels ontbreken. Zie <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> voor meer informatie.</translation>
+	<translation id="1198491307547164157">U kunt geen JemaOS-accounts toevoegen omdat de JemaOS API-sleutels ontbreken. Zie <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> voor meer informatie.</translation>
+	<translation id="5042404702659901995">Privacyverklaring</translation>
+	<translation id="4907736162587268100">Inhoud privacyverklaring</translation>
+	<translation id="5988344732274877691">Meld u aan voor de (zeer zeldzame, beloofde) nieuwsbrief voor JemaOS</translation>
+	<translation id="1706203008474708805">Sluit u aan bij het JemaOS-verbeteringsplan voor de gebruikerservaring</translation>
+	<translation id="1147139514756087229">Log in met een lokaal account</translation>
+	<translation id="2054784944085654098">Maak nu een back-upbestand. Dit kan even duren; even geduld a.u.b....</translation>
+	<translation id="3554401467586751874">Het back-upbestand is met succes gemaakt</translation>
+	<translation id="2349211327705667074">Back-upbestand bekijken</translation>
+	<translation id="3049367131589710124">Bekijk het foutenlogboek</translation>
+	<translation id="1079017345574916945">Extern bureaublad</translation>
+	<translation id="3064478898280877715">App-winkel</translation>
+	<translation id="5890206344045530832">Installateur</translation>
+	<translation id="2173278076276376488">Dit hulpprogramma helpt je bij het installeren van <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> op de interne opslag van dit apparaat.</translation>
+	<translation id="5323182426977498659">Waarschuwing! Deze procedure is destructief en kan niet ongedaan worden gemaakt. Houd er rekening mee dat wij geen enkele verantwoordelijkheid dragen voor uw potentiële gegevensverlies en ook geen dringende technische ondersteuning bieden. Ga op eigen risico te werk.</translation>
+	<translation id="8517836015601969896">Volledige schijfinstallatie</translation>
+	<translation id="7300045760790370189">Installeer <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> om een volledige harde schijf in beslag te nemen. Alle gegevens van de doelharde schijf worden gewist.</translation>
+	<translation id="8762511733918256595">Multiboot-installatie</translation>
+	<translation id="248900698427753678">Installeer <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> op een bestaande partitie van een harde schijf, waar <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> parallel met andere besturingssystemen kan bestaan. Alle gegevens op de doelpartitie worden gewist.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> wordt geïnstalleerd op de door jou geselecteerde harde schijf; alle gegevens op de doelschijf worden gewist.</translation>
+	<translation id="4039091757234555415">Schijf</translation>
+	<translation id="7783580523889684697">Geen schijf beschikbaar</translation>
+	<translation id="8217653566575018388">Installatie voltooid</translation>
+	<translation id="8846746259444262774">Installatie mislukt</translation>
+	<translation id="7263815009235541549">De installatie is succesvol afgerond. Schakel eerst uw apparaat uit, verwijder vervolgens alle installatiemedia en schakel het opnieuw in om <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> op te starten.</translation>
+	<translation id="3380151284134965398">Oeps, er is iets misgegaan en de installatie is niet voltooid. Probeer het proces opnieuw. Als dezelfde fout zich blijft voordoen, neem dan contact op met JemaOS-ondersteuning met het bovenstaande logboek.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> wordt geïnstalleerd op de geselecteerde partitie van uw harde schijf. Onder het huidige multi-boot-schema zou dit alleen kunnen gebeuren als uw apparaat UEFI ondersteunt en uw harde schijven zijn geformatteerd met GPT.</translation>
+	<translation id="7831363758161884243">De doelpartitie wordt gewist; u moet ook uw actieve EFI-partitie opgeven (meestal automatisch gedaan) omdat het installatieprogramma de opstartconfiguraties van het systeem moet wijzigen.</translation>
+	<translation id="5670799238446305550">Selecteer de doelpartitie <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph></translation>
+	<translation id="3695537760133394753">Partitie</translation>
+	<translation id="5610519566593708119">Selecteer EFI-partitie</translation>
+	<translation id="3367650349940010965">Er zijn geen partities beschikbaar voor de geselecteerde schijf</translation>
+	<translation id="7453223384507098390">Er zijn geen EFI-partities beschikbaar voor de geselecteerde schijf</translation>
+	<translation id="1854532683465500847">De grootte van de geselecteerde partitie is minder dan 20 GB, de installatie mislukt mogelijk</translation>
+	<translation id="4144613075340468247">De geselecteerde partitie is aangekoppeld op <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> multi-boot. Opnieuw installeren kan mislukken</translation>
+	<translation id="5793361052649920836">Hoe wil je na de installatie <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> opstarten?</translation>
+	<translation id="4273235330352963866">Installeer en configureer rEFInd voor mij (aanbevolen)</translation>
+	<translation id="1858708492548921044">rEFInd is een opstartbeheerprogramma dat een mooie grafische interface biedt voor opstartopties van het besturingssysteem. Wanneer uw pc opstart, kunt u het gewenste besturingssysteem kiezen om ermee op te starten. Voor meer informatie over rEFInd verwijzen wij u naar de homepage.</translation>
+	<translation id="3861924051442564602">Voeg een UEFI-opstartmenu-optie voor mij toe</translation>
+	<translation id="8622370666798589804">Wanneer uw pc opstart, kunt u mogelijk naar het menu met opstartopties van UEFI gaan (hoogstwaarschijnlijk door op een sneltoets te drukken). Deze optie voegt <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> toe als toegang tot dat menu. (Ondersteunt alleen bepaalde modellen BIOS- en UEFI-firmware).</translation>
+	<translation id="1569398690544416170">Doe hier niets, ik configureer het zelf</translation>
+	<translation id="3554866444001249532">Dit installatiescript plaatst alleen de noodzakelijke .efi-bestanden voor het opstarten van <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> naar uw EFI-partitie. U moet zelf configureren hoe u deze opstart.</translation>
+	<translation id="7492832751164189534">Geforceerd stoppen</translation>
+	<translation id="5159534860632584026">Het installatieproces is beëindigd</translation>
+	<translation id="8686749782014838344">Kan schijfinformatie niet ophalen</translation>
+	<translation id="5688543378771259173">De installatie wordt beëindigd...</translation>
+	<translation id="5350452134936384991">Installeer op USB</translation>
+	<translation id="8008470485414925603">Installeer <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> op een USB-schijf; alle gegevens op de doel-USB-schijf worden gewist.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> wordt geïnstalleerd op de door u geselecteerde USB-schijf; alle gegevens op de doelschijf worden gewist.</translation>
+	<translation id="5725593226060700263">Geen USB-schijf beschikbaar</translation>
+	<translation id="4357040841587078287">We hebben gedetecteerd dat u dit exemplaar van JemaOS uitvoert vanaf een gedownload afbeeldingsbestand. Om gebruik te maken van de meest uitgebreide ondersteuningsfuncties (inclusief Over-The-Air-updates) die JemaOS kan bieden, raden we u ten zeerste aan de "Installer"-functie te starten om een ​​volledige schijfinstallatie van JemaOS op een afzonderlijk opslagapparaat uit te voeren.</translation>
+	<translation id="1246398339704431302">U kunt <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>dit exemplaar van JemaOS toch blijven gebruiken<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>. Het installatieproces kan in een later stadium van het systeem worden uitgevoerd. Al uw gegevens worden echter na de installatie gewist en u begint opnieuw vanaf deze pagina.</translation>
+	<translation id="3654532222088291133">In plaats van het wachtwoord van je JemaOS-account in te voeren om in te loggen, kun je een <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph>-wachtwoord voor dit apparaat maken</translation>
+	<translation id="8377684629839541977">Gebruik het JemaOS-accountwachtwoord</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398"><ph name="DEVICE_OS" /> automatisch up-to-date houden</translation>
+<translation id="2347352406101856238"><ph name="DEVICE_OS" />-update ingeschakeld</translation>
+<translation id="185834232609012804"><ph name="DEVICE_OS" />-update uitgeschakeld</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Platform <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Extern bureaublad</translation>
+<translation id="6898090158927982244">Je Linux is up-to-date</translation>
+<translation id="4886703929102211360">Er is een kritieke update beschikbaar voor het onderdeel Linux (bèta). Het wordt sterk aanbevolen deze update zo snel mogelijk te installeren, anders werkt Linux (bèta) mogelijk niet meer.</translation>
+<translation id="6694016202036959050"><ph name="DEVICE_OS" />-instellingen</translation>
+<translation id="8362858344151826493">JemaOS-account, back-up, diversen</translation>
+<translation id="9150429437595727962">Wi-Fi-instellingen</translation>
+<translation id="4938972461544498524">Touchpad-instellingen</translation>
+<translation id="1210024513248363065">Externe services</translation>
+<translation id="2878862288885588535">Externe diagnoseservice</translation>
+<translation id="7409197984340676806">Met de externe diagnoseservice kunnen officiële JemaOS-supportmedewerkers systeemproblemen identificeren. Momenteel kan de externe diagnoseservice alleen worden gestart door officiële JemaOS-supportmedewerkers.</translation>
+<translation id="1791028023086176332">Deel dit nummer met officiële JemaOS-supportmedewerkers</translation>
+<translation id="6279304275399437025">Externe diagnoseservice wordt gestart...</translation>
+<translation id="1501882165699826662">Stop de externe diagnoseservice en probeer het opnieuw</translation>
+<translation id="3100283258447375201">Meer informatie</translation>
+<translation id="4070039109671307724">Diversen</translation>
+<translation id="7326893024940073254">Knop 'Opnieuw opstarten'</translation>
+<translation id="3002423764319968103">Knop 'Opnieuw opstarten' weergeven in het systeemmenu</translation>
+<translation id="6243454903512423518">Knop 'Scherm draaien'</translation>
+<translation id="6491049336868978729">Je bent nu niet in de tablettestand, dus de knop 'Scherm draaien' is verborgen</translation>
+<translation id="5496012402277579695">Knop 'Scherm draaien' weergeven in het systeemmenu</translation>
+<translation id="5882838977344999606">Schakelaar voor tablet-/laptopstand</translation>
+<translation id="472164133625585606">Schakelaar voor tablet-/laptopstand weergeven in het systeemmenu</translation>
+<translation id="1851103550468466960">Widevine inschakelen</translation>
+<translation id="4058176713282795846">Schakel Widevine in om beveiligde premiumcontent te streamen. <ph name="BEGIN_LINK_LEARN_MORE" />Meer informatie<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">'libwidevine.so' selecteren</translation>
+<translation id="4838463656205005584">Widevine kan niet worden ingeschakeld...</translation>
+<translation id="2164041826798266548">De installatie van de Widevine CDM-module is mislukt. Controleer je verbinding en probeer het opnieuw.</translation>
+<translation id="4106982328079440606">JemaOS-accountinstellingen</translation>
+<translation id="6468776556018764845">Experimentele functies</translation>
+<translation id="3487615413425326553">Trusted Platform Module (TPM)-controles omzeilen</translation>
+<translation id="4817176087932811573">Sommige functies kunnen mislukken vanwege een incompatibele TPM-chip in je apparaat; je kunt de TPM-controles omzeilen als tijdelijke oplossing.</translation>
+<translation id="3356003366173774486">Automatisch aanmelden</translation>
+<translation id="6218459410891191693">Toestaan dat het huidige account automatisch aanmeldt op het bureaublad wanneer het apparaat opnieuw wordt opgestart</translation>
+<translation id="6620839363422062843">Kan niet worden ingeschakeld voor dit account; automatisch aanmelden is al actief voor andere accounts op dit apparaat</translation>
+<translation id="6734500226490446035">Kan niet worden ingeschakeld voor dit account; er is een onbekende fout opgetreden bij het initialiseren van de bestandssystemen voor dit account. Probeer het apparaat opnieuw op te starten of maak een nieuw account</translation>
+<translation id="5464880042146818691">Kan niet worden ingeschakeld voor dit account; de optie voor automatisch aanmelden is alleen beschikbaar voor het type 'Lokaal account'.</translation>
+<translation id="3335654854106476749">Voeg een aanmeldingswachtwoord toe in de instellingen <ph name="BEGIN_LINK" />Privacy en beveiliging<ph name="END_LINK" /> voordat je automatisch aanmelden inschakelt.</translation>
+<translation id="5586831602198585601">Er is nu een nieuwere versie van JemaOS beschikbaar om bij te werken. Je JemaOS voor jou-abonnement is echter verlopen; je hebt een actief abonnement nodig om JemaOS bij te werken.</translation>
+<translation id="3869860597719956574">Er is nu een nieuwe hoofdversie van JemaOS beschikbaar om bij te werken. Je moet een eenmalig bedrag betalen om door te gaan met deze update.</translation>
+<translation id="6523879681771260760">Geef het pad op waar het back-upbestand moet worden opgeslagen</translation>
+<translation id="2036152819788683293">Maak een back-upbestand voor dit account (bèta). <ph name="BEGIN_LINK_LEARN_MORE" />Meer informatie<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Back-up maken</translation>
+<translation id="4267347174163690295">Maak een back-upbestand voor dit account (bèta).</translation>
+<translation id="8112950994208888917">Met deze bewerking wordt een volledige schijfback-up gemaakt voor dit account, waarmee je JemaOS eenvoudig kunt terugzetten naar de staat waarin het verkeerde toen de back-up werd gemaakt, inclusief instellingen, geïnstalleerde browserextensies en subsysteemapps. Afhankelijk van je apps en de inhoud van je basismap kan het back-upbestand groot zijn; het wordt aanbevolen het back-upbestand op een extern opslagapparaat op te slaan. Als je een draagbare USB-schijf hebt, sluit deze dan nu aan. <ph name="BEGIN_LINK_LEARN_MORE" />Meer informatie<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Voer het aanmeldingswachtwoord voor dit account in</translation>
+<translation id="8663988871299316062">Onthoud dit wachtwoord, want het is nodig bij het herstellen van dit back-upbestand</translation>
+<translation id="6408904153044317846">Selecteer het back-upbestand om te herstellen</translation>
+<translation id="8062988348127771021">Herstel je JemaOS-gegevens vanuit een back-upbestand</translation>
+<translation id="7309192418866543730">Voer het back-upwachtwoord in</translation>
+<translation id="3642408376366598984">Voer het wachtwoord in dat is gebruikt om dit back-upbestand te versleutelen</translation>
+<translation id="7783974937157985523">Back-upwachtwoord</translation>
+<translation id="6583780301401541007">Herstel geslaagd</translation>
+<translation id="3514011352559420398">Herstel mislukt</translation>
+<translation id="7535980903266533458">Sla de back-up op op je apparaat of op externe opslag</translation>
+<translation id="604001903249547235">Cloudback-up</translation>
+<translation id="8885702701336541611">Upload de back-up naar de JemaOS-cloudopslag</translation>
+<translation id="3939744430096549862">Back-up maken in de cloud</translation>
+<translation id="619129431573254316">Herstellen vanuit een lokaal back-upbestand</translation>
+<translation id="1859592711955106569">Cloudherstel</translation>
+<translation id="38222223336741457">Downloaden en herstellen vanuit de JemaOS-cloud</translation>
+<translation id="1241089811244416179">Herstellen vanuit de cloud</translation>
+<translation id="652479689372703360">Back-up bezig</translation>
+<translation id="3655220146274872918">Back-up voltooid</translation>
+<translation id="4243579853635792694">Je back-up is gemaakt</translation>
+<translation id="6337433855796857931">Back-up mislukt</translation>
+<translation id="4854179463174744546">Er is een fout opgetreden tijdens het maken van de back-up</translation>
+<translation id="2410668771600309999">Connect API-gebruikersinformatie</translation>
+<translation id="2223892939866251845">Gebruikers-ID</translation>
+<translation id="3850846286480935456">Analyse van back-upopslag</translation>
+<translation id="6244494465581273970">Gebruikers-ID vereist</translation>
+<translation id="9204006549413740506">Laatst bijgewerkt</translation>
+<translation id="476642412165431515">Hardwareapparaten</translation>
+<translation id="3386337985825120901">Geen back-upgegevens beschikbaar</translation>
+<translation id="8490990067870590760">Back-upbestanden laden...</translation>
+<translation id="2955409026764742995">Selecteer het back-upbestand om te herstellen:</translation>
+<translation id="7414629348005657242">-- Selecteer een back-upbestand --</translation>
+<translation id="918246516374174381">Geen back-upbestanden gevonden. Maak eerst een back-up.</translation>
+<translation id="77997252117517973">Binnenkort beschikbaar</translation>
+<translation id="1930692852800776096">Woordenboek toevoegen</translation>
+<translation id="8793060353848771694">Afbeelding van linkeroordopje</translation>
+<translation id="6257440204887306255">Afbeelding van oplaadetui</translation>
+<translation id="2754700616124958693">Afbeelding van rechteroordopje</translation>
+<translation id="1068676292264983586">Standaard apparaatafbeelding</translation>
+<translation id="6364075396486660405">Schakel automatisch scannen van mediabestanden voor alle partities uit om de batterijduur te optimaliseren. <ph name="BEGIN_LINK_LEARN_MORE" />Meer informatie<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Beveiligingsopties</translation>
+<translation id="5618366106086725045">Schakel 'Ontwikkelaarsmodus' in voor deze <ph name="IDS_SHORT_PRODUCT_OS_NAME" />-installatie met meer ontwikkelaarsfuncties. <ph name="BEGIN_LINK_LEARN_MORE" />Meer informatie<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Je bevindt je al in 'Ontwikkelaarsmodus'</translation>
+<translation id="6074549317340202195">'Ontwikkelaarsmodus' inschakelen</translation>
+<translation id="418781258674176053">Waarschuwing! Het inschakelen van 'Ontwikkelaarsmodus' is een onomkeerbare bewerking. Als je 'Ontwikkelaarsmodus' wilt uitschakelen, moet je JemaOS opnieuw installeren, waarbij alle gegevens worden gewist. Maak een back-up van je gegevens en ga op eigen risico verder.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Platform <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Momenteel offline</translation>
+<translation id="2590678769628709242">Controleer je JemaOS-abonnement online</translation>
+<translation id="4701836089682883918">JemaOS-abonnementsinformatie</translation>
+<translation id="5891566673089952188">Er is een fout opgetreden bij het ophalen van je apparaat-ID</translation>
+<translation id="4685086787606104322">Einde abonnement</translation>
+<translation id="3354919960795782984">Apparaat-ID</translation>
+<translation id="5758632069869992306">Controleer je abonnement online</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Platform <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Proefabonnement</translation>
+<translation id="4362781408813685579">Actief abonnement</translation>
+<translation id="1141274201089997510">Verlopen abonnement</translation>
+<translation id="2553683254139782404">Niet-commerciële editie</translation>
+<translation id="8466048683756385518">Enterprise-licentieversie (proefversie)</translation>
+<translation id="2853871047705932424">Enterprise-licentieversie</translation>
+<translation id="5239675900317881945">Enterprise-licentieversie (verlopen)</translation>
+<translation id="189101945990408398">Legacy Intel</translation>
+<translation id="6816405236809604904">Modern Intel</translation>
+<translation id="6169452478137972655">AMD Graphics</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="2747689477259164256">JemaOS AI</translation>
+<translation id="1270291881045478104">JemaOS AI inschakelen</translation>
+<translation id="2013780539677437932">Alle functies met betrekking tot JemaOS AI in- of uitschakelen</translation>
+<translation id="3398637633218757480">JemaOS AI-sneloproep inschakelen</translation>
+<translation id="8986197796475507452">Roep snel JemaOS AI-opties voor gemarkeerde content op met Ctrl + C + C</translation>
+<translation id="6407628130593274137">Andere instellingen en opties voor JemaOS AI</translation>
+<translation id="4005574560653331142">Om de pincode of het aanmeldingswachtwoord van dit lokale account te wijzigen, ga je naar de instellingen <ph name="BEGIN_LINK" />Privacy en beveiliging<ph name="END_LINK" />.</translation>
+
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">Je kunt <ph name="LINK_START" />inloggen met een lokaal JemaOS-account<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">E-mailadres <ph name="EMAIL_ADDRESS" /> bestaat al. Probeer het opnieuw met een ander e-mailadres.</translation>
+<translation id="4519800823932975782">JemaOS-helpcentrum</translation>
+<translation id="4737474693231655139">Hulpartikelen en antwoorden op veelgestelde vragen over JemaOS zoeken</translation>
+</translationbundle>

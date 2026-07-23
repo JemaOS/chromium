@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="si">
+	<translation id="7386402409475121504">ඔබගේ දේශීය JemaOS ගිණුම සාදන්න</translation>
+	<translation id="3760308806144055927">ඔබගේ දේශීය JemaOS ගිණුමට පුරනය වන්න</translation>
+	<translation id="3325117507482096812">කරුණාකර මුරපදයක් ඇතුළත් කරන්න</translation>
+	<translation id="1838206877831947154">ඔබගේ මුරපද නොගැලපේ</translation>
+	<translation id="2158276988029582286">නව දේශීය ගිණුමක් සාදන්න</translation>
+	<translation id="8592849747346274067">පවතින ගිණුමකට පුරන්න</translation>
+	<translation id="482190417986201746">ඔබ ඇතුළු කළ පරිශීලක නාමය හෝ මුරපදය වැරදියි</translation>
+	<translation id="6603987686259425085">ඔබට <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>JemaOS දේශීය ගිණුමකින්<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph> පුරනය විය හැක.</translation>
+	<translation id="3598802966230712759">ඊමේල් <ph name="EMAIL_ADDRESS">$1</ph> දැනටමත් පවතී. කරුණාකර වෙනත් විද්‍යුත් තැපෑලක් සමඟ නැවත උත්සාහ කරන්න.</translation>
+	<translation id="7215016743510876720">දේශීය ගිණුම භාවිතා කරන්න</translation>
+	<translation id="6657635042185516718">සබැඳි ගිණුම භාවිතා කිරීම දිගටම කරගෙන යන්න</translation>
+	<translation id="6867476688065565618">දේශීය ගිණුමට මාරු වෙන්නද?</translation>
+	<translation id="4840454774882557974">ඔබ දේශීය ගිණුමක් භාවිතා කිරීමට තෝරා ගන්නේ නම්, ප්‍රයෝජනවත් විශේෂාංග අතර බහු උපාංග හරහා ඔබගේ දත්ත සහ මනාප සමමුහුර්ත කිරීම සහ ඔබගේ JemaOS ගිණුම භාවිතයෙන් වෙබ් යෙදුම් වලට ස්වයංක්‍රීයව පුරනය වීම ක්‍රියා නොකරනු ඇත.</translation>
+	<translation id="8951507920859729424">JemaOS උපරිමයෙන් භාවිතා කිරීමට සබැඳි ගිණුමක් භාවිතා කිරීම අපි නිර්දේශ කරමු.</translation>
+	<translation id="479773200536372215">Google API යතුරු අස්ථානගත වී ඇති නිසා ඔබට Google ගිණුම් එක් කිරීමට නොහැකි වනු ඇත. විස්තර සඳහා <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> බලන්න.</translation>
+	<translation id="1198491307547164157">JemaOS API යතුරු අස්ථානගත වී ඇති නිසා ඔබට JemaOS ගිණුම් එක් කිරීමට නොහැකි වනු ඇත. විස්තර සඳහා <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> බලන්න.</translation>
+	<translation id="5042404702659901995">රහස්‍යතා ප්‍රකාශය</translation>
+	<translation id="4907736162587268100">රහස්‍යතා ප්‍රකාශයේ අන්තර්ගතය</translation>
+	<translation id="5988344732274877691">JemaOS සඳහා (ඉතා කලාතුරකින්, පොරොන්දු වූ) පුවත් පත්‍රිකාව සඳහා ලියාපදිංචි වන්න</translation>
+	<translation id="1706203008474708805">JemaOS පරිශීලක අත්දැකීම් වැඩිදියුණු කිරීමේ සැලැස්මට සම්බන්ධ වන්න</translation>
+	<translation id="1147139514756087229">දේශීය ගිණුමක් සමඟින් පුරනය වන්න</translation>
+	<translation id="2054784944085654098">දැන් උපස්ථ ගොනුව සාදමින්. මෙය යම් කාලයක් ගත විය හැක; කරුණාකර රැඳී සිටින්න…</translation>
+	<translation id="3554401467586751874">උපස්ථ ගොනුව සාර්ථකව සාදන ලදී</translation>
+	<translation id="2349211327705667074">උපස්ථ ගොනුව බලන්න</translation>
+	<translation id="6337433855796857931">උපස්ථ කිරීම අසාර්ථක විය</translation>
+	<translation id="3049367131589710124">දෝෂ ලොගය බලන්න</translation>
+	<translation id="1079017345574916945">දුරස්ථ ඩෙස්ක්ටොප්</translation>
+	<translation id="3064478898280877715">යෙදුම් ගබඩාව</translation>
+	<translation id="2747689477259164256">JemaOS AI</translation>
+	<translation id="5890206344045530832">ස්ථාපකය</translation>
+	<translation id="2173278076276376488">මෙම උපයෝගිතාව ඔබට මෙම උපාංගයේ අභ්‍යන්තර ආචයනය මත <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ස්ථාපනය කිරීමට උදවු කරයි.</translation>
+	<translation id="5323182426977498659">අවවාදයයි! මෙම ක්රියා පටිපාටිය විනාශකාරී වන අතර එය ආපසු හැරවිය නොහැක. ඔබගේ විභව දත්ත නැතිවීම සඳහා අපි කිසිදු වගකීමක් නොපවත්වන බව හෝ හදිසි තාක්ෂණික සහාය ලබා නොදෙන බව කරුණාවෙන් සලකන්න, ඔබේම අවදානමෙන් ඉදිරියට යන්න.</translation>
+	<translation id="8517836015601969896">සම්පූර්ණ තැටි ස්ථාපනය</translation>
+	<translation id="7300045760790370189">සම්පූර්ණ දෘඩ තැටියක් අල්ලා ගැනීමට <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ස්ථාපනය කරන්න, ඉලක්ක දෘඪ තැටියේ සියලු දත්ත මකා දමනු ලැබේ.</translation>
+	<translation id="8762511733918256595">බහු-ආරම්භක ස්ථාපනය</translation>
+	<translation id="248900698427753678">වෙනත් OS සමඟ සමාන්තරව <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> පැවතිය හැකි දෘඪ තැටියක පවතින කොටසකට <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ස්ථාපනය කරන්න. ඉලක්කගත කොටසෙහි සියලුම දත්ත මකා දමනු ලැබේ.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ඔබ තෝරාගත් දෘඪ තැටියේ ස්ථාපනය කරනු ඇත; ඉලක්ක තැටියේ ඇති සියලුම දත්ත මකා දැමෙනු ඇත.</translation>
+	<translation id="4039091757234555415">තැටිය</translation>
+	<translation id="7783580523889684697">තැටියක් නොමැත</translation>
+	<translation id="8217653566575018388">ස්ථාපනය අවසන්</translation>
+	<translation id="8846746259444262774">ස්ථාපනය අසාර්ථක විය</translation>
+	<translation id="7263815009235541549">ස්ථාපනය සාර්ථකව අවසන් විය. කරුණාකර පළමුව ඔබගේ උපාංගය ක්‍රියා විරහිත කරන්න, පසුව ඕනෑම ස්ථාපන මාධ්‍යයක් ඉවත් කර, <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ආරම්භ කිරීමට එය නැවත ක්‍රියාත්මක කරන්න.</translation>
+	<translation id="3380151284134965398">අපොයි, යමක් වැරදී ඇති අතර ස්ථාපනය සම්පූර්ණ නොවීය. කරුණාකර ක්‍රියාවලිය නැවත උත්සාහ කරන්න. එම දෝෂය දිගටම පවතී නම්, කරුණාකර ඉහත ලොගය සමඟින් JemaOS සහාය සඳහා සම්බන්ධ වන්න.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ඔබේ දෘඪ තැටියේ තෝරාගත් කොටසෙහි ස්ථාපනය කෙරේ. වත්මන් බහු-ආරම්භක යෝජනා ක්‍රමය යටතේ, මෙය ඉදිරියට යා හැක්කේ ඔබගේ උපාංගය UEFI සඳහා සහය දක්වන්නේ නම් සහ ඔබගේ දෘඪ තැටි GPT සමඟ හැඩගස්වා ඇත්නම් පමණි.</translation>
+	<translation id="7831363758161884243">ඉලක්කගත කොටස පිස දමනු ඇත; ස්ථාපකයට පද්ධති ඇරඹුම් වින්‍යාසයන් වෙනස් කිරීමට අවශ්‍ය බැවින් ඔබගේ ක්‍රියාකාරී EFI කොටස (සාමාන්‍යයෙන් ස්වයංක්‍රීයව සිදු කෙරේ) සඳහන් කිරීමටද ඔබට අවශ්‍ය වේ.</translation>
+	<translation id="5670799238446305550"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ඉලක්ක කොටස තෝරන්න</translation>
+	<translation id="3695537760133394753">බෙදීම</translation>
+	<translation id="5610519566593708119">EFI කොටස තෝරන්න</translation>
+	<translation id="3367650349940010965">තෝරාගත් තැටිය සඳහා කොටස් නොමැත</translation>
+	<translation id="7453223384507098390">තෝරාගත් තැටිය සඳහා EFI කොටස් නොමැත</translation>
+	<translation id="1854532683465500847">තෝරාගත් කොටසෙහි විශාලත්වය 20GB ට වඩා අඩුය, ස්ථාපනය අසාර්ථක විය හැක</translation>
+	<translation id="4144613075340468247">තෝරාගත් කොටස <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> බහු-බූට් වෙත සවි කර ඇත, එය නැවත ස්ථාපනය කිරීම අසාර්ථක විය හැක</translation>
+	<translation id="5793361052649920836">ස්ථාපනය කිරීමෙන් පසුව, ඔබ <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ආරම්භ කිරීමට කැමති වන්නේ කෙසේද?</translation>
+	<translation id="4273235330352963866">මා සඳහා rEFInd ස්ථාපනය කර වින්‍යාස කරන්න (නිර්දේශිත)</translation>
+	<translation id="1858708492548921044">rEFInd යනු ඔබේ පරිගණකය ආරම්භ වන විට OS ඇරඹුම් විකල්ප සඳහා කදිම චිත්‍රක අතුරු මුහුණතක් ලබා දෙන boot Manager වැඩසටහනකි, එය සමඟ ආරම්භ කිරීමට ඔබට අවශ්‍ය OS තෝරා ගැනීමට ඔබට හැකි වේ. rEFInd සම්බන්ධයෙන් වැඩි විස්තර සඳහා, කරුණාකර එහි මුල් පිටුව බලන්න.</translation>
+	<translation id="3861924051442564602">මා සඳහා UEFI ඇරඹුම් මෙනු විකල්පයක් එක් කරන්න</translation>
+	<translation id="8622370666798589804">ඔබේ පරිගණකය ආරම්භ වන විට ඔබට UEFI ඇරඹුම් විකල්ප මෙනුව ඇතුළු කිරීමට හැකි වනු ඇත (බොහෝ විට Hotkey එබීමෙන්), මෙම විකල්පය එම මෙනුවට ඇතුල්වීමක් ලෙස <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> එක් කරයි. (BIOS සහ UEFI ස්ථිරාංග වල සමහර මාදිලි සඳහා පමණක් සහය දක්වයි).</translation>
+	<translation id="1569398690544416170">මෙහි කිසිවක් නොකරන්න, මම එය තනිවම වින්‍යාස කරමි</translation>
+	<translation id="3554866444001249532">මෙම ස්ථාපන ස්ක්‍රිප්ට් මඟින් ඔබගේ EFI කොටස වෙත <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ආරම්භ කිරීම සඳහා අවශ්‍ය .efi ගොනු පමණක් දමනු ඇත, ඔබ විසින්ම එය ආරම්භ කරන ආකාරය වින්‍යාස කිරීමට අවශ්‍ය වනු ඇත.</translation>
+	<translation id="7492832751164189534">බලෙන් ඉවත් විය</translation>
+	<translation id="5159534860632584026">ස්ථාපන ක්රියාවලිය අවසන් කර ඇත</translation>
+	<translation id="8686749782014838344">තැටි තොරතුරු ලබා ගැනීමට අසමත් විය</translation>
+	<translation id="5688543378771259173">ස්ථාපනය අවසන් වෙමින් පවතී...</translation>
+	<translation id="5350452134936384991">USB හි ස්ථාපනය කරන්න</translation>
+	<translation id="8008470485414925603">USB තැටියක් මත <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ස්ථාපනය කරන්න; ඉලක්ක USB තැටියේ ඇති සියලුම දත්ත මකා දැමෙනු ඇත.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ඔබ තෝරාගත් USB තැටියේ ස්ථාපනය කරනු ඇත; ඉලක්ක තැටියේ ඇති සියලුම දත්ත මකා දැමෙනු ඇත.</translation>
+	<translation id="5725593226060700263">USB තැටියක් නොමැත</translation>
+	<translation id="4357040841587078287">ඔබ මෙම JemaOS පිටපත බාගත කළ රූප ගොනුවකින් ධාවනය කරන බව අපි හඳුනාගෙන ඇත. JemaOS හට පිරිනැමිය හැකි වඩාත් විස්තීරණ සහය විශේෂාංග (Over-The-Air updates ඇතුළුව) භාවිතා කිරීමට, වෙනම ගබඩා උපාංගයකට JemaOS පූර්ණ-තැටි ස්ථාපනයක් සිදු කිරීමට "Installer" ශ්‍රිතය දියත් කරන ලෙස අපි තරයේ නිර්දේශ කරමු.</translation>
+	<translation id="1246398339704431302">ඔබට <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>JemaOS හි මෙම පිටපත කෙසේ හෝ භාවිතා කිරීම දිගටම කරගෙන යා හැක<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, ස්ථාපන ක්‍රියාවලිය පද්ධතිය තුළ පසුකාලීනව ක්‍රියාත්මක කළ හැක, කෙසේ වෙතත්, මෙම ස්ථාපන කටයුතු වලින් පසු ඔබගේ සියලු දත්ත මකා දැමෙනු ඇත.</translation>
+	<translation id="3654532222088291133">පුරනය වීමට ඔබගේ JemaOS ගිණුමේ මුරපදය ඇතුළු කරනවා වෙනුවට, ඔබට මෙම උපාංගය සඳහා <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> මුරපදයක් සෑදිය හැක.</translation>
+	<translation id="8377684629839541977">JemaOS ගිණුම් මුරපදය භාවිතා කරන්න</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398"><ph name="DEVICE_OS" /> ස්වයංක්‍රීයව යාවත්කාලීනව තබන්න</translation>
+<translation id="2347352406101856238"><ph name="DEVICE_OS" /> යාවත්කාලීන කිරීම සබල</translation>
+<translation id="185834232609012804"><ph name="DEVICE_OS" /> යාවත්කාලීන කිරීම අබල</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) වේදිකාව <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">දුරස්ථ ඩෙස්ක්ටොප්</translation>
+<translation id="6898090158927982244">ඔබගේ Linux යාවත්කාලීනයි</translation>
+<translation id="4886703929102211360">Linux (බීටා) සංරචකය සඳහා තීරණාත්මක යාවත්කාලීනයක් ලබා ගත හැකිය. මෙම යාවත්කාලීනය හැකි ඉක්මනින් ස්ථාපනය කිරීමට දැඩි ලෙස නිර්දේශ කෙරේ, එසේ නොමැතිනම් ඔබගේ Linux (බීටා) ක්‍රියාත්මක වීම නවතින්නට පුළුවන.</translation>
+<translation id="6694016202036959050"><ph name="DEVICE_OS" /> සැකසීම්</translation>
+<translation id="8362858344151826493">JemaOS ගිණුම, උපස්ථය, විවිධ</translation>
+<translation id="9150429437595727962">Wi-Fi සැකසීම්</translation>
+<translation id="4938972461544498524">ස්පර්ශ පෑඩ් සැකසීම්</translation>
+<translation id="1210024513248363065">දුරස්ථ සේවා</translation>
+<translation id="2878862288885588535">දුරස්ථ රෝගනිර්ණය සේවය</translation>
+<translation id="7409197984340676806">දුරස්ථ රෝගනිර්ණය සේවය නිල JemaOS සහාය නියෝජිතයන්ට පද්ධති ගැටලු හඳුනා ගැනීමට ඉඩ සලසයි. දැනට, දුරස්ථ රෝගනිර්ණය සේවය ආරම්භ කළ හැක්කේ නිල JemaOS සහාය නියෝජිතයන්ට පමණි.</translation>
+<translation id="1791028023086176332">කරුණාකර මෙම අංකය නිල JemaOS සහාය නියෝජිතයන් සමඟ බෙදා ගන්න</translation>
+<translation id="6279304275399437025">දුරස්ථ රෝගනිර්ණය සේවය ආරම්භ වෙමින්...</translation>
+<translation id="1501882165699826662">කරුණාකර දුරස්ථ රෝගනිර්ණය සේවය නවත්වා නැවත උත්සාහ කරන්න</translation>
+<translation id="3100283258447375201">වැඩිදුර තොරතුරු</translation>
+<translation id="4070039109671307724">විවිධ</translation>
+<translation id="7326893024940073254">"නැවත ආරම්භ" බොත්තම</translation>
+<translation id="3002423764319968103">පද්ධති මෙනුවේ "නැවත ආරම්භ" බොත්තම පෙන්වන්න</translation>
+<translation id="6243454903512423518">"තිරය කරකැවීම" බොත්තම</translation>
+<translation id="6491049336868978729">ඔබ දැනට ටැබ්ලට් ප්‍රකාරයේ නැත, "තිරය කරකැවීම" බොත්තම සැඟවී ඇත</translation>
+<translation id="5496012402277579695">පද්ධති මෙනුවේ "තිරය කරකැවීම" බොත්තම පෙන්වන්න</translation>
+<translation id="5882838977344999606">ටැබ්ලට්/ලැප්ටොප් ප්‍රකාර මාරුව</translation>
+<translation id="472164133625585606">පද්ධති මෙනුවේ ටැබ්ලට්/ලැප්ටොප් ප්‍රකාර මාරුව පෙන්වන්න</translation>
+<translation id="1851103550468466960">Widevine සබල කරන්න</translation>
+<translation id="4058176713282795846">ආරක්ෂිත වරදානා අන්තර්ගතය ස්ට්‍රීම් කිරීමට Widevine සබල කරන්න. <ph name="BEGIN_LINK_LEARN_MORE" />වැඩිදුර දැනගන්න<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">"libwidevine.so" තෝරන්න</translation>
+<translation id="4838463656205005584">Widevine සබල කිරීම අසාර්ථක විය...</translation>
+<translation id="2164041826798266548">Widevine CDM මොඩියුලය ස්ථාපනය අසාර්ථක විය. කරුණාකර ඔබගේ සම්බන්ධතාවය පරීක්ෂා කර නැවත උත්සාහ කරන්න.</translation>
+<translation id="4106982328079440606">JemaOS ගිණුම් සැකසීම්</translation>
+<translation id="6468776556018764845">පරීක්ෂණාත්මක විශේෂාංග</translation>
+<translation id="3487615413425326553">Trusted Platform Module (TPM) පරීක්ෂණ මඟ හරින්න</translation>
+<translation id="4817176087932811573">ඔබගේ උපාංගයේ නොගැළපෙන TPM චිපය නිසා සමහර විශේෂාංග අසාර්ථක විය හැක; ඔබට විසඳුමක් ලෙස TPM පරීක්ෂණ මඟ හැරිය හැක.</translation>
+<translation id="3356003366173774486">ස්වයංක්‍රීය පිවිසීම</translation>
+<translation id="6218459410891191693">උපාංගය නැවත ආරම්භ වන විට වත්මන් ගිණුමට ඩෙස්ක්ටොප් එකට ස්වයංක්‍රීයව පිවිසීමට ඉඩ දෙන්න</translation>
+<translation id="6620839363422062843">මෙම ගිණුම සඳහා සබල කළ නොහැක; මෙම උපාංගයේ අනෙකුත් ගිණුම් සඳහා ස්වයංක්‍රීය පිවිසීම දැනටමත් සක්‍රියයි</translation>
+<translation id="6734500226490446035">මෙම ගිණුම සඳහා සබල කළ නොහැක; මෙම ගිණුම සඳහා ගොනු පද්ධති ආරම්භ කිරීමේදී නොදන්නා දෝෂයක් සිදු විය. කරුණාකර නැවත ආරම්භ කිරීමට හෝ නව ගිණුමක් සෑදීමට උත්සාහ කරන්න</translation>
+<translation id="5464880042146818691">මෙම ගිණුම සඳහා සබල කළ නොහැක; ස්වයංක්‍රීය පිවිසීමේ විකල්පය ලබා ගත හැක්කේ "දේශීය ගිණුම" වර්ගය සඳහා පමණි.</translation>
+<translation id="3335654854106476749">ස්වයංක්‍රීය පිවිසීම සබල කිරීමට පෙර කරුණාකර <ph name="BEGIN_LINK" />පෞද්ගලිකත්වය සහ ආරක්ෂාව<ph name="END_LINK" /> සැකසීම්වල පිවිසුම් මුරපදයක් එක් කරන්න.</translation>
+<translation id="5586831602198585601">JemaOS හි නව අනුවාදයක් දැන් යාවත්කාලීන කිරීමට ලබා ගත හැකිය. කෙසේ වෙතත්, ඔබගේ JemaOS for You දායකත්වය කල් ඉකුත් වී ඇත; ඔබගේ JemaOS යාවත්කාලීන කිරීමට ඔබට සක්‍රිය දායකත්වයක් අවශ්‍යය.</translation>
+<translation id="3869860597719956574">JemaOS හි නව ප්‍රධාන අනුවාදයක් දැන් යාවත්කාලීන කිරීමට ලබා ගත හැකිය. මෙම යාවත්කාලීනය සමඟ ඉදිරියට යාමට ඔබ එක් වරක් ගෙවීමක් කළ යුතුය.</translation>
+<translation id="6523879681771260760">කරුණාකර උපස්ථ ගොනුව ගබඩා කිරීමේ මාර්ගය සඳහන් කරන්න</translation>
+<translation id="2036152819788683293">මෙම ගිණුම සඳහා උපස්ථ ගොනුවක් සාදන්න (බීටා). <ph name="BEGIN_LINK_LEARN_MORE" />වැඩිදුර දැනගන්න<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">උපස්ථ කරන්න</translation>
+<translation id="4267347174163690295">මෙම ගිණුම සඳහා උපස්ථ ගොනුවක් සාදන්න (බීටා).</translation>
+<translation id="8112950994208888917">මෙම මෙහෙයුම මෙම ගිණුම සඳහා සම්පූර්ණ තැටි උපස්ථයක් සාදයි, එය සැකසීම්, ස්ථාපිත බ්‍රවුසර් දිගු සහ උපපද්ධති යෙදුම් ඇතුළුව, ඔබගේ JemaOS උපස්ථය සෑදූ විට තිබූ තත්ත්වයට ප්‍රතිස්ථාපනය කිරීම පහසු කරයි. ඔබගේ යෙදුම් සහ මුල් ෆෝල්ඩරයේ අන්තර්ගතය අනුව, උපස්ථ ගොනුව විශාල විය හැක; උපස්ථ ගොනුව බාහිර ගබඩා උපාංගයක ගබඩා කිරීම නිර්දේශ කෙරේ. ඔබට අතේ ගෙන යා හැකි USB ධාවකයක් තිබේ නම්, කරුණාකර එය දැන් සම්බන්ධ කරන්න. <ph name="BEGIN_LINK_LEARN_MORE" />වැඩිදුර දැනගන්න<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">කරුණාකර මෙම ගිණුමේ පිවිසුම් මුරපදය ඇතුල් කරන්න</translation>
+<translation id="8663988871299316062">කරුණාකර මෙම මුරපදය මතක තබා ගන්න, මන්ද මෙම උපස්ථ ගොනුව ප්‍රතිස්ථාපනය කිරීමේදී එය අවශ්‍ය වනු ඇත</translation>
+<translation id="6408904153044317846">ප්‍රතිස්ථාපනය කිරීමට උපස්ථ ගොනුව තෝරන්න</translation>
+<translation id="8062988348127771021">උපස්ථ ගොනුවකින් ඔබගේ JemaOS දත්ත ප්‍රතිස්ථාපනය කරන්න</translation>
+<translation id="7309192418866543730">උපස්ථ මුරපදය ඇතුල් කරන්න</translation>
+<translation id="3642408376366598984">මෙම උපස්ථ ගොනුව සංකේතනය කිරීමට භාවිත කළ මුරපදය ඇතුල් කරන්න</translation>
+<translation id="7783974937157985523">උපස්ථ මුරපදය</translation>
+<translation id="6583780301401541007">ප්‍රතිස්ථාපනය සාර්ථකයි</translation>
+<translation id="3514011352559420398">ප්‍රතිස්ථාපනය අසාර්ථකයි</translation>
+<translation id="7535980903266533458">උපස්ථය ඔබගේ උපාංගයේ හෝ බාහිර ගබඩාවේ සුරකින්න</translation>
+<translation id="604001903249547235">වලාකුළු උපස්ථය</translation>
+<translation id="8885702701336541611">උපස්ථය JemaOS වලාකුළු ගබඩාවට උඩුගත කරන්න</translation>
+<translation id="3939744430096549862">වලාකුළුවට උපස්ථ කරන්න</translation>
+<translation id="619129431573254316">දේශීය උපස්ථ ගොනුවකින් ප්‍රතිස්ථාපනය කරන්න</translation>
+<translation id="1859592711955106569">වලාකුළු ප්‍රතිස්ථාපනය</translation>
+<translation id="38222223336741457">JemaOS වලාකුළුවෙන් බාගත කර ප්‍රතිස්ථාපනය කරන්න</translation>
+<translation id="1241089811244416179">වලාකුළුවෙන් ප්‍රතිස්ථාපනය කරන්න</translation>
+<translation id="652479689372703360">උපස්ථය සිදු වෙමින්</translation>
+<translation id="3655220146274872918">උපස්ථය අවසන් විය</translation>
+<translation id="4243579853635792694">ඔබගේ උපස්ථය සාර්ථකව නිර්මාණය විය</translation>
+<translation id="4854179463174744546">උපස්ථ ක්‍රියාවලිය අතරතුර දෝෂයක් සිදු විය</translation>
+<translation id="2410668771600309999">Connect API පරිශීලක තොරතුරු</translation>
+<translation id="2223892939866251845">පරිශීලක ID</translation>
+<translation id="3850846286480935456">උපස්ථ ගබඩා විශ්ලේෂණය</translation>
+<translation id="6244494465581273970">පරිශීලක ID අවශ්‍යයි</translation>
+<translation id="9204006549413740506">අවසන් යාවත්කාලීනය</translation>
+<translation id="476642412165431515">දෘඩාංග උපාංග</translation>
+<translation id="3386337985825120901">උපස්ථ දත්ත නොමැත</translation>
+<translation id="8490990067870590760">උපස්ථ ගොනු පූරණය වෙමින්...</translation>
+<translation id="2955409026764742995">ප්‍රතිස්ථාපනය කිරීමට උපස්ථ ගොනුව තෝරන්න:</translation>
+<translation id="7414629348005657242">-- උපස්ථ ගොනුවක් තෝරන්න --</translation>
+<translation id="918246516374174381">උපස්ථ ගොනු හමු නොවිණි. කරුණාකර පළමුව උපස්ථයක් සාදන්න.</translation>
+<translation id="77997252117517973">ඉක්මනින් එයි</translation>
+<translation id="1930692852800776096">ශබ්දකෝෂයක් එක් කරන්න</translation>
+<translation id="8793060353848771694">වම් කන ඒකකයේ රූපය</translation>
+<translation id="6257440204887306255">ආරෝපණ කවරයේ රූපය</translation>
+<translation id="2754700616124958693">දකුණු කන ඒකකයේ රූපය</translation>
+<translation id="1068676292264983586">පෙරනිමි උපාංග රූපය</translation>
+<translation id="6364075396486660405">බැටරි ආයුෂය ප්‍රශස්ත කිරීමට සියලුම කොටස් සඳහා මාධ්‍ය ගොනු ස්වයංක්‍රීය ස්කෑන් කිරීම අබල කරන්න. <ph name="BEGIN_LINK_LEARN_MORE" />වැඩිදුර දැනගන්න<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">ආරක්ෂක විකල්ප</translation>
+<translation id="5618366106086725045">වැඩිදුර සංවර්ධක විශේෂාංග සමඟ මෙම <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> ස්ථාපනය සඳහා "සංවර්ධක ප්‍රකාරය" සබල කරන්න. <ph name="BEGIN_LINK_LEARN_MORE" />වැඩිදුර දැනගන්න<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">ඔබ දැනටමත් "සංවර්ධක ප්‍රකාරය" තුළ සිටී</translation>
+<translation id="6074549317340202195">"සංවර්ධක ප්‍රකාරය" සබල කරන්න</translation>
+<translation id="418781258674176053">අවවාදයයි! "සංවර්ධක ප්‍රකාරය" සබල කිරීම ආපසු හැරවිය නොහැකි මෙහෙයුමකි. ඔබට "සංවර්ධක ප්‍රකාරය" අබල කිරීමට අවශ්‍ය නම්, ඔබ JemaOS නැවත ස්ථාපනය කළ යුතුය, එය සියලු දත්ත මකා දමයි. කරුණාකර ඔබගේ දත්ත උපස්ථ කර ඔබේම අවදානමෙන් ඉදිරියට යන්න.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    වේදිකාව <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">දැනට නොබැඳි</translation>
+<translation id="2590678769628709242">ඔබගේ JemaOS දායකත්වය මාර්ගගතව පරීක්ෂා කරන්න</translation>
+<translation id="4701836089682883918">JemaOS දායකත්ව තොරතුරු</translation>
+<translation id="5891566673089952188">ඔබගේ උපාංග ID ලබා ගැනීමේදී දෝෂයක් සිදු විය</translation>
+<translation id="4685086787606104322">දායකත්වය අවසානය</translation>
+<translation id="3354919960795782984">උපාංග ID</translation>
+<translation id="5758632069869992306">ඔබගේ දායකත්වය මාර්ගගතව පරීක්ෂා කරන්න</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     වේදිකාව <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">අත්හදා බැලීමේ දායකත්වය</translation>
+<translation id="4362781408813685579">සක්‍රිය දායකත්වය</translation>
+<translation id="1141274201089997510">කල් ඉකුත් දායකත්වය</translation>
+<translation id="2553683254139782404">අවාණිජ සංස්කරණය</translation>
+<translation id="8466048683756385518">ව්‍යවසාය බලපත්‍ර සංස්කරණය (අත්හදා බැලීම)</translation>
+<translation id="2853871047705932424">ව්‍යවසාය බලපත්‍ර සංස්කරණය</translation>
+<translation id="5239675900317881945">ව්‍යවසාය බලපත්‍ර සංස්කරණය (කල් ඉකුත්)</translation>
+<translation id="189101945990408398">පැරණි Intel</translation>
+<translation id="6816405236809604904">නවීන Intel</translation>
+<translation id="6169452478137972655">AMD ග්‍රැෆික්ස්</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="1270291881045478104">JemaOS AI සබල කරන්න</translation>
+<translation id="2013780539677437932">සියලුම JemaOS AI-ආශ්‍රිත විශේෂාංග සබල හෝ අබල කරන්න</translation>
+<translation id="3398637633218757480">JemaOS AI ඉක්මන් ඇමතුම සබල කරන්න</translation>
+<translation id="8986197796475507452">Ctrl + C + C ඔබා ඉස්මතු කළ අන්තර්ගතය සඳහා JemaOS AI විකල්ප ඉක්මනින් ගෙන එන්න</translation>
+<translation id="6407628130593274137">JemaOS AI සඳහා වෙනත් සැකසීම් සහ විකල්ප</translation>
+<translation id="4005574560653331142">මෙම දේශීය ගිණුමේ PIN හෝ පිවිසුම් මුරපදය වෙනස් කිරීමට, <ph name="BEGIN_LINK" />පෞද්ගලිකත්වය සහ ආරක්ෂාව<ph name="END_LINK" /> සැකසීම්වලට යන්න.</translation>
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">ඔබට <ph name="LINK_START" />JemaOS දේශීය ගිණුමකින් පිවිසිය හැක<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">විද්‍යුත් තැපෑල <ph name="EMAIL_ADDRESS" /> දැනටමත් පවතී. කරුණාකර වෙනත් විද්‍යුත් තැපෑලකින් නැවත උත්සාහ කරන්න.</translation>
+<translation id="4519800823932975782">JemaOS උපකාර මධ්‍යස්ථානය</translation>
+<translation id="4737474693231655139">සාමාන්‍ය JemaOS ප්‍රශ්නවලට පිළිතුරු සහ උපකාර ලිපි සොයන්න</translation>
+</translationbundle>

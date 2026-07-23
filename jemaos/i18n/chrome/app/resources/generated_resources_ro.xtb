@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="ro">
+	<translation id="7386402409475121504">Creați-vă contul JemaOS local</translation>
+	<translation id="3760308806144055927">Conectați-vă la contul local JemaOS</translation>
+	<translation id="3325117507482096812">Vă rugăm să introduceți o parolă</translation>
+	<translation id="1838206877831947154">Parolele tale nu se potrivesc</translation>
+	<translation id="2158276988029582286">Creați un nou cont local</translation>
+	<translation id="8592849747346274067">Conectați-vă la un cont existent</translation>
+	<translation id="482190417986201746">Numele de utilizator sau parola pe care le-ați introdus sunt incorecte</translation>
+	<translation id="6603987686259425085">Vă puteți <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>să vă conectați cu un cont local JemaOS<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">E-mailul <ph name="EMAIL_ADDRESS">$1</ph> există deja. Vă rugăm să reîncercați cu un alt e-mail.</translation>
+	<translation id="7215016743510876720">Utilizați contul local</translation>
+	<translation id="6657635042185516718">Continuați să utilizați contul online</translation>
+	<translation id="6867476688065565618">Treci la contul local?</translation>
+	<translation id="4840454774882557974">Dacă alegeți să utilizați un cont local, caracteristicile utile includ sincronizarea datelor și preferințelor dvs. pe mai multe dispozitive și conectarea automată la aplicațiile web folosind contul dvs. JemaOS nu va funcționa.</translation>
+	<translation id="8951507920859729424">Vă recomandăm să utilizați un cont online pentru a utiliza JemaOS la maximum.</translation>
+	<translation id="479773200536372215">Nu veți putea adăuga conturi Google deoarece lipsesc cheile API Google. Consultați <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> pentru detalii.</translation>
+	<translation id="1198491307547164157">Nu veți putea adăuga conturi JemaOS deoarece lipsesc cheile API JemaOS. Consultați <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> pentru detalii.</translation>
+	<translation id="5042404702659901995">Declarație de confidențialitate</translation>
+	<translation id="4907736162587268100">Conținutul declarației de confidențialitate</translation>
+	<translation id="5988344732274877691">Abonați-vă la buletinul informativ (foarte rar, promis) pentru JemaOS</translation>
+	<translation id="1706203008474708805">Alăturați-vă planului de îmbunătățire a experienței utilizatorului JemaOS</translation>
+	<translation id="1147139514756087229">Conectați-vă cu un cont local</translation>
+	<translation id="2054784944085654098">Se creează fișierul de rezervă acum. Acest lucru poate dura ceva timp; va rog asteptati...</translation>
+	<translation id="3554401467586751874">Fișierul de rezervă a fost creat cu succes</translation>
+	<translation id="2349211327705667074">Vizualizați fișierul de rezervă</translation>
+	<translation id="3049367131589710124">Vizualizați jurnalul de erori</translation>
+	<translation id="1079017345574916945">Desktop la distanță</translation>
+	<translation id="3064478898280877715">Magazin de aplicații</translation>
+	<translation id="5890206344045530832">Instalator</translation>
+	<translation id="2173278076276376488">Acest utilitar vă va ajuta să instalați <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> pe stocarea internă a acestui dispozitiv.</translation>
+	<translation id="5323182426977498659">Avertizare! Această procedură este distructivă și nu poate fi anulată. Vă rugăm să rețineți că nu vom deține nicio responsabilitate pentru potențiala pierdere de date și nici nu vom oferi suport tehnic urgent, procedați pe propriul risc.</translation>
+	<translation id="8517836015601969896">Instalare completă pe disc</translation>
+	<translation id="7300045760790370189">Instalați <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> pentru a ocupa un hard disk întreg, toate datele de pe hard disk-ul țintă vor fi șterse.</translation>
+	<translation id="8762511733918256595">Instalare multi-boot</translation>
+	<translation id="248900698427753678">Instalați <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> pe o partiție existentă a unui hard disk, unde <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> poate exista în paralel cu alt sistem de operare. Toate datele de pe partiția țintă vor fi șterse.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> va fi instalat pe hard diskul selectat; toate datele de pe discul țintă vor fi șterse.</translation>
+	<translation id="4039091757234555415">Disc</translation>
+	<translation id="7783580523889684697">Niciun disc disponibil</translation>
+	<translation id="8217653566575018388">Instalare finalizată</translation>
+	<translation id="8846746259444262774">Instalarea a eșuat</translation>
+	<translation id="7263815009235541549">Instalarea s-a încheiat cu succes. Opriți mai întâi dispozitivul, apoi eliminați orice mediu de instalare și porniți-l din nou pentru a porni <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>.</translation>
+	<translation id="3380151284134965398">Hopa, ceva a mers prost și instalarea nu s-a finalizat. Vă rugăm să reîncercați procesul. Dacă aceeași eroare persistă, vă rugăm să contactați asistența JemaOS cu jurnalul de mai sus.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> va fi instalat pe partiția selectată de pe hard disk. Conform schemei actuale de pornire multiplă, acest lucru ar putea continua numai dacă dispozitivul acceptă UEFI și hard disk-urile sunt formatate cu GPT.</translation>
+	<translation id="7831363758161884243">Partiția țintă va fi ștearsă; de asemenea, trebuie să specificați partiția EFI activă (de obicei realizată automat), deoarece instalatorul trebuie să modifice configurațiile de pornire a sistemului.</translation>
+	<translation id="5670799238446305550">Selectați partiția țintă <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph></translation>
+	<translation id="3695537760133394753">Partiție</translation>
+	<translation id="5610519566593708119">Selectați partiția EFI</translation>
+	<translation id="3367650349940010965">Nu există partiții disponibile pentru discul selectat</translation>
+	<translation id="7453223384507098390">Nu există partiții EFI disponibile pentru discul selectat</translation>
+	<translation id="1854532683465500847">Dimensiunea partiției selectate este mai mică de 20 GB, instalarea poate eșua</translation>
+	<translation id="4144613075340468247">Partiția selectată a fost montată pe <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> multi-boot, instalarea pe aceasta din nou poate eșua</translation>
+	<translation id="5793361052649920836">După instalare, cum doriți să porniți <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>?</translation>
+	<translation id="4273235330352963866">Instalați și configurați rEFInd pentru mine (recomandat)</translation>
+	<translation id="1858708492548921044">rEFInd este un program de boot manager care oferă o interfață grafică frumoasă pentru opțiunile de pornire a sistemului de operare atunci când pornește computerul, veți putea alege sistemul de operare dorit pentru a porni cu acesta. Pentru mai multe informații despre rEFInd, vă rugăm să consultați pagina de pornire.</translation>
+	<translation id="3861924051442564602">Adăugați o opțiune de meniu de boot UEFI pentru mine</translation>
+	<translation id="8622370666798589804">Când pornește computerul, este posibil să puteți intra în meniul de opțiuni de pornire UEFI (cel mai probabil prin apăsarea unei taste rapide), această opțiune adaugă <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ca intrare în meniul respectiv. (Acceptă doar unele modele de firmware BIOS și UEFI).</translation>
+	<translation id="1569398690544416170">Nu face nimic aici, o voi configura eu</translation>
+	<translation id="3554866444001249532">Acest script de instalare va pune doar fișierele .efi necesare pentru pornirea <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> pe partiția dvs. EFI, va trebui să configurați modul de pornire singur.</translation>
+	<translation id="7492832751164189534">Forțați renunțarea</translation>
+	<translation id="5159534860632584026">Procesul de instalare a fost încheiat</translation>
+	<translation id="8686749782014838344">Nu s-au putut obține informații despre disc</translation>
+	<translation id="5688543378771259173">Instalarea se încheie...</translation>
+	<translation id="5350452134936384991">Instalați în USB</translation>
+	<translation id="8008470485414925603">Instalați <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> pe un disc USB; toate datele de pe discul USB țintă vor fi șterse.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> va fi instalat pe discul USB selectat; toate datele de pe discul țintă vor fi șterse.</translation>
+	<translation id="5725593226060700263">Nu este disponibil un disc USB</translation>
+	<translation id="4357040841587078287">Am detectat că executați această copie a JemaOS dintr-un fișier imagine descărcat. Pentru a utiliza cele mai cuprinzătoare funcții de asistență (inclusiv actualizările Over-The-Air) pe care le poate oferi JemaOS, vă recomandăm insistent să lansați funcția „Installer” pentru a realiza o instalare completă a JemaOS pe disc pe un dispozitiv de stocare separat.</translation>
+	<translation id="1246398339704431302">Puteți <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>continuați să utilizați această copie a JemaOS oricum<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, procesul de instalare poate fi executat într-o etapă ulterioară în sistem, cu toate acestea, toate datele dumneavoastră vor fi șterse din nou după instalare și veți începe din nou.</translation>
+	<translation id="3654532222088291133">În loc să introduceți parola contului dvs. JemaOS pentru a vă conecta, puteți crea o parolă de <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> pentru acest dispozitiv</translation>
+	<translation id="8377684629839541977">Utilizați parola contului JemaOS</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">Mențineți <ph name="DEVICE_OS" /> actualizat automat</translation>
+<translation id="2347352406101856238">Actualizarea <ph name="DEVICE_OS" /> este activată</translation>
+<translation id="185834232609012804">Actualizarea <ph name="DEVICE_OS" /> este dezactivată</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Platformă <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Desktop la distanță</translation>
+<translation id="6898090158927982244">Linux este la zi</translation>
+<translation id="4886703929102211360">O actualizare critică este disponibilă pentru componenta Linux (beta). Se recomandă insistent să instalați această actualizare cât mai curând posibil; altfel, Linux (beta) poate să nu mai funcționeze.</translation>
+<translation id="6694016202036959050">Setări <ph name="DEVICE_OS" /></translation>
+<translation id="8362858344151826493">Cont JemaOS, backup, diverse</translation>
+<translation id="9150429437595727962">Setări Wi-Fi</translation>
+<translation id="4938972461544498524">Setări touchpad</translation>
+<translation id="1210024513248363065">Servicii la distanță</translation>
+<translation id="2878862288885588535">Serviciu de diagnosticare la distanță</translation>
+<translation id="7409197984340676806">Serviciul de diagnosticare la distanță le permite reprezentanților oficiali ai asistenței JemaOS să identifice probleme de sistem. În prezent, serviciul de diagnosticare la distanță poate fi inițiat doar de reprezentanții oficiali ai asistenței JemaOS.</translation>
+<translation id="1791028023086176332">Comunicați acest număr reprezentanților oficiali ai asistenței JemaOS</translation>
+<translation id="6279304275399437025">Se pornește serviciul de diagnosticare la distanță...</translation>
+<translation id="1501882165699826662">Opriți serviciul de diagnosticare la distanță și încercați din nou</translation>
+<translation id="3100283258447375201">Mai multe informații</translation>
+<translation id="4070039109671307724">Diverse</translation>
+<translation id="7326893024940073254">Butonul „Reporniți”</translation>
+<translation id="3002423764319968103">Afișați un buton „Reporniți” în meniul de sistem</translation>
+<translation id="6243454903512423518">Butonul „Rotiți ecranul”</translation>
+<translation id="6491049336868978729">Nu sunteți în modul tabletă în acest moment; butonul „Rotiți ecranul” este ascuns</translation>
+<translation id="5496012402277579695">Afișați un buton „Rotiți ecranul” în meniul de sistem</translation>
+<translation id="5882838977344999606">Comutator de mod tabletă/laptop</translation>
+<translation id="472164133625585606">Afișați un comutator de mod tabletă/laptop în meniul de sistem</translation>
+<translation id="1851103550468466960">Activați Widevine</translation>
+<translation id="4058176713282795846">Activați Widevine pentru a transmite în flux conținut premium protejat. <ph name="BEGIN_LINK_LEARN_MORE" />Aflați mai multe<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">Selectați „libwidevine.so”</translation>
+<translation id="4838463656205005584">Activarea Widevine nu a reușit...</translation>
+<translation id="2164041826798266548">Instalarea modulului Widevine CDM nu a reușit. Verificați conexiunea și încercați din nou.</translation>
+<translation id="4106982328079440606">Setările contului JemaOS</translation>
+<translation id="6468776556018764845">Funcții experimentale</translation>
+<translation id="3487615413425326553">Omiteți verificările Trusted Platform Module (TPM)</translation>
+<translation id="4817176087932811573">Unele funcții pot eșua din cauza unui cip TPM incompatibil din dispozitivul dvs.; ca soluție alternativă, puteți omite verificările TPM.</translation>
+<translation id="3356003366173774486">Conectare automată</translation>
+<translation id="6218459410891191693">Permiteți contului curent să se conecteze automat la desktop la repornirea dispozitivului</translation>
+<translation id="6620839363422062843">Nu se poate activa pentru acest cont; conectarea automată este deja activă pentru alte conturi de pe acest dispozitiv</translation>
+<translation id="6734500226490446035">Nu se poate activa pentru acest cont; a apărut o eroare necunoscută la inițializarea sistemelor de fișiere pentru acest cont. Încercați să reporniți sau să creați un cont nou</translation>
+<translation id="5464880042146818691">Nu se poate activa pentru acest cont; opțiunea de conectare automată este disponibilă doar pentru tipul „Cont local”.</translation>
+<translation id="3335654854106476749">Adăugați o parolă de conectare în setările <ph name="BEGIN_LINK" />Confidențialitate și securitate<ph name="END_LINK" /> înainte de a activa conectarea automată.</translation>
+<translation id="5586831602198585601">O versiune mai nouă de JemaOS este disponibilă acum pentru actualizare. Însă abonamentul dvs. JemaOS for You a expirat; aveți nevoie de un abonament activ pentru a vă actualiza JemaOS.</translation>
+<translation id="3869860597719956574">O nouă versiune majoră de JemaOS este disponibilă acum pentru actualizare. Trebuie să plătiți o taxă unică pentru a continua cu această actualizare.</translation>
+<translation id="6523879681771260760">Specificați calea unde să fie stocat fișierul de backup</translation>
+<translation id="2036152819788683293">Creați un fișier de backup pentru acest cont (beta). <ph name="BEGIN_LINK_LEARN_MORE" />Aflați mai multe<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Creați backup</translation>
+<translation id="4267347174163690295">Creați un fișier de backup pentru acest cont (beta).</translation>
+<translation id="8112950994208888917">Această operațiune creează un backup complet al discului pentru acest cont, facilitând restaurarea JemaOS la starea în care se afla la crearea backupului, inclusiv setările, extensiile de browser instalate și aplicațiile subsistemului. În funcție de aplicațiile dvs. și de conținutul folderului personal, fișierul de backup poate fi mare; se recomandă stocarea fișierului de backup pe un dispozitiv de stocare extern. Dacă aveți o unitate USB portabilă, conectați-o acum. <ph name="BEGIN_LINK_LEARN_MORE" />Aflați mai multe<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Introduceți parola de conectare pentru acest cont</translation>
+<translation id="8663988871299316062">Rețineți această parolă, deoarece va fi necesară la restaurarea acestui fișier de backup</translation>
+<translation id="6408904153044317846">Selectați fișierul de backup de restaurat</translation>
+<translation id="8062988348127771021">Restaurați datele JemaOS dintr-un fișier de backup</translation>
+<translation id="7309192418866543730">Introduceți parola de backup</translation>
+<translation id="3642408376366598984">Introduceți parola utilizată pentru criptarea acestui fișier de backup</translation>
+<translation id="7783974937157985523">Parola de backup</translation>
+<translation id="6583780301401541007">Restaurare reușită</translation>
+<translation id="3514011352559420398">Restaurarea nu a reușit</translation>
+<translation id="7535980903266533458">Salvați backupul pe dispozitivul dvs. sau pe un spațiu de stocare extern</translation>
+<translation id="604001903249547235">Backup în cloud</translation>
+<translation id="8885702701336541611">Încărcați backupul în spațiul de stocare cloud JemaOS</translation>
+<translation id="3939744430096549862">Creați backup în cloud</translation>
+<translation id="619129431573254316">Restaurați dintr-un fișier de backup local</translation>
+<translation id="1859592711955106569">Restaurare din cloud</translation>
+<translation id="38222223336741457">Descărcați și restaurați din cloudul JemaOS</translation>
+<translation id="1241089811244416179">Restaurați din cloud</translation>
+<translation id="652479689372703360">Backup în curs</translation>
+<translation id="3655220146274872918">Backup finalizat</translation>
+<translation id="4243579853635792694">Backupul dvs. a fost creat cu succes</translation>
+<translation id="6337433855796857931">Backupul nu a reușit</translation>
+<translation id="4854179463174744546">A apărut o eroare în timpul procesului de backup</translation>
+<translation id="2410668771600309999">Informații despre utilizatorul Connect API</translation>
+<translation id="2223892939866251845">ID utilizator</translation>
+<translation id="3850846286480935456">Analiza spațiului de stocare pentru backup</translation>
+<translation id="6244494465581273970">ID utilizator necesar</translation>
+<translation id="9204006549413740506">Ultima actualizare</translation>
+<translation id="476642412165431515">Dispozitive hardware</translation>
+<translation id="3386337985825120901">Nu sunt disponibile date de backup</translation>
+<translation id="8490990067870590760">Se încarcă fișierele de backup...</translation>
+<translation id="2955409026764742995">Selectați fișierul de backup de restaurat:</translation>
+<translation id="7414629348005657242">-- Selectați un fișier de backup --</translation>
+<translation id="918246516374174381">Nu s-a găsit niciun fișier de backup. Creați mai întâi un backup.</translation>
+<translation id="77997252117517973">În curând</translation>
+<translation id="1930692852800776096">Adăugați un dicționar</translation>
+<translation id="8793060353848771694">Imaginea căștii stângi</translation>
+<translation id="6257440204887306255">Imaginea carcasei de încărcare</translation>
+<translation id="2754700616124958693">Imaginea căștii drepte</translation>
+<translation id="1068676292264983586">Imaginea implicită a dispozitivului</translation>
+<translation id="6364075396486660405">Dezactivați scanarea automată a fișierelor media pentru toate partițiile pentru a optimiza durata de viață a bateriei. <ph name="BEGIN_LINK_LEARN_MORE" />Aflați mai multe<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Opțiuni de securitate</translation>
+<translation id="5618366106086725045">Activați „Modul dezvoltator” pentru această instalare <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> cu mai multe funcții pentru dezvoltatori. <ph name="BEGIN_LINK_LEARN_MORE" />Aflați mai multe<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Sunteți deja în „Modul dezvoltator”</translation>
+<translation id="6074549317340202195">Activați „Modul dezvoltator”</translation>
+<translation id="418781258674176053">Avertisment! Activarea „Modului dezvoltator” este o operațiune ireversibilă. Dacă doriți să dezactivați „Modul dezvoltator”, trebuie să reinstalați JemaOS, ceea ce va șterge toate datele. Efectuați un backup al datelor și continuați pe propriul risc.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Platformă <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Momentan offline</translation>
+<translation id="2590678769628709242">Verificați abonamentul JemaOS online</translation>
+<translation id="4701836089682883918">Informații despre abonamentul JemaOS</translation>
+<translation id="5891566673089952188">A apărut o eroare la obținerea ID-ului dispozitivului dvs.</translation>
+<translation id="4685086787606104322">Sfârșitul abonamentului</translation>
+<translation id="3354919960795782984">ID dispozitiv</translation>
+<translation id="5758632069869992306">Verificați abonamentul online</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Platformă <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Abonament de probă</translation>
+<translation id="4362781408813685579">Abonament activ</translation>
+<translation id="1141274201089997510">Abonament expirat</translation>
+<translation id="2553683254139782404">Ediție necomercială</translation>
+<translation id="8466048683756385518">Versiune cu licență Enterprise (probă)</translation>
+<translation id="2853871047705932424">Versiune cu licență Enterprise</translation>
+<translation id="5239675900317881945">Versiune cu licență Enterprise (expirată)</translation>
+<translation id="189101945990408398">Intel vechi</translation>
+<translation id="6816405236809604904">Intel modern</translation>
+<translation id="6169452478137972655">Grafică AMD</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="2747689477259164256">JemaOS AI</translation>
+<translation id="1270291881045478104">Activați JemaOS AI</translation>
+<translation id="2013780539677437932">Activați sau dezactivați toate funcțiile legate de JemaOS AI</translation>
+<translation id="3398637633218757480">Activați Apelarea Rapidă JemaOS AI</translation>
+<translation id="8986197796475507452">Afișați rapid opțiunile JemaOS AI pentru conținutul evidențiat apăsând Ctrl + C + C</translation>
+<translation id="6407628130593274137">Alte setări și opțiuni pentru JemaOS AI</translation>
+<translation id="4005574560653331142">Pentru a schimba PIN-ul sau parola de conectare a acestui cont local, accesați setările <ph name="BEGIN_LINK" />Confidențialitate și securitate<ph name="END_LINK" />.</translation>
+
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">Poți să <ph name="LINK_START" />te conectezi cu un cont local JemaOS<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">Adresa de email <ph name="EMAIL_ADDRESS" /> există deja. Încearcă din nou cu o altă adresă de email.</translation>
+<translation id="4519800823932975782">Centrul de ajutor JemaOS</translation>
+<translation id="4737474693231655139">Găsește articole de ajutor și răspunsuri la întrebări comune despre JemaOS</translation>
+</translationbundle>

@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="gu">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Thot વિશે</translation>
+<translation id="5639860668557220477">Thot બ્રાઉઝરમાં સહાય મેળવો</translation>
+<translation id="1692689520561928457">JemaOS વિશે</translation>
+<translation id="8692765844418174375">JemaOS સંસ્કરણ</translation>
+<translation id="2943260250558374955">JemaOSમાં સહાય મેળવો</translation>
+<translation id="713321354492170993">બ્રાઉઝર નિષ્ક્રિય ટેબમાંથી મેમરી ખાલી કરે છે. આ સક્રિય ટેબ અને અન્ય એપ્લિકેશનને વધુ કમ્પ્યુટિંગ સંસાધનો આપે છે અને બ્રાઉઝરને ઝડપી રાખે છે. જ્યારે તમે તેમના પર પાછા ફરો ત્યારે તમારી નિષ્ક્રિય ટેબ આપમેળે ફરીથી સક્રિય થઈ જાય છે.</translation>
+<translation id="1774190491044887444">બ્રાઉઝર બેકગ્રાઉન્ડ પ્રવૃત્તિ અને વિઝ્યુઅલ ઇફેક્ટ્સ, જેમ કે સ્મૂધ સ્ક્રોલિંગ અને વિડિયો ફ્રેમ રેટને મર્યાદિત કરીને બેટરી બચાવે છે.</translation>
+<translation id="180121268008059459">બ્રાઉઝર પૃષ્ઠો પ્રીલોડ કરે છે, જે બ્રાઉઝિંગ અને શોધને ઝડપી બનાવે છે.</translation>
+<translation id="7127093527178692287">બેકઅપ પુનઃસ્થાપિત કરો (બીટા)</translation>
+<translation id="4439042171549201806">બેકઅપ ફાઇલમાંથી JemaOS પુનઃસ્થાપિત કરવા માટે, કૃપા કરીને હવે બેકઅપ ફાઇલ ધરાવતી દૂર કરી શકાય એવી ડ્રાઇવને તમારા JemaOS ઉપકરણમાં દાખલ કરો અને તમે કઈ બેકઅપ ફાઇલ પુનઃસ્થાપિત કરવા માંગો છો તે નિર્દિષ્ટ કરો. કૃપા કરીને નોંધ લો કે આ વિઝાર્ડ દ્વારા શોધાઈ શકે તે માટે તમારી બેકઅપ ફાઇલ તમારી દૂર કરી શકાય એવી ડ્રાઇવની રૂટ ડિરેક્ટરીમાં હોવી જોઈએ.</translation>
+<translation id="2955409026764742995">પુનઃસ્થાપિત કરવા માટે બેકઅપ ફાઇલ પસંદ કરો:</translation>
+<translation id="7040434808685140085">માફ કરશો, પસંદ કરેલી બેકઅપ ફાઇલ ઓળખી શકાતી નથી; કૃપા કરીને નવી પસંદ કરો.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />પસંદ કરેલી બેકઅપ ફાઇલમાંથી JemaOS પુનઃસ્થાપિત કરવા માટે, બેકઅપ બનાવવામાં આવ્યો ત્યારે તેના વિશે ચોક્કસ માહિતી હોવી જરૂરી છે. નહીંતર, પુનઃસ્થાપન પ્રક્રિયા નિષ્ફળ જશે.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"એકાઉન્ટ નામ" એ તે એકાઉન્ટનો પ્રાથમિક લોગિન ઓળખ છે જેના હેઠળ તમારી બેકઅપ ફાઇલ બનાવવામાં આવી હતી. તે સામાન્ય રીતે તમે તમારા JemaOS/Google એકાઉન્ટ માટે સાઇન અપ કરવા માટે વાપર્યું હતું તે ઈમેલ સરનામું છે. જો તે સ્થાનિક એકાઉન્ટ હોય, તો તે વપરાશકર્તા નામ સાથે "@jemaos.local" જોડાયેલું હશે.<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />પાસવર્ડ એ તે પાસફ્રેઝ છે જે બેકઅપ બનાવવામાં આવ્યો ત્યારે તમને દાખલ કરવા કહેવામાં આવ્યો હતો. તે સામાન્ય રીતે આ એકાઉન્ટ માટે JemaOS ડેસ્કટોપમાં સાઇન ઇન કરવા માટે વાપર્યો હતો તે જ પાસવર્ડ છે.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">એકાઉન્ટ નામ</translation>
+<translation id="5490570429039308155">માફ કરશો, કૃપા કરીને યોગ્ય એકાઉન્ટ નામ દાખલ કરો</translation>
+<translation id="6657585470893396449">પાસવર્ડ</translation>
+<translation id="8200189938001188563">માફ કરશો, પાસવર્ડ ખાલી હોઈ શકે નહીં</translation>
+<translation id="3157931365184549694">પુનઃસ્થાપિત કરો</translation>
+<translation id="8556278756526311953">બેકઅપ પુનઃસ્થાપિત કરી રહ્યું છે</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />અમે હવે તમારી બેકઅપ ફાઇલ પુનઃસ્થાપિત કરવા પર કામ કરી રહ્યા છીએ; આમાં થોડો સમય લાગી શકે છે, તેથી કૃપા કરીને ધીરજ રાખો.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />કૃપા કરીને નોંધ લો કે પુનઃસ્થાપન પ્રક્રિયા સફળતાપૂર્વક પૂર્ણ થાય ત્યારે UI આપમેળે ફરીથી શરૂ થશે.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">બેકઅપ પુનઃસ્થાપન નિષ્ફળ ગયું</translation>
+<translation id="5003531399442003695">વધુ વિગતો માટે, લોગ જોવા માટે કૃપા કરીને નીચેની લિંક પર ક્લિક કરો. જો આ ભૂલ ચાલુ રહે, તો કૃપા કરીને JemaOS તકનિકી સપોર્ટ ચેનલોનો સંપર્ક કરો અને ભૂલ લોગ પ્રદાન કરો.</translation>
+<translation id="6363786367719063276">લોગ જુઓ</translation>
+<translation id="8730621377337864115">પૂર્ણ</translation>
+<translation id="975238173507911396">ડેટા પુનઃસ્થાપન સફળ</translation>
+<translation id="6276879052695618521">બેકઅપ પુનઃસ્થાપન લોગ</translation>
+<translation id="4901207598072637766">JemaOS, <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /> દ્વારા પૂરું પાડવામાં આવ્યું</translation>
+<translation id="7894910504474624324">JemaOS અને તેની સેવાઓ GDPR અને યુરોપિયન ડેટા પ્રોટેક્શન કાયદાની જોગવાઈઓનું પાલન કરે છે. વધુ માહિતી માટે, કૃપા કરીને અમારી <ph name="BEGIN_LINK_PRIVACY" />ગોપનીયતા નીતિ<ph name="END_LINK_PRIVACY" /> અને અમારી <ph name="BEGIN_LINK_TOS" />સેવાની શરતો.<ph name="END_LINK_TOS" /> જુઓ.</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, સર્વાધિકાર સુરક્ષિત.</translation>
+<translation id="370679569376308836">JemaOS એ Jema ઉપકરણ અને તેના SaaS પર આધારિત વ્યાપારી ઓફર છે.</translation>
+<translation id="2773644194450163486">JemaOS <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> ઓપન સોર્સ પ્રોજેક્ટ દ્વારા શક્ય બન્યું છે.</translation>
+<translation id="2330680727776977160">Chromium પણ અન્ય <ph name="BEGIN_LINK_1" />ઓપન સોર્સ સોફ્ટવેર<ph name="END_LINK_1" /> અને <ph name="BEGIN_LINK_2" />વધારાના ઓપન સોર્સ સોફ્ટવેર<ph name="END_LINK_2" /> દ્વારા શક્ય બન્યું છે.</translation>
+<translation id="1419954813084261088">Jema Technology દ્વારા ડિઝાઇન અને ઉત્પાદિત.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, સર્વાધિકાર સુરક્ષિત.</translation>
+<translation id="6168072053306020326">Jema Technology એ Jema Technology LTD અને Jema Technology (Beijing) Limited નું ટ્રેડિંગ નામ છે.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD એ ઈંગ્લેન્ડ અને વેલ્સમાં કંપની નંબર 12273803 સાથે નોંધાયેલી કંપની છે.</translation>
+<translation id="1251589813188467292">મહત્વપૂર્ણ ઉપકરણ વોરંટી અને સેવા માહિતી</translation>
+<translation id="4851115775198886021">ઉપકરણ SN:</translation>
+</translationbundle>

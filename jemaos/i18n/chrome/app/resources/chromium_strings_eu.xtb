@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="eu">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Thot-i buruz</translation>
+<translation id="5639860668557220477">Lortu laguntza Thot nabigatzailearekin</translation>
+<translation id="1692689520561928457">JemaOS-i buruz</translation>
+<translation id="8692765844418174375">JemaOS bertsioa</translation>
+<translation id="2943260250558374955">Lortu laguntza JemaOS-rekin</translation>
+<translation id="713321354492170993">Nabigatzaileak memoria askatzen du fitxa inaktiboetatik. Horrek fitxa aktiboei eta beste aplikazioei konputazio-baliabide gehiago ematen dizkie eta nabigatzailea azkar mantentzen du. Zure fitxa inaktiboak automatikoki berriro aktibatzen dira haiei itzultzen zarenean.</translation>
+<translation id="1774190491044887444">Nabigatzaileak bateria aurrezten du atzeko planoko jarduera eta efektu bisualak mugatuz, hala nola korritze leuna eta bideoaren fotograma-tasa.</translation>
+<translation id="180121268008059459">Nabigatzaileak orriak aurretik kargatzen ditu, nabigazioa eta bilaketa azkarrago eginez.</translation>
+<translation id="7127093527178692287">Berrezarri babeskopia (beta)</translation>
+<translation id="4439042171549201806">JemaOS babeskopia-fitxategi batetik berrezartzeko, sartu orain babeskopia-fitxategia duen unitate aldagarria zure JemaOS gailuan eta zehaztu zein babeskopia-fitxategi berrezarri nahi duzun. Kontuan izan zure babeskopia-fitxategia unitate aldagarriaren erro-direktorioan egon behar dela morroi honek detektatu ahal izateko.</translation>
+<translation id="2955409026764742995">Hautatu berrezartzeko babeskopia-fitxategia:</translation>
+<translation id="7040434808685140085">Barkatu, hautatutako babeskopia-fitxategia ezin da ezagutu; hautatu beste bat, mesedez.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />JemaOS hautatutako babeskopia-fitxategitik berrezartzeko, funtsezkoa da babeskopia sortu zenean buruzko informazio zehatza izatea. Bestela, berrezartze-prozesuak huts egingo du.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"Kontu-izena" zure babeskopia-fitxategia sortu zen kontuaren saio-hasierako kredentzial nagusia da. Normalean zure JemaOS/Google konturako erregistratzeko erabilitako posta elektronikoa da. Tokiko kontua balitz, erabiltzaile-izena litzateke "@jemaos.local" gehituta.<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Pasahitza babeskopia sortu zenean sartzeko eskatu zizun esaldi-pasahitza da. Normalean kontu honetarako JemaOS mahaigainean saioa hasteko erabilitako pasahitz bera da.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Kontu-izena</translation>
+<translation id="5490570429039308155">Barkatu, sartu kontu-izen zuzena, mesedez</translation>
+<translation id="6657585470893396449">Pasahitza</translation>
+<translation id="8200189938001188563">Barkatu, pasahitza ezin da hutsik egon</translation>
+<translation id="3157931365184549694">Berrezarri</translation>
+<translation id="8556278756526311953">Babeskopia berrezartzen</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Zure babeskopia-fitxategia berrezartzen ari gara; hau denbora bat iraun dezake, beraz, izan pazientzia, mesedez.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Kontuan izan erabiltzaile-interfazea automatikoki berrabiaraziko dela berrezartze-prozesua arrakastaz amaitzen denean.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Babeskopia berrezartzeak huts egin du</translation>
+<translation id="5003531399442003695">Xehetasun gehiagorako, egin klik beheko estekan erregistroak ikusteko. Errore hau jarraitzen badu, jarri harremanetan JemaOS-eko laguntza teknikoko kanalekin eta eman errore-erregistroak.</translation>
+<translation id="6363786367719063276">Ikusi erregistroak</translation>
+<translation id="8730621377337864115">Eginda</translation>
+<translation id="975238173507911396">Datuak ondo berrezarri dira</translation>
+<translation id="6276879052695618521">Babeskopia berrezartzeko erregistroak</translation>
+<translation id="4901207598072637766">JemaOS, <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" />-k eskainia</translation>
+<translation id="7894910504474624324">JemaOS eta bere zerbitzuak GDPR-aren eta Europako datu-babeserako legeriaren xedapenen araberakoak dira. Informazio gehiagorako, ikusi gure <ph name="BEGIN_LINK_PRIVACY" />Pribatutasun-politika<ph name="END_LINK_PRIVACY" /> eta gure <ph name="BEGIN_LINK_TOS" />Zerbitzu-baldintzak.<ph name="END_LINK_TOS" /></translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, eskubide guztiak erreserbatuta.</translation>
+<translation id="370679569376308836">JemaOS Jema gailuan eta bere SaaS-en oinarritutako eskaintza komertziala da.</translation>
+<translation id="2773644194450163486">JemaOS <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> kode irekiko proiektuaren bidez posible da.</translation>
+<translation id="2330680727776977160">Chromium ere posible da beste <ph name="BEGIN_LINK_1" />kode irekiko software<ph name="END_LINK_1" /> eta <ph name="BEGIN_LINK_2" />kode irekiko software gehigarri<ph name="END_LINK_2" /> batzuen bidez.</translation>
+<translation id="1419954813084261088">Jema Technology-k diseinatua eta fabrikatua.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, eskubide guztiak erreserbatuta.</translation>
+<translation id="6168072053306020326">Jema Technology Jema Technology LTD eta Jema Technology (Beijing) Limited-en merkataritza-izena da.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD Ingalaterran eta Galesen erregistratutako enpresa da, 12273803 enpresa-zenbakiarekin.</translation>
+<translation id="1251589813188467292">Gailuaren bermeari eta zerbitzuari buruzko informazio garrantzitsua</translation>
+<translation id="4851115775198886021">Gailuaren SN:</translation>
+</translationbundle>

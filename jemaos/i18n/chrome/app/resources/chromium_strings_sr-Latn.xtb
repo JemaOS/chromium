@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="sr-Latn">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">O programu Thot</translation>
+<translation id="5639860668557220477">Potražite pomoć za Thot pregledač</translation>
+<translation id="1692689520561928457">O sistemu JemaOS</translation>
+<translation id="8692765844418174375">Verzija JemaOS</translation>
+<translation id="2943260250558374955">Potražite pomoć za JemaOS</translation>
+<translation id="713321354492170993">Pregledač oslobađa memoriju iz neaktivnih kartica. To daje aktivnim karticama i drugim aplikacijama više računarskih resursa i održava pregledač brzim. Vaše neaktivne kartice automatski ponovo postaju aktivne kada se vratite na njih.</translation>
+<translation id="1774190491044887444">Pregledač štedi bateriju ograničavanjem pozadinske aktivnosti i vizuelnih efekata, kao što su glatko skrolovanje i broj kadrova video zapisa.</translation>
+<translation id="180121268008059459">Pregledač unapred učitava stranice, čineći pregledanje i pretragu bržim.</translation>
+<translation id="7127093527178692287">Vraćanje rezervne kopije (beta)</translation>
+<translation id="4439042171549201806">Da biste vratili JemaOS iz datoteke rezervne kopije, sada umetnite prenosivi disk koji sadrži datoteku rezervne kopije u vaš JemaOS uređaj i navedite koju datoteku rezervne kopije želite da vratite. Imajte na umu da vaša datoteka rezervne kopije mora biti u korenskom direktorijumu vašeg prenosivog diska da bi je ovaj čarobnjak otkrio.</translation>
+<translation id="2955409026764742995">Izaberite datoteku rezervne kopije za vraćanje:</translation>
+<translation id="7040434808685140085">Žao nam je, izabrana datoteka rezervne kopije ne može biti prepoznata; izaberite novu.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />Da biste vratili JemaOS iz izabrane datoteke rezervne kopije, neophodno je imati tačne informacije o rezervnoj kopiji kada je napravljena. U suprotnom, proces vraćanja neće uspeti.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"Ime naloga" je primarna prijavna akreditiva naloga pod kojim je vaša datoteka rezervne kopije napravljena. To je obično adresa e-pošte koju ste koristili za registraciju vašeg JemaOS/Google naloga. Ako je to bio lokalni nalog, to bi bilo korisničko ime sa dodatkom "@jemaos.local".<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Lozinka je pristupna fraza koju ste bili zamoljeni da unesete kada je rezervna kopija napravljena. To je obično ista lozinka koju ste koristili za prijavu na JemaOS radnu površinu za ovaj nalog.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Ime naloga</translation>
+<translation id="5490570429039308155">Žao nam je, unesite tačno ime naloga</translation>
+<translation id="6657585470893396449">Lozinka</translation>
+<translation id="8200189938001188563">Žao nam je, lozinka ne može biti prazna</translation>
+<translation id="3157931365184549694">Vratite</translation>
+<translation id="8556278756526311953">Vraćanje rezervne kopije u toku</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Sada radimo na vraćanju vaše datoteke rezervne kopije; to može potrajati, pa vas molimo za strpljenje.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Imajte na umu da će se korisnički interfejs automatski ponovo pokrenuti kada se proces vraćanja uspešno završi.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Vraćanje rezervne kopije nije uspelo</translation>
+<translation id="5003531399442003695">Za više detalja kliknite na link ispod da biste videli evidencije. Ako se ova greška ponavlja, obratite se kanalima tehničke podrške JemaOS i dostavite evidencije grešaka.</translation>
+<translation id="6363786367719063276">Prikažite evidencije</translation>
+<translation id="8730621377337864115">Gotovo</translation>
+<translation id="975238173507911396">Vraćanje podataka uspešno</translation>
+<translation id="6276879052695618521">Evidencije vraćanja rezervne kopije</translation>
+<translation id="4901207598072637766">JemaOS, obezbeđuje <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS i njegove usluge u skladu su sa GDPR i odredbama evropskog zakona o zaštiti podataka. Za više informacija pogledajte našu <ph name="BEGIN_LINK_PRIVACY" />Politiku privatnosti<ph name="END_LINK_PRIVACY" /> i naše <ph name="BEGIN_LINK_TOS" />Uslove korišćenja.<ph name="END_LINK_TOS" /></translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, sva prava zadržana.</translation>
+<translation id="370679569376308836">JemaOS je komercijalna ponuda zasnovana na Jema uređaju i njegovom SaaS.</translation>
+<translation id="2773644194450163486">JemaOS je omogućen <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> projektom otvorenog koda.</translation>
+<translation id="2330680727776977160">Chromium je takođe omogućen drugim <ph name="BEGIN_LINK_1" />softverom otvorenog koda<ph name="END_LINK_1" /> i <ph name="BEGIN_LINK_2" />dodatnim softverom otvorenog koda<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Dizajnirao i proizveo Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, sva prava zadržana.</translation>
+<translation id="6168072053306020326">Jema Technology je trgovački naziv za Jema Technology LTD i Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD je kompanija registrovana u Engleskoj i Velsu sa brojem kompanije 12273803.</translation>
+<translation id="1251589813188467292">Važne informacije o garanciji i servisu uređaja</translation>
+<translation id="4851115775198886021">Serijski broj uređaja:</translation>
+</translationbundle>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="si">
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">JemaOS හි ඔබගේ ගොනු වලාකුළ-සමමුහුර්ත කිරීමට Nutstore හි ලියාපදිංචි වන්න.</translation>
+<translation id="8672291834743661083">Nutstore හි ලියාපදිංචි වන්න</translation>
+<translation id="5103639294476249880">ආරක්ෂක සැකසුම්වල "Add Application" බොත්තම ක්ලික් කරන්න</translation>
+<translation id="8371020157576651120">ඔබගේ යෙදුම් මුරපදය ජනනය කර පිටපත් කරන්න</translation>
+<translation id="3855250998276979579">Nutstore යෙදුම විවෘත කරන්න</translation>
+<translation id="6565655783894300125">සහ ඔබගේ විද්‍යුත් තැපෑල සහ යෙදුම් මුරපදය සමඟ Nutstore ගිණුම JemaOS වෙත සම්බන්ධ කරන්න</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">ඉක්මනින් පැමිණේ</translation>
+<translation id="4928968570611226525">මෙම ක්‍රියාව දිගටම කරගෙන යාමට ඔබට ඔබගේ JemaOS උපකරණයේ <ph name="BEGIN_LINK_ARC_APP" />&gt;Android උපපද්ධතිය සක්‍රිය කිරීමට<ph name="END_LINK_ARC_APP" /> සිදු වේ; එමෙන්ම ඔබගේ JemaOS උපකරණය <ph name="BEGIN_LINK_HELP" />සංවර්ධක මාදිලියට මාරු කර තිබීම<ph name="END_LINK_HELP" /> අවශ්‍ය වේ.</translation>
+<translation id="7395250550107972941">.apk ගොනු පැති-පූරණය කළ නොහැක. Android උපපද්ධතිය සක්‍රිය කර ඇති බවත් ඔබ JemaOS සංවර්ධක මාදිලියේ සිටින බවත් කරුණාකර තහවුරු කරගන්න.</translation>
+<translation id="5690820326685091783">JemaOS AI සමඟ විවෘත කරන්න</translation>
+</translationbundle>

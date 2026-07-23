@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="ca">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Quant al Thot</translation>
+<translation id="5639860668557220477">Obteniu ajuda amb el navegador Thot</translation>
+<translation id="1692689520561928457">Quant al JemaOS</translation>
+<translation id="8692765844418174375">Versió del JemaOS</translation>
+<translation id="2943260250558374955">Obteniu ajuda amb el JemaOS</translation>
+<translation id="713321354492170993">El navegador allibera memòria de les pestanyes inactives. Això proporciona més recursos informàtics a les pestanyes actives i a altres aplicacions, i manté el navegador ràpid. Les pestanyes inactives es tornen actives automàticament quan hi torneu.</translation>
+<translation id="1774190491044887444">El navegador estalvia bateria limitant l'activitat en segon pla i els efectes visuals, com el desplaçament suau i les taxes de fotogrames de vídeo.</translation>
+<translation id="180121268008059459">El navegador precarrega pàgines, cosa que fa més ràpida la navegació i la cerca.</translation>
+<translation id="7127093527178692287">Restaura la còpia de seguretat (beta)</translation>
+<translation id="4439042171549201806">Per restaurar el JemaOS des d'un fitxer de còpia de seguretat, inseriu ara la unitat extraïble que conté el fitxer de còpia de seguretat al vostre dispositiu JemaOS i especifiqueu quin fitxer de còpia de seguretat voleu restaurar. Tingueu en compte que el fitxer de còpia de seguretat ha d'estar al directori arrel de la unitat extraïble perquè aquest assistent el detecti.</translation>
+<translation id="2955409026764742995">Seleccioneu el fitxer de còpia de seguretat que voleu restaurar:</translation>
+<translation id="7040434808685140085">Ho sentim, no es pot reconèixer el fitxer de còpia de seguretat seleccionat. Seleccioneu-ne un de nou.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />Per restaurar el JemaOS des del fitxer de còpia de seguretat seleccionat, és essencial disposar d'informació precisa sobre quan es va crear la còpia de seguretat. Si no, el procés de restauració fallarà.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />El "nom del compte" és la credencial d'accés principal del compte amb què es va crear el fitxer de còpia de seguretat. Normalment és l'adreça de correu electrònic que vau utilitzar per registrar-vos al vostre compte de JemaOS/Google. Si es tractés d'un compte local, seria el nom d'usuari seguit de "@jemaos.local".<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />La contrasenya és la frase de pas que se us va demanar quan es va crear la còpia de seguretat. Normalment és la mateixa contrasenya que vau utilitzar per iniciar sessió a l'escriptori del JemaOS amb aquest compte.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Nom del compte</translation>
+<translation id="5490570429039308155">Ho sentim, introduïu el nom del compte correcte</translation>
+<translation id="6657585470893396449">Contrasenya</translation>
+<translation id="8200189938001188563">Ho sentim, la contrasenya no pot estar buida</translation>
+<translation id="3157931365184549694">Restaura</translation>
+<translation id="8556278756526311953">S'està restaurant la còpia de seguretat</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Estem treballant en la restauració del vostre fitxer de còpia de seguretat. Això pot trigar una estona, així que tingueu paciència.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Tingueu en compte que la interfície es reiniciarà automàticament quan el procés de restauració es completi correctament.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">La restauració de la còpia de seguretat ha fallat</translation>
+<translation id="5003531399442003695">Per obtenir més detalls, feu clic a l'enllaç següent per veure els registres. Si aquest error persisteix, poseu-vos en contacte amb els canals de suport tècnic del JemaOS i proporcioneu els registres d'errors.</translation>
+<translation id="6363786367719063276">Mostra els registres</translation>
+<translation id="8730621377337864115">Fet</translation>
+<translation id="975238173507911396">Les dades s'han restaurat correctament</translation>
+<translation id="6276879052695618521">Registres de la restauració de la còpia de seguretat</translation>
+<translation id="4901207598072637766">JemaOS, proporcionat per <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">El JemaOS i els seus serveis compleixen el GDPR i les disposicions de la legislació europea de protecció de dades. Per obtenir més informació, consulteu la nostra <ph name="BEGIN_LINK_PRIVACY" />Política de privadesa<ph name="END_LINK_PRIVACY" /> i les nostres <ph name="BEGIN_LINK_TOS" />Condicions del servei.<ph name="END_LINK_TOS" /></translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, tots els drets reservats.</translation>
+<translation id="370679569376308836">El JemaOS és una oferta comercial basada en el dispositiu Jema i el seu SaaS.</translation>
+<translation id="2773644194450163486">El JemaOS és possible gràcies al projecte de codi obert <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" />.</translation>
+<translation id="2330680727776977160">El Chromium també és possible gràcies a altre <ph name="BEGIN_LINK_1" />programari de codi obert<ph name="END_LINK_1" /> i a <ph name="BEGIN_LINK_2" />programari de codi obert addicional<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Dissenyat i fabricat per Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, tots els drets reservats.</translation>
+<translation id="6168072053306020326">Jema Technology és el nom comercial de Jema Technology LTD i Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD és una empresa registrada a Anglaterra i Gal·les amb el número d'empresa 12273803.</translation>
+<translation id="1251589813188467292">Informació important sobre la garantia i el servei del dispositiu</translation>
+<translation id="4851115775198886021">Número de sèrie del dispositiu:</translation>
+</translationbundle>

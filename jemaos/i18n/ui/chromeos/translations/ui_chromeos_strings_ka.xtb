@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="ka">
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">დარეგისტრირდით Nutstore-ში, რომ სინქრონიზირდეთ თქვენი ფაილები ღრუბელში JemaOS-ში.</translation>
+<translation id="8672291834743661083">დარეგისტრირდით Nutstore-ში</translation>
+<translation id="5103639294476249880">დააწკაპუნეთ ღილაკზე „აპლიკაციის დამატება“ უსაფრთხოების პარამეტრებში</translation>
+<translation id="8371020157576651120">შექმენით და დააკოპირეთ თქვენი აპლიკაციის პაროლი</translation>
+<translation id="3855250998276979579">გახსენით Nutstore აპლიკაცია</translation>
+<translation id="6565655783894300125">და დააკავშირეთ Nutstore ანგარიში JemaOS-სთან თქვენი ელფოსტითა და აპლიკაციის პაროლით</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">მალე</translation>
+<translation id="4928968570611226525">ამ მოქმედების გასაგრძელებლად, თქვენ დაგჭირდებათ <ph name="BEGIN_LINK_ARC_APP" />&gt;Android ქვესისტემის გააქტიურება<ph name="END_LINK_ARC_APP" /> თქვენს JemaOS მოწყობილობაზე; ასევე თქვენი JemaOS მოწყობილობა უნდა იყოს <ph name="BEGIN_LINK_HELP" />გადართული დეველოპერის რეჟიმში<ph name="END_LINK_HELP" />.</translation>
+<translation id="7395250550107972941">ვერ ხერხდება .apk ფაილების გვერდით ჩატვირთვა. გთხოვთ, დარწმუნდეთ, რომ Android ქვესისტემა გააქტიურებულია და თქვენ ხართ JemaOS დეველოპერის რეჟიმში.</translation>
+<translation id="5690820326685091783">გახსნა JemaOS AI-ით</translation>
+</translationbundle>

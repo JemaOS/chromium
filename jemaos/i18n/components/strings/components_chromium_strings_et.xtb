@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="et">
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">JemaOS ei ole lõpetanud oma esialgset seadistust.</translation>
+<translation id="4257170804800372451">JemaOS ja Thot on võimalikud tänu <ph name="BEGIN_LINK_CHROMIUM" />Chromiumi<ph name="END_LINK_CHROMIUM" /> avatud lähtekoodiga projektile ja muule <ph name="BEGIN_LINK_OSS" />avatud lähtekoodiga tarkvarale<ph name="END_LINK_OSS" />.</translation>
+</translationbundle>

@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="kk">
+	<translation id="7386402409475121504">Жергілікті JemaOS тіркелгісін жасаңыз</translation>
+	<translation id="3760308806144055927">Жергілікті JemaOS тіркелгіңізге кіріңіз</translation>
+	<translation id="3325117507482096812">Құпия сөзді енгізіңіз</translation>
+	<translation id="1838206877831947154">Құпия сөздеріңіз сәйкес келмейді</translation>
+	<translation id="2158276988029582286">Жаңа жергілікті есептік жазба жасаңыз</translation>
+	<translation id="8592849747346274067">Бар тіркелгіге кіріңіз</translation>
+	<translation id="482190417986201746">Сіз енгізген пайдаланушы аты немесе құпия сөз дұрыс емес</translation>
+	<translation id="6603987686259425085"><ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>JemaOS жергілікті есептік жазбасымен<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph> кіре аласыз.</translation>
+	<translation id="3598802966230712759"><ph name="EMAIL_ADDRESS">$1</ph> электрондық поштасы бұрыннан бар. Басқа электрондық пошта арқылы әрекетті қайталаңыз.</translation>
+	<translation id="7215016743510876720">Жергілікті есептік жазбаны пайдаланыңыз</translation>
+	<translation id="6657635042185516718">Онлайн тіркелгіні пайдалануды жалғастырыңыз</translation>
+	<translation id="6867476688065565618">Жергілікті есептік жазбаға ауысу керек пе?</translation>
+	<translation id="4840454774882557974">Жергілікті тіркелгіні пайдалануды таңдасаңыз, пайдалы мүмкіндіктерге деректер мен теңшелімдерді бірнеше құрылғыларда синхрондау кіреді және JemaOS тіркелгісі арқылы веб-бағдарламаларға автоматты түрде кіру жұмыс істемейді.</translation>
+	<translation id="8951507920859729424">JemaOS жүйесін барынша пайдалану үшін онлайн тіркелгіні пайдалануды ұсынамыз.</translation>
+	<translation id="479773200536372215">Google есептік жазбаларын қоса алмайсыз, себебі Google API кілттері жоқ. Мәліметтерді <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> қараңыз.</translation>
+	<translation id="1198491307547164157">JemaOS тіркелгілерін қоса алмайсыз, себебі JemaOS API кілттері жоқ. Мәліметтерді <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> қараңыз.</translation>
+	<translation id="5042404702659901995">Құпиялық туралы мәлімдеме</translation>
+	<translation id="4907736162587268100">Құпиялылық мәлімдемесінің мазмұны</translation>
+	<translation id="5988344732274877691">JemaOS үшін (өте сирек, уәде етілген) ақпараттық бюллетеньге жазылыңыз</translation>
+	<translation id="1706203008474708805">JemaOS пайдаланушы тәжірибесін жақсарту жоспарына қосылыңыз</translation>
+	<translation id="1147139514756087229">Жергілікті тіркелгімен кіріңіз</translation>
+	<translation id="2054784944085654098">Қазір сақтық көшірме файлы жасалуда. Бұл біраз уақыт алуы мүмкін; күте тұрыңыз…</translation>
+	<translation id="3554401467586751874">Сақтық көшірме файлы сәтті жасалды</translation>
+	<translation id="2349211327705667074">Сақтық көшірме файлын көру</translation>
+	<translation id="6337433855796857931">Сақтық көшірме жасалмады</translation>
+	<translation id="3049367131589710124">Қате журналын қарау</translation>
+	<translation id="1079017345574916945">Қашықтағы жұмыс үстелі</translation>
+	<translation id="3064478898280877715">Қолданбалар дүкені</translation>
+	<translation id="2747689477259164256">JemaOS AI</translation>
+	<translation id="5890206344045530832">Орнатушы</translation>
+	<translation id="2173278076276376488">Бұл қызметтік бағдарлама осы құрылғының ішкі жадына <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> орнатуға көмектеседі.</translation>
+	<translation id="5323182426977498659">Ескерту! Бұл процедура деструктивті және оны қайтару мүмкін емес. Сіздің ықтимал деректеріңіздің жоғалуы үшін жауапкершілікті өз мойнымызға алмайтынымызды және шұғыл техникалық қолдау көрсетпейтінімізді ескеріңіз, өз тәуекеліңізді өзіңізге жүктейді.</translation>
+	<translation id="8517836015601969896">Толық дискіні орнату</translation>
+	<translation id="7300045760790370189">Толық қатты дискіні алу үшін <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> орнатыңыз, мақсатты қатты дискінің барлық деректері жойылады.</translation>
+	<translation id="8762511733918256595">Көп жүктеуді орнату</translation>
+	<translation id="248900698427753678"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> жүйесін басқа ОЖ-мен қатарлас жұмыс істей алатын <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> бар қатты диск бөліміне орнатыңыз. Мақсатты бөлімдегі барлық деректер жойылады.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> таңдалған қатты дискіңізге орнатылады; мақсатты дискідегі барлық деректер жойылады.</translation>
+	<translation id="4039091757234555415">Диск</translation>
+	<translation id="7783580523889684697">Қолжетімді диск жоқ</translation>
+	<translation id="8217653566575018388">Орнату аяқталды</translation>
+	<translation id="8846746259444262774">Орнату сәтсіз аяқталды</translation>
+	<translation id="7263815009235541549">Орнату сәтті аяқталды. <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> жүктеу үшін алдымен құрылғыны өшіріңіз, содан кейін кез келген орнату медиасын алып тастаңыз және оны қайта қосыңыз.</translation>
+	<translation id="3380151284134965398">Ой, бірдеңе дұрыс болмады және орнату аяқталмады. Процесті қайталап көріңіз. Егер бірдей қате қайталанса, жоғарыдағы журнал арқылы JemaOS қолдау қызметіне хабарласыңыз.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> қатты дискінің таңдалған бөлігіне орнатылады. Ағымдағы көп жүктеу схемасы бойынша бұл тек құрылғыңыз UEFI қолдайтын болса және қатты дискілеріңіз GPT пішімінде болса ғана жалғаса алады.</translation>
+	<translation id="7831363758161884243">Мақсатты бөлім жойылады; сонымен қатар белсенді EFI бөлімін (әдетте автоматты түрде орындалады) көрсетуіңіз керек, себебі Орнатушы жүйені жүктеу конфигурацияларын өзгертуі керек.</translation>
+	<translation id="5670799238446305550"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> мақсатты бөлімін таңдаңыз</translation>
+	<translation id="3695537760133394753">Бөлім</translation>
+	<translation id="5610519566593708119">EFI бөлімін таңдаңыз</translation>
+	<translation id="3367650349940010965">Таңдалған диск үшін қол жетімді бөлімдер жоқ</translation>
+	<translation id="7453223384507098390">Таңдалған диск үшін қол жетімді EFI бөлімдері жоқ</translation>
+	<translation id="1854532683465500847">Таңдалған бөлімнің өлшемі 20 ГБ-тан аз, орнату сәтсіз болуы мүмкін</translation>
+	<translation id="4144613075340468247">Таңдалған бөлім <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> көп жүктеуге орнатылды, оны қайта орнату сәтсіз болуы мүмкін.</translation>
+	<translation id="5793361052649920836">Орнатқаннан кейін <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> қалай жүктелгіңіз келеді?</translation>
+	<translation id="4273235330352963866">Мен үшін rEFInd орнатыңыз және конфигурациялаңыз (ұсынылады)</translation>
+	<translation id="1858708492548921044">rEFInd – компьютер іске қосылған кезде ОЖ жүктеу опциялары үшін жақсы графикалық интерфейсті ұсынатын жүктеу менеджері бағдарламасы, онымен жүктелетін қалаған ОЖ таңдай аласыз. rEFInd туралы қосымша ақпарат алу үшін оның басты бетінен қараңыз.</translation>
+	<translation id="3861924051442564602">Мен үшін UEFI жүктеу мәзірінің опциясын қосыңыз</translation>
+	<translation id="8622370666798589804">Компьютер іске қосылғанда, UEFI жүктеу опциялары мәзіріне (ең алдымен жылдам пернені басу арқылы) кіре аласыз, бұл опция сол мәзірге жазба ретінде <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> қосады. (Тек BIOS және UEFI микробағдарламасының кейбір үлгілеріне қолдау көрсетеді).</translation>
+	<translation id="1569398690544416170">Мұнда ештеңе жасамаңыз, мен оны өзім конфигурациялаймын</translation>
+	<translation id="3554866444001249532">Бұл орнату сценарийі тек қана <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> жүктеу үшін қажетті .efi файлдарын EFI бөліміне орналастырады, оны өзіңіз жүктеу жолын конфигурациялауыңыз қажет.</translation>
+	<translation id="7492832751164189534">Шығуға мәжбүрлеу</translation>
+	<translation id="5159534860632584026">Орнату процесі тоқтатылды</translation>
+	<translation id="8686749782014838344">Диск туралы ақпаратты алу мүмкін болмады</translation>
+	<translation id="5688543378771259173">Орнату аяқталуда...</translation>
+	<translation id="5350452134936384991">USB-ге орнатыңыз</translation>
+	<translation id="8008470485414925603"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> құрылғысын USB дискісіне орнатыңыз; мақсатты USB дискідегі барлық деректер жойылады.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> таңдалған USB дискіге орнатылады; мақсатты дискідегі барлық деректер жойылады.</translation>
+	<translation id="5725593226060700263">USB дискі жоқ</translation>
+	<translation id="4357040841587078287">Жүктеп алынған кескін файлынан JemaOS бағдарламасының осы көшірмесін іске қосып жатқаныңызды анықтадық. JemaOS ұсына алатын барынша жан-жақты қолдау мүмкіндіктерін (оның ішінде ауадан жаңартуларды) пайдалану үшін, JemaOS жүйесін толық дискіде бөлек сақтау құрылғысына орнатуды орындау үшін «Орнатқыш» функциясын іске қосуды ұсынамыз.</translation>
+	<translation id="1246398339704431302">Сіз <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>бәрібір JemaOS-тың осы көшірмесін пайдалануды жалғастыра аласыз<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, орнату процесі жүйеде кейінгі кезеңде орындалуы мүмкін, дегенмен, орнатудан кейін барлық деректеріңіз өшіріледі.</translation>
+	<translation id="3654532222088291133">Жүйеге кіру үшін JemaOS есептік жазбасының құпия сөзін енгізудің орнына, осы құрылғы үшін <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> құпия сөзін жасауға болады.</translation>
+	<translation id="8377684629839541977">JemaOS тіркелгісінің құпия сөзін пайдаланыңыз</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398"><ph name="DEVICE_OS" /> жүйесін автоматты түрде жаңартып отыру</translation>
+<translation id="2347352406101856238"><ph name="DEVICE_OS" /> жаңартуы қосулы</translation>
+<translation id="185834232609012804"><ph name="DEVICE_OS" /> жаңартуы өшірілген</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Платформа <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Қашықтан жұмыс үстелі</translation>
+<translation id="6898090158927982244">Linux жүйеңіз жаңартылған</translation>
+<translation id="4886703929102211360">Linux (бета) компонентіне маңызды жаңарту қолжетімді. Бұл жаңартуды мүмкіндігінше тезірек орнату ұсынылады, әйтпесе Linux (бета) жұмысын тоқтатуы мүмкін.</translation>
+<translation id="6694016202036959050"><ph name="DEVICE_OS" /> параметрлері</translation>
+<translation id="8362858344151826493">JemaOS тіркелгісі, сақтық көшіру, басқалар</translation>
+<translation id="9150429437595727962">Wi-Fi параметрлері</translation>
+<translation id="4938972461544498524">Тачпад параметрлері</translation>
+<translation id="1210024513248363065">Қашықтан қызметтер</translation>
+<translation id="2878862288885588535">Қашықтан диагностика қызметі</translation>
+<translation id="7409197984340676806">Қашықтан диагностика қызметі JemaOS ресми қолдау өкілдеріне жүйелік мәселелерді анықтауға мүмкіндік береді. Қазіргі уақытта қашықтан диагностика қызметін тек JemaOS ресми қолдау өкілдері іске қоса алады.</translation>
+<translation id="1791028023086176332">Бұл нөмірді JemaOS ресми қолдау өкілдерімен бөлісіңіз</translation>
+<translation id="6279304275399437025">Қашықтан диагностика қызметі іске қосылуда...</translation>
+<translation id="1501882165699826662">Қашықтан диагностика қызметін тоқтатып, қайталап көріңіз</translation>
+<translation id="3100283258447375201">Қосымша ақпарат</translation>
+<translation id="4070039109671307724">Әртүрлі</translation>
+<translation id="7326893024940073254">"Қайта іске қосу" түймесі</translation>
+<translation id="3002423764319968103">Жүйелік мәзірде "Қайта іске қосу" түймесін көрсету</translation>
+<translation id="6243454903512423518">"Экранды бұру" түймесі</translation>
+<translation id="6491049336868978729">Қазір планшет режимінде емессіз, "Экранды бұру" түймесі жасырылған</translation>
+<translation id="5496012402277579695">Жүйелік мәзірде "Экранды бұру" түймесін көрсету</translation>
+<translation id="5882838977344999606">Планшет/Ноутбук режимін ауыстыру</translation>
+<translation id="472164133625585606">Жүйелік мәзірде планшет/ноутбук режимін ауыстыру түймесін көрсету</translation>
+<translation id="1851103550468466960">Widevine қосу</translation>
+<translation id="4058176713282795846">Қорғалған премиум мазмұнды трансляциялау үшін Widevine қосыңыз. <ph name="BEGIN_LINK_LEARN_MORE" />Қосымша ақпарат<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">"libwidevine.so" таңдаңыз</translation>
+<translation id="4838463656205005584">Widevine қосу сәтсіз аяқталды...</translation>
+<translation id="2164041826798266548">Widevine CDM модулін орнату сәтсіз аяқталды. Байланысыңызды тексеріп, қайталап көріңіз.</translation>
+<translation id="4106982328079440606">JemaOS тіркелгі параметрлері</translation>
+<translation id="6468776556018764845">Эксперименттік мүмкіндіктер</translation>
+<translation id="3487615413425326553">Trusted Platform Module (TPM) тексерулерін айналып өту</translation>
+<translation id="4817176087932811573">Кейбір мүмкіндіктер құрылғыңыздағы үйлесімсіз TPM чипіне байланысты жұмыс істемеуі мүмкін; шешім ретінде TPM тексерулерін айналып өтуге болады.</translation>
+<translation id="3356003366173774486">Автоматты кіру</translation>
+<translation id="6218459410891191693">Құрылғы қайта іске қосылғанда ағымдағы тіркелгінің жұмыс үстеліне автоматты кіруіне рұқсат ету</translation>
+<translation id="6620839363422062843">Бұл тіркелгі үшін қосу мүмкін емес; автоматты кіру осы құрылғыдағы басқа тіркелгілер үшін әлдеқашан белсенді</translation>
+<translation id="6734500226490446035">Бұл тіркелгі үшін қосу мүмкін емес; осы тіркелгінің файлдық жүйелерін инициализациялау кезінде белгісіз қате орын алды. Қайта іске қосып көріңіз немесе жаңа тіркелгі жасаңыз</translation>
+<translation id="5464880042146818691">Бұл тіркелгі үшін қосу мүмкін емес; автоматты кіру параметрі тек "Жергілікті тіркелгі" түрі үшін қолжетімді.</translation>
+<translation id="3335654854106476749">Автоматты кіруді қоспас бұрын <ph name="BEGIN_LINK" />Құпиялылық пен қауіпсіздік<ph name="END_LINK" /> параметрлерінде кіру құпиясөзін қосыңыз.</translation>
+<translation id="5586831602198585601">JemaOS жүйесінің жаңа нұсқасы қазір жаңартуға қолжетімді. Алайда JemaOS for You жазылымыңыздың мерзімі аяқталды; JemaOS жүйесін жаңарту үшін белсенді жазылым қажет.</translation>
+<translation id="3869860597719956574">JemaOS жүйесінің жаңа негізгі нұсқасы қазір жаңартуға қолжетімді. Осы жаңартуды жалғастыру үшін бір реттік төлем төлеуіңіз керек.</translation>
+<translation id="6523879681771260760">Сақтық көшірме файлын сақтау жолын көрсетіңіз</translation>
+<translation id="2036152819788683293">Осы тіркелгі үшін сақтық көшірме файлы жасау (бета). <ph name="BEGIN_LINK_LEARN_MORE" />Қосымша ақпарат<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Сақтық көшіру</translation>
+<translation id="4267347174163690295">Осы тіркелгі үшін сақтық көшірме файлы жасау (бета).</translation>
+<translation id="8112950994208888917">Бұл әрекет осы тіркелгі үшін толық дискі сақтық көшірмесін жасайды, бұл параметрлер, орнатылған браузер кеңейтулері мен ішкі жүйе қолданбалары қоса алғанда, JemaOS жүйеңізді сақтық көшірме жасалған кездегі күйге оңай қалпына келтіруге мүмкіндік береді. Қолданбаларыңыз бен басты қалтаңыздың мазмұнына байланысты сақтық көшірме файлы үлкен болуы мүмкін; сақтық көшірме файлын сыртқы сақтау құрылғысында сақтау ұсынылады. Портативті USB дискіңіз болса, оны қазір қосыңыз. <ph name="BEGIN_LINK_LEARN_MORE" />Қосымша ақпарат<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Осы тіркелгінің кіру құпиясөзін енгізіңіз</translation>
+<translation id="8663988871299316062">Бұл құпиясөзді есте сақтаңыз, өйткені ол осы сақтық көшірме файлын қалпына келтіру кезінде қажет болады</translation>
+<translation id="6408904153044317846">Қалпына келтіретін сақтық көшірме файлын таңдаңыз</translation>
+<translation id="8062988348127771021">JemaOS деректеріңізді сақтық көшірме файлынан қалпына келтіру</translation>
+<translation id="7309192418866543730">Сақтық көшірме құпиясөзін енгізіңіз</translation>
+<translation id="3642408376366598984">Осы сақтық көшірме файлын шифрлау үшін қолданылған құпиясөзді енгізіңіз</translation>
+<translation id="7783974937157985523">Сақтық көшірме құпиясөзі</translation>
+<translation id="6583780301401541007">Қалпына келтіру сәтті аяқталды</translation>
+<translation id="3514011352559420398">Қалпына келтіру сәтсіз аяқталды</translation>
+<translation id="7535980903266533458">Сақтық көшірмені құрылғыңызға немесе сыртқы жадқа сақтау</translation>
+<translation id="604001903249547235">Бұлттық сақтық көшіру</translation>
+<translation id="8885702701336541611">Сақтық көшірмені JemaOS бұлттық қоймасына жүктеу</translation>
+<translation id="3939744430096549862">Бұлтқа сақтық көшіру</translation>
+<translation id="619129431573254316">Жергілікті сақтық көшірме файлынан қалпына келтіру</translation>
+<translation id="1859592711955106569">Бұлттан қалпына келтіру</translation>
+<translation id="38222223336741457">JemaOS бұлтынан жүктеп алып, қалпына келтіру</translation>
+<translation id="1241089811244416179">Бұлттан қалпына келтіру</translation>
+<translation id="652479689372703360">Сақтық көшіру жүріп жатыр</translation>
+<translation id="3655220146274872918">Сақтық көшіру аяқталды</translation>
+<translation id="4243579853635792694">Сақтық көшірмеңіз сәтті жасалды</translation>
+<translation id="4854179463174744546">Сақтық көшіру барысында қате орын алды</translation>
+<translation id="2410668771600309999">Connect API пайдаланушы ақпараты</translation>
+<translation id="2223892939866251845">Пайдаланушы ID</translation>
+<translation id="3850846286480935456">Сақтық көшірме қоймасын талдау</translation>
+<translation id="6244494465581273970">Пайдаланушы ID қажет</translation>
+<translation id="9204006549413740506">Соңғы жаңартылған</translation>
+<translation id="476642412165431515">Аппараттық құрылғылар</translation>
+<translation id="3386337985825120901">Сақтық көшірме деректері жоқ</translation>
+<translation id="8490990067870590760">Сақтық көшірме файлдары жүктелуде...</translation>
+<translation id="2955409026764742995">Қалпына келтіретін сақтық көшірме файлын таңдаңыз:</translation>
+<translation id="7414629348005657242">-- Сақтық көшірме файлын таңдаңыз --</translation>
+<translation id="918246516374174381">Сақтық көшірме файлдары табылмады. Алдымен сақтық көшірме жасаңыз.</translation>
+<translation id="77997252117517973">Жақында</translation>
+<translation id="1930692852800776096">Сөздік қосу</translation>
+<translation id="8793060353848771694">Сол құлаққап суреті</translation>
+<translation id="6257440204887306255">Зарядтау қорабының суреті</translation>
+<translation id="2754700616124958693">Оң құлаққап суреті</translation>
+<translation id="1068676292264983586">Әдепкі құрылғы суреті</translation>
+<translation id="6364075396486660405">Батарея жұмыс уақытын оңтайландыру үшін барлық бөлімдердегі медиа файлдарды автоматты сканерлеуді өшіру. <ph name="BEGIN_LINK_LEARN_MORE" />Қосымша ақпарат<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Қауіпсіздік параметрлері</translation>
+<translation id="5618366106086725045">Осы <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> орнатылымы үшін көбірек әзірлеуші мүмкіндіктерімен "Әзірлеуші режимін" қосу. <ph name="BEGIN_LINK_LEARN_MORE" />Қосымша ақпарат<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Сіз әлдеқашан "Әзірлеуші режимінде"сіз</translation>
+<translation id="6074549317340202195">"Әзірлеуші режимін" қосу</translation>
+<translation id="418781258674176053">Ескерту! "Әзірлеуші режимін" қосу — қайтымсыз әрекет. "Әзірлеуші режимін" өшіргіңіз келсе, JemaOS жүйесін қайта орнатуыңыз керек, бұл барлық деректерді өшіреді. Деректеріңізді сақтық көшіріп, өз тәуекеліңізбен жалғастырыңыз.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Платформа <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Қазір желіден тыс</translation>
+<translation id="2590678769628709242">JemaOS жазылымыңызды онлайн тексеру</translation>
+<translation id="4701836089682883918">JemaOS жазылымы туралы ақпарат</translation>
+<translation id="5891566673089952188">Құрылғы ID алу кезінде қате орын алды</translation>
+<translation id="4685086787606104322">Жазылымның аяқталуы</translation>
+<translation id="3354919960795782984">Құрылғы ID</translation>
+<translation id="5758632069869992306">Жазылымыңызды онлайн тексеру</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Платформа <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Сынақ жазылымы</translation>
+<translation id="4362781408813685579">Белсенді жазылым</translation>
+<translation id="1141274201089997510">Мерзімі өткен жазылым</translation>
+<translation id="2553683254139782404">Коммерциялық емес нұсқа</translation>
+<translation id="8466048683756385518">Кәсіпорын лицензияланған нұсқасы (сынақ)</translation>
+<translation id="2853871047705932424">Кәсіпорын лицензияланған нұсқасы</translation>
+<translation id="5239675900317881945">Кәсіпорын лицензияланған нұсқасы (мерзімі өткен)</translation>
+<translation id="189101945990408398">Ескі Intel</translation>
+<translation id="6816405236809604904">Заманауи Intel</translation>
+<translation id="6169452478137972655">AMD графикасы</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="1270291881045478104">JemaOS AI қосу</translation>
+<translation id="2013780539677437932">JemaOS AI-ға байланысты барлық мүмкіндіктерді қосу немесе өшіру</translation>
+<translation id="3398637633218757480">JemaOS AI жылдам шақыруын қосу</translation>
+<translation id="8986197796475507452">Ctrl + C + C пернелерін басу арқылы бөлектелген мазмұн үшін JemaOS AI параметрлерін жылдам шығару</translation>
+<translation id="6407628130593274137">JemaOS AI үшін басқа параметрлер мен опциялар</translation>
+<translation id="4005574560653331142">Осы жергілікті тіркелгінің PIN-кодын немесе кіру құпиясөзін өзгерту үшін <ph name="BEGIN_LINK" />Құпиялылық пен қауіпсіздік<ph name="END_LINK" /> параметрлеріне өтіңіз.</translation>
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425"><ph name="LINK_START" />JemaOS жергілікті тіркелгісімен кіруге<ph name="LINK_END" /> болады.</translation>
+<translation id="5291842596976929391"><ph name="EMAIL_ADDRESS" /> электрондық поштасы бұрыннан бар. Басқа электрондық поштамен қайталап көріңіз.</translation>
+<translation id="4519800823932975782">JemaOS Анықтама орталығы</translation>
+<translation id="4737474693231655139">JemaOS жайлы жиі қойылатын сұрақтарға анықтама мақалалар мен жауаптарды табыңыз</translation>
+</translationbundle>

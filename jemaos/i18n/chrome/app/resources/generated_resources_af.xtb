@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="af">
+	<translation id="7386402409475121504">Skep jou plaaslike JemaOS-rekening</translation>
+	<translation id="3760308806144055927">Meld aan by jou plaaslike JemaOS-rekening</translation>
+	<translation id="3325117507482096812">Voer asseblief 'n wagwoord in</translation>
+	<translation id="1838206877831947154">Jou wagwoorde stem nie ooreen nie</translation>
+	<translation id="2158276988029582286">Skep 'n nuwe plaaslike rekening</translation>
+	<translation id="8592849747346274067">Meld aan by 'n bestaande rekening</translation>
+	<translation id="482190417986201746">Die gebruikersnaam of wagwoord wat jy ingevoer het, is verkeerd</translation>
+	<translation id="6603987686259425085">Jy kan <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>aanmeld met 'n JemaOS plaaslike rekening<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">E-pos <ph name="EMAIL_ADDRESS">$1</ph> bestaan ​​reeds. Probeer asseblief weer met 'n ander e-pos.</translation>
+	<translation id="7215016743510876720">Gebruik plaaslike rekening</translation>
+	<translation id="6657635042185516718">Gaan voort om aanlyn rekening te gebruik</translation>
+	<translation id="6867476688065565618">Skakel oor na plaaslike rekening?</translation>
+	<translation id="4840454774882557974">As jy kies om 'n plaaslike rekening te gebruik, sluit nuttige kenmerke in om jou data en voorkeure oor verskeie toestelle te sinchroniseer en om outomaties aan te meld by webtoepassings met jou JemaOS-rekening sal nie werk nie.</translation>
+	<translation id="8951507920859729424">Ons beveel aan om 'n aanlyn rekening te gebruik om JemaOS ten volle te gebruik.</translation>
+	<translation id="479773200536372215">Jy sal nie Google-rekeninge kan byvoeg nie omdat Google API-sleutels ontbreek. Sien <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> vir besonderhede.</translation>
+	<translation id="1198491307547164157">Jy sal nie JemaOS-rekeninge kan byvoeg nie omdat JemaOS API-sleutels ontbreek. Sien <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> vir besonderhede.</translation>
+	<translation id="5042404702659901995">Privaatheidsverklaring</translation>
+	<translation id="4907736162587268100">Privaatheidsverklaring inhoud</translation>
+	<translation id="5988344732274877691">Teken in vir die (baie seldsame, beloofde) nuusbrief vir JemaOS</translation>
+	<translation id="1706203008474708805">Sluit aan by JemaOS-gebruikerservaringverbeteringsplan</translation>
+	<translation id="1147139514756087229">Meld aan met 'n plaaslike rekening</translation>
+	<translation id="2054784944085654098">Skep tans rugsteunlêer. Dit kan 'n rukkie neem; wag asseblief...</translation>
+	<translation id="3554401467586751874">Rugsteunlêer is suksesvol geskep</translation>
+	<translation id="2349211327705667074">Bekyk rugsteunlêer</translation>
+	<translation id="6337433855796857931">Rugsteun het misluk</translation>
+	<translation id="3049367131589710124">Bekyk foutlogboek</translation>
+	<translation id="1079017345574916945">Afgeleë lessenaar</translation>
+	<translation id="3064478898280877715">Toepassingswinkel</translation>
+	<translation id="2747689477259164256">JemaOS AI</translation>
+	<translation id="5890206344045530832">Installeerder</translation>
+	<translation id="2173278076276376488">Hierdie nutsprogram sal jou help om <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> op die interne berging van hierdie toestel te installeer.</translation>
+	<translation id="5323182426977498659">Waarskuwing! Hierdie prosedure is vernietigend en kan nie ongedaan gemaak word nie. Neem asseblief kennis dat ons geen verantwoordelikheid sal hou vir jou potensiële dataverlies nie en ook nie enige dringende tegniese ondersteuning sal verskaf nie, gaan voort op eie risiko.</translation>
+	<translation id="8517836015601969896">Volledige skyfinstallasie</translation>
+	<translation id="7300045760790370189">Installeer <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> om 'n hele hardeskyf te beset, alle data van die teikenhardeskyf sal uitgevee word.</translation>
+	<translation id="8762511733918256595">Multi-boot installasie</translation>
+	<translation id="248900698427753678">Installeer <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> op 'n bestaande partisie van 'n hardeskyf, waar <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> parallel met ander bedryfstelsels kan bestaan. Alle data op die teikenpartisie sal uitgevee word.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> sal op jou geselekteerde hardeskyf geïnstalleer word; alle data op die teikenskyf sal uitgevee word.</translation>
+	<translation id="4039091757234555415">Skyf</translation>
+	<translation id="7783580523889684697">Geen skyf beskikbaar nie</translation>
+	<translation id="8217653566575018388">Installasie voltooi</translation>
+	<translation id="8846746259444262774">Installasie het misluk</translation>
+	<translation id="7263815009235541549">Die installasie is suksesvol voltooi. Skakel asseblief eers jou toestel af, verwyder dan enige installasiemedia, en skakel dit weer aan om <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> te begin.</translation>
+	<translation id="3380151284134965398">Oeps, iets het verkeerd geloop en die installasie het nie voltooi nie. Probeer asseblief die proses weer. As dieselfde fout voortduur, kontak asseblief JemaOS-ondersteuning met die bogenoemde logboek.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> sal op die geselekteerde partisie van jou hardeskyf geïnstalleer word. Onder die huidige multi-boot-skema kan dit slegs voortgaan as jou toestel UEFI ondersteun en jou hardeskywe met GPT geformateer is.</translation>
+	<translation id="7831363758161884243">Die teikenpartisie sal uitgevee word; jy moet ook jou aktiewe EFI-partisie spesifiseer (gewoonlik outomaties gedoen), aangesien die installeerder stelselselflaaikonfigurasies moet verander.</translation>
+	<translation id="5670799238446305550">Kies <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> teikenpartisie</translation>
+	<translation id="3695537760133394753">Afskorting</translation>
+	<translation id="5610519566593708119">Kies EFI partisie</translation>
+	<translation id="3367650349940010965">Daar is geen partisies beskikbaar vir die geselekteerde skyf nie</translation>
+	<translation id="7453223384507098390">Daar is geen EFI partisies beskikbaar vir die geselekteerde skyf nie</translation>
+	<translation id="1854532683465500847">Die grootte van die geselekteerde partisie is minder as 20 GB, installasie kan misluk</translation>
+	<translation id="4144613075340468247">Die geselekteerde partisie is gemonteer op <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> multi-boot, installeer weer daarop kan dalk misluk</translation>
+	<translation id="5793361052649920836">Na installasie, hoe wil jy <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> selflaai?</translation>
+	<translation id="4273235330352963866">Installeer en konfigureer rEFInd vir my (aanbeveel)</translation>
+	<translation id="1858708492548921044">rEFInd is 'n selflaaibestuurderprogram wat 'n mooi grafiese koppelvlak bied vir OS-opstartopsies wanneer jou rekenaar begin, sal jy jou verlangde bedryfstelsel kan kies om daarmee te begin. Vir meer inligting oor rEFInd, verwys asseblief na sy tuisblad.</translation>
+	<translation id="3861924051442564602">Voeg 'n UEFI-opstartmenu-opsie vir my by</translation>
+	<translation id="8622370666798589804">Wanneer jou rekenaar begin kan jy dalk die UEFI selflaai opsies kieslys binnegaan (heel waarskynlik deur 'n snelsleutel te druk), hierdie opsie voeg <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> as 'n inskrywing by daardie kieslys. (Ondersteun net sommige modelle van BIOS en UEFI-firmware).</translation>
+	<translation id="1569398690544416170">Doen niks hier nie, ek sal dit self instel</translation>
+	<translation id="3554866444001249532">Hierdie installasieskrip sal slegs die nodige .efi-lêers plaas vir die selflaai van <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> na jou EFI-partisie, jy sal self moet konfigureer hoe om dit te selflaai.</translation>
+	<translation id="7492832751164189534">Dwing om op te hou</translation>
+	<translation id="5159534860632584026">Die installasieproses is beëindig</translation>
+	<translation id="8686749782014838344">Kon nie skyfinligting kry nie</translation>
+	<translation id="5688543378771259173">Die installasie word beëindig...</translation>
+	<translation id="5350452134936384991">Installeer in USB</translation>
+	<translation id="8008470485414925603">Installeer <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> op 'n USB-skyf; alle data op die teiken-USB-skyf sal uitgevee word.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> sal op jou geselekteerde USB-skyf geïnstalleer word; alle data op die teikenskyf sal uitgevee word.</translation>
+	<translation id="5725593226060700263">Geen USB-skyf beskikbaar nie</translation>
+	<translation id="4357040841587078287">Ons het bespeur dat jy hierdie kopie van JemaOS vanaf 'n afgelaaide prentlêer laat loop. Om die mees omvattende ondersteuningskenmerke (insluitend oor-die-lug-opdaterings) wat JemaOS kan bied, te gebruik, beveel ons sterk aan dat jy die "Installeerder"-funksie begin om 'n volskyfinstallasie van JemaOS op 'n aparte stoortoestel uit te voer.</translation>
+	<translation id="1246398339704431302">Jy kan <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>in elk geval voortgaan om hierdie kopie van JemaOS te gebruik<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, die installasieproses kan op 'n latere stadium in die stelsel uitgevoer word, al jou data sal egter weer van hierdie bladsy af uitgevee word en jy sal na die installasie begin.</translation>
+	<translation id="3654532222088291133">In plaas daarvan om jou JemaOS-rekeningwagwoord in te voer om aan te meld, kan jy 'n <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph>-wagwoord vir hierdie toestel skep</translation>
+	<translation id="8377684629839541977">Gebruik JemaOS-rekeningwagwoord</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">Hou <ph name="DEVICE_OS" /> outomaties op datum</translation>
+<translation id="2347352406101856238"><ph name="DEVICE_OS" />-opdatering geaktiveer</translation>
+<translation id="185834232609012804"><ph name="DEVICE_OS" />-opdatering gedeaktiveer</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Platform <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Afgeleë werkskerm</translation>
+<translation id="6898090158927982244">Jou Linux is op datum</translation>
+<translation id="4886703929102211360">'n Kritieke opdatering is beskikbaar vir die Linux (beta)-komponent. Dit word sterk aanbeveel om hierdie opdatering so gou as moontlik te installeer, anders kan jou Linux (beta) ophou werk.</translation>
+<translation id="6694016202036959050"><ph name="DEVICE_OS" />-instellings</translation>
+<translation id="8362858344151826493">JemaOS-rekening, rugsteun, diverse</translation>
+<translation id="9150429437595727962">Wi-Fi-instellings</translation>
+<translation id="4938972461544498524">Raakblad-instellings</translation>
+<translation id="1210024513248363065">Afstanddienste</translation>
+<translation id="2878862288885588535">Afstanddiagnostiese diens</translation>
+<translation id="7409197984340676806">Die afstanddiagnostiese diens stel amptelike JemaOS-ondersteuningsverteenwoordigers in staat om stelselprobleme te identifiseer. Tans kan die afstanddiagnostiese diens slegs deur amptelike JemaOS-ondersteuningsverteenwoordigers begin word.</translation>
+<translation id="1791028023086176332">Deel asseblief hierdie nommer met amptelike JemaOS-ondersteuningsverteenwoordigers</translation>
+<translation id="6279304275399437025">Die afstanddiagnostiese diens word begin...</translation>
+<translation id="1501882165699826662">Stop asseblief die afstanddiagnostiese diens en probeer weer</translation>
+<translation id="3100283258447375201">Meer inligting</translation>
+<translation id="4070039109671307724">Diverse</translation>
+<translation id="7326893024940073254">"Herbegin"-knoppie</translation>
+<translation id="3002423764319968103">Wys 'n "Herbegin"-knoppie in die stelselkieslys</translation>
+<translation id="6243454903512423518">"Draai skerm"-knoppie</translation>
+<translation id="6491049336868978729">Jy is tans nie in tablettmodus nie; die "Draai skerm"-knoppie is weggesteek</translation>
+<translation id="5496012402277579695">Wys 'n "Draai skerm"-knoppie in die stelselkieslys</translation>
+<translation id="5882838977344999606">Tablet/Skootrekenaar-modusskakelaar</translation>
+<translation id="472164133625585606">Wys 'n tablet/skootrekenaar-modusskakelaar in die stelselkieslys</translation>
+<translation id="1851103550468466960">Aktiveer Widevine</translation>
+<translation id="4058176713282795846">Aktiveer Widevine om beskermde premiuminhoud te stroom. <ph name="BEGIN_LINK_LEARN_MORE" />Leer meer<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">Kies "libwidevine.so"</translation>
+<translation id="4838463656205005584">Kon nie Widevine aktiveer nie...</translation>
+<translation id="2164041826798266548">Die installasie van die Widevine CDM-module het misluk. Kontroleer asseblief jou verbinding en probeer weer.</translation>
+<translation id="4106982328079440606">JemaOS-rekeninginstellings</translation>
+<translation id="6468776556018764845">Eksperimentele kenmerke</translation>
+<translation id="3487615413425326553">Omseil Trusted Platform Module (TPM)-kontroles</translation>
+<translation id="4817176087932811573">Sommige kenmerke kan misluk as gevolg van 'n onversoenbare TPM-skyfie in jou toestel; jy kan die TPM-kontroles as 'n tydelike oplossing omseil.</translation>
+<translation id="3356003366173774486">Outomatiese aanmelding</translation>
+<translation id="6218459410891191693">Laat die huidige rekening toe om outomaties by die werkskerm aan te meld wanneer die toestel herbegin</translation>
+<translation id="6620839363422062843">Kan nie vir hierdie rekening aktiveer nie; outomatiese aanmelding is reeds vir ander rekeninge op hierdie toestel aktief</translation>
+<translation id="6734500226490446035">Kan nie vir hierdie rekening aktiveer nie; 'n onbekende fout het voorgekom tydens die inisialisering van die lêerstelsels vir hierdie rekening. Probeer asseblief herbegin of skep 'n nuwe rekening</translation>
+<translation id="5464880042146818691">Kan nie vir hierdie rekening aktiveer nie; die outomatiese aanmeldopsie is slegs beskikbaar vir die "Plaaslike rekening"-tipe.</translation>
+<translation id="3335654854106476749">Voeg asseblief 'n aanmeldwagwoord by in die <ph name="BEGIN_LINK" />Privaatheid en sekuriteit<ph name="END_LINK" />-instellings voordat jy outomatiese aanmelding aktiveer.</translation>
+<translation id="5586831602198585601">'n Nuwer weergawe van JemaOS is nou beskikbaar om op te dateer. Jou JemaOS for You-intekening het egter verval; jy benodig 'n aktiewe intekening om jou JemaOS op te dateer.</translation>
+<translation id="3869860597719956574">'n Nuwe hoofweergawe van JemaOS is nou beskikbaar om op te dateer. Jy moet 'n eenmalige fooi betaal om met hierdie opdatering voort te gaan.</translation>
+<translation id="6523879681771260760">Spesifiseer asseblief die pad waar die rugsteunlêer gestoor moet word</translation>
+<translation id="2036152819788683293">Skep 'n rugsteunlêer vir hierdie rekening (beta). <ph name="BEGIN_LINK_LEARN_MORE" />Leer meer<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Rugsteun</translation>
+<translation id="4267347174163690295">Skep 'n rugsteunlêer vir hierdie rekening (beta).</translation>
+<translation id="8112950994208888917">Hierdie bewerking skep 'n volledige skyfrugsteun vir hierdie rekening, wat dit maklik maak om jou JemaOS te herstel na die toestand waarin dit was toe die rugsteun geskep is, insluitend instellings, geïnstalleerde blaaieruitbreidings en substelseltoepassings. Afhangende van jou toepassings en die inhoud van jou tuisgids, kan die rugsteunlêer groot wees; dit word aanbeveel om die rugsteunlêer op 'n eksterne stoortoestel te stoor. As jy 'n draagbare USB-skyf het, koppel dit asseblief nou. <ph name="BEGIN_LINK_LEARN_MORE" />Leer meer<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Voer asseblief die aanmeldwagwoord vir hierdie rekening in</translation>
+<translation id="8663988871299316062">Onthou asseblief hierdie wagwoord, aangesien dit benodig sal word wanneer hierdie rugsteunlêer herstel word</translation>
+<translation id="6408904153044317846">Kies die rugsteunlêer om te herstel</translation>
+<translation id="8062988348127771021">Herstel jou JemaOS-data vanuit 'n rugsteunlêer</translation>
+<translation id="7309192418866543730">Voer die rugsteunwagwoord in</translation>
+<translation id="3642408376366598984">Voer die wagwoord in wat gebruik is om hierdie rugsteunlêer te enkripteer</translation>
+<translation id="7783974937157985523">Rugsteunwagwoord</translation>
+<translation id="6583780301401541007">Herstel suksesvol</translation>
+<translation id="3514011352559420398">Herstel het misluk</translation>
+<translation id="7535980903266533458">Stoor die rugsteun op jou toestel of eksterne stoor</translation>
+<translation id="604001903249547235">Wolkrugsteun</translation>
+<translation id="8885702701336541611">Laai die rugsteun op na JemaOS-wolkberging</translation>
+<translation id="3939744430096549862">Rugsteun na die wolk</translation>
+<translation id="619129431573254316">Herstel vanuit 'n plaaslike rugsteunlêer</translation>
+<translation id="1859592711955106569">Wolkherstel</translation>
+<translation id="38222223336741457">Laai af en herstel vanuit die JemaOS-wolk</translation>
+<translation id="1241089811244416179">Herstel vanuit die wolk</translation>
+<translation id="652479689372703360">Rugsteun aan die gang</translation>
+<translation id="3655220146274872918">Rugsteun voltooi</translation>
+<translation id="4243579853635792694">Jou rugsteun is suksesvol geskep</translation>
+<translation id="4854179463174744546">'n Fout het tydens die rugsteunproses voorgekom</translation>
+<translation id="2410668771600309999">Connect API-gebruikersinligting</translation>
+<translation id="2223892939866251845">Gebruikers-ID</translation>
+<translation id="3850846286480935456">Rugsteunberingsontleding</translation>
+<translation id="6244494465581273970">Gebruikers-ID word vereis</translation>
+<translation id="9204006549413740506">Laas opgedateer</translation>
+<translation id="476642412165431515">Hardewaretoestelle</translation>
+<translation id="3386337985825120901">Geen rugsteundata beskikbaar nie</translation>
+<translation id="8490990067870590760">Laai tans rugsteunlêers...</translation>
+<translation id="2955409026764742995">Kies die rugsteunlêer om te herstel:</translation>
+<translation id="7414629348005657242">-- Kies 'n rugsteunlêer --</translation>
+<translation id="918246516374174381">Geen rugsteunlêers gevind nie. Skep asseblief eers 'n rugsteun.</translation>
+<translation id="77997252117517973">Binnekort beskikbaar</translation>
+<translation id="1930692852800776096">Voeg 'n woordeboek by</translation>
+<translation id="8793060353848771694">Beeld van linker oordopjie</translation>
+<translation id="6257440204887306255">Beeld van laaikas</translation>
+<translation id="2754700616124958693">Beeld van regter oordopjie</translation>
+<translation id="1068676292264983586">Verstektoestelbeeld</translation>
+<translation id="6364075396486660405">Deaktiveer outomatiese skandering van medialêers vir alle partisies om batterylewe te optimaliseer. <ph name="BEGIN_LINK_LEARN_MORE" />Leer meer<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Sekuriteitsopsies</translation>
+<translation id="5618366106086725045">Aktiveer "Ontwikkelaarmodus" vir hierdie <ph name="IDS_SHORT_PRODUCT_OS_NAME" />-installasie met meer ontwikkelaarskenmerke. <ph name="BEGIN_LINK_LEARN_MORE" />Leer meer<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Jy is reeds in "Ontwikkelaarmodus"</translation>
+<translation id="6074549317340202195">Aktiveer "Ontwikkelaarmodus"</translation>
+<translation id="418781258674176053">Waarskuwing! Die aktivering van "Ontwikkelaarmodus" is 'n onomkeerbare bewerking. As jy "Ontwikkelaarmodus" wil deaktiveer, moet jy JemaOS herinstalleer, wat alle data sal uitvee. Maak asseblief 'n rugsteun van jou data en gaan voort op jou eie risiko.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Platform <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Tans vanlyn</translation>
+<translation id="2590678769628709242">Kontroleer jou JemaOS-intekening aanlyn</translation>
+<translation id="4701836089682883918">JemaOS-intekeninginligting</translation>
+<translation id="5891566673089952188">Daar was 'n fout om jou toestel-ID te kry</translation>
+<translation id="4685086787606104322">Einde van intekening</translation>
+<translation id="3354919960795782984">Toestel-ID</translation>
+<translation id="5758632069869992306">Kontroleer jou intekening aanlyn</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Platform <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Proefintekening</translation>
+<translation id="4362781408813685579">Aktiewe intekening</translation>
+<translation id="1141274201089997510">Vervalde intekening</translation>
+<translation id="2553683254139782404">Nie-kommersiële uitgawe</translation>
+<translation id="8466048683756385518">Onderneming-gelisensieerde weergawe (proef)</translation>
+<translation id="2853871047705932424">Onderneming-gelisensieerde weergawe</translation>
+<translation id="5239675900317881945">Onderneming-gelisensieerde weergawe (verval)</translation>
+<translation id="189101945990408398">Verouderde Intel</translation>
+<translation id="6816405236809604904">Moderne Intel</translation>
+<translation id="6169452478137972655">AMD-grafika</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="1270291881045478104">Aktiveer JemaOS AI</translation>
+<translation id="2013780539677437932">Aktiveer of deaktiveer alle JemaOS AI-verwante kenmerke</translation>
+<translation id="3398637633218757480">Aktiveer JemaOS AI Vinnige Oproep</translation>
+<translation id="8986197796475507452">Roep vinnig JemaOS AI-opsies vir gemerkte inhoud op deur Ctrl + C + C te druk</translation>
+<translation id="6407628130593274137">Ander instellings en opsies vir JemaOS AI</translation>
+<translation id="4005574560653331142">Om die PIN of aanmeldwagwoord van hierdie plaaslike rekening te verander, gaan na die <ph name="BEGIN_LINK" />Privaatheid en sekuriteit<ph name="END_LINK" />-instellings.</translation>
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">Jy kan <ph name="LINK_START" />aanmeld met 'n plaaslike JemaOS-rekening<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">E-pos <ph name="EMAIL_ADDRESS" /> bestaan reeds. Probeer asseblief weer met 'n ander e-posadres.</translation>
+<translation id="4519800823932975782">JemaOS-hulpsentrum</translation>
+<translation id="4737474693231655139">Vind hulpartikels en antwoorde op algemene JemaOS-vrae</translation>
+</translationbundle>

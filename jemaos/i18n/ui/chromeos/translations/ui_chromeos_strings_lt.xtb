@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="lt">
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">Užsiregistruokite Nutstore, kad sinchronizuotumėte savo failus debesyje JemaOS.</translation>
+<translation id="8672291834743661083">Užsiregistruokite Nutstore</translation>
+<translation id="5103639294476249880">Spustelėkite mygtuką "Pridėti programą" saugos nustatymuose</translation>
+<translation id="8371020157576651120">Sugeneruokite ir nukopijuokite savo programos slaptažodį</translation>
+<translation id="3855250998276979579">Atidarykite Nutstore programą</translation>
+<translation id="6565655783894300125">ir prijunkite Nutstore paskyrą prie JemaOS naudodami savo el. paštą ir programos slaptažodį</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Netrukus</translation>
+<translation id="4928968570611226525">Norėdami tęsti šį veiksmą, turėsite <ph name="BEGIN_LINK_ARC_APP" />&gt;aktyvuoti Android posistemę<ph name="END_LINK_ARC_APP" /> savo JemaOS įrenginyje; taip pat jūsų JemaOS įrenginys turi būti <ph name="BEGIN_LINK_HELP" />perjungtas į kūrėjo režimą<ph name="END_LINK_HELP" />.</translation>
+<translation id="7395250550107972941">Nepavyksta įkelti .apk failų iš šono. Įsitikinkite, kad Android posistemė yra aktyvuota ir esate JemaOS kūrėjo režime.</translation>
+<translation id="5690820326685091783">Atidaryti su JemaOS AI</translation>
+</translationbundle>

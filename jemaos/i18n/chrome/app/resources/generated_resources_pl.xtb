@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="pl">
+	<translation id="7386402409475121504">Utwórz swoje lokalne konto JemaOS</translation>
+	<translation id="3760308806144055927">Zaloguj się na swoje lokalne konto JemaOS</translation>
+	<translation id="3325117507482096812">Proszę wprowadzić hasło</translation>
+	<translation id="1838206877831947154">Twoje hasła nie pasują do siebie</translation>
+	<translation id="2158276988029582286">Utwórz nowe konto lokalne</translation>
+	<translation id="8592849747346274067">Zaloguj się do istniejącego konta</translation>
+	<translation id="482190417986201746">Wprowadzona nazwa użytkownika lub hasło jest nieprawidłowe</translation>
+	<translation id="6603987686259425085">Możesz <ph name="LINK_START">1 $<ex>&amp;gt;a&amp;lt;</ex></ph>zalogować się na lokalne konto JemaOS<ph name="LINK_END">2 $<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">Adres e-mail <ph name="EMAIL_ADDRESS">$1</ph> już istnieje. Spróbuj ponownie, używając innego adresu e-mail.</translation>
+	<translation id="7215016743510876720">Użyj konta lokalnego</translation>
+	<translation id="6657635042185516718">Kontynuuj korzystanie z konta online</translation>
+	<translation id="6867476688065565618">Przełączyć się na konto lokalne?</translation>
+	<translation id="4840454774882557974">Jeśli zdecydujesz się na korzystanie z konta lokalnego, przydatne funkcje obejmują synchronizację danych i preferencji na wielu urządzeniach oraz automatyczne logowanie się do aplikacji internetowych przy użyciu konta JemaOS.</translation>
+	<translation id="8951507920859729424">Aby w pełni wykorzystać JemaOS, zalecamy korzystanie z konta online.</translation>
+	<translation id="479773200536372215">Nie będziesz mógł dodać kont Google, ponieważ brakuje kluczy Google API. Szczegóły znajdziesz na <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph>.</translation>
+	<translation id="1198491307547164157">Nie będziesz mógł dodać kont JemaOS, ponieważ brakuje kluczy API JemaOS. Szczegóły znajdziesz na <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph>.</translation>
+	<translation id="5042404702659901995">Oświadczenie o ochronie prywatności</translation>
+	<translation id="4907736162587268100">Treść oświadczenia o ochronie prywatności</translation>
+	<translation id="5988344732274877691">Zapisz się na (bardzo rzadki, obiecany) newsletter JemaOS</translation>
+	<translation id="1706203008474708805">Dołącz do planu poprawy doświadczenia użytkownika JemaOS</translation>
+	<translation id="1147139514756087229">Zaloguj się na konto lokalne</translation>
+	<translation id="2054784944085654098">Tworzę teraz plik kopii zapasowej. Może to chwilę potrwać; proszę czekać…</translation>
+	<translation id="3554401467586751874">Plik kopii zapasowej został pomyślnie utworzony</translation>
+	<translation id="2349211327705667074">Wyświetl plik kopii zapasowej</translation>
+	<translation id="3049367131589710124">Wyświetl dziennik błędów</translation>
+	<translation id="1079017345574916945">Zdalny pulpit</translation>
+	<translation id="3064478898280877715">Sklep z aplikacjami</translation>
+	<translation id="5890206344045530832">Instalator</translation>
+	<translation id="2173278076276376488">To narzędzie pomoże Ci zainstalować <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> w pamięci wewnętrznej tego urządzenia.</translation>
+	<translation id="5323182426977498659">Ostrzeżenie! Ta procedura jest destrukcyjna i nie można jej cofnąć. Należy pamiętać, że nie ponosimy żadnej odpowiedzialności za potencjalną utratę danych ani nie zapewniamy pilnej pomocy technicznej. Postępujesz na własne ryzyko.</translation>
+	<translation id="8517836015601969896">Instalacja na pełnym dysku</translation>
+	<translation id="7300045760790370189">Zainstaluj <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>, aby zająć cały dysk twardy, wszystkie dane na docelowym dysku twardym zostaną usunięte.</translation>
+	<translation id="8762511733918256595">Instalacja wielorozruchowa</translation>
+	<translation id="248900698427753678">Zainstaluj <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> na istniejącej partycji dysku twardego, gdzie <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> może istnieć równolegle z innym systemem operacyjnym. Wszystkie dane na partycji docelowej zostaną usunięte.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> zostanie zainstalowany na wybranym dysku twardym; wszystkie dane na dysku docelowym zostaną usunięte.</translation>
+	<translation id="4039091757234555415">Dysk</translation>
+	<translation id="7783580523889684697">Brak dostępnego dysku</translation>
+	<translation id="8217653566575018388">Instalacja zakończona</translation>
+	<translation id="8846746259444262774">Instalacja nie powiodła się</translation>
+	<translation id="7263815009235541549">Instalacja zakończyła się pomyślnie. Najpierw wyłącz urządzenie, następnie wyjmij wszystkie nośniki instalacyjne i włącz je ponownie, aby uruchomić system <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>.</translation>
+	<translation id="3380151284134965398">Ups, coś poszło nie tak i instalacja nie została ukończona. Spróbuj ponownie. Jeśli ten sam błąd będzie się powtarzał, skontaktuj się z pomocą techniczną JemaOS, przesyłając powyższy dziennik.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> zostanie zainstalowany na wybranej partycji Twojego dysku twardego. W obecnym schemacie wielokrotnego rozruchu może to nastąpić tylko wtedy, gdy Twoje urządzenie obsługuje UEFI, a dyski twarde są sformatowane przy użyciu GPT.</translation>
+	<translation id="7831363758161884243">Partycja docelowa zostanie wyczyszczona; musisz także określić aktywną partycję EFI (zwykle dzieje się to automatycznie), ponieważ instalator musi zmodyfikować konfiguracje rozruchu systemu.</translation>
+	<translation id="5670799238446305550">Wybierz partycję docelową <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph></translation>
+	<translation id="3695537760133394753">Partycja</translation>
+	<translation id="5610519566593708119">Wybierz partycję EFI</translation>
+	<translation id="3367650349940010965">Brak dostępnych partycji dla wybranego dysku</translation>
+	<translation id="7453223384507098390">Brak dostępnych partycji EFI dla wybranego dysku</translation>
+	<translation id="1854532683465500847">Rozmiar wybranej partycji jest mniejszy niż 20 GB, instalacja może się nie powieść</translation>
+	<translation id="4144613075340468247">Wybrana partycja została zamontowana w systemie wielorozruchowym <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>. Ponowna instalacja na niej może się nie powieść</translation>
+	<translation id="5793361052649920836">Jak po instalacji chcesz uruchomić <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>?</translation>
+	<translation id="4273235330352963866">Zainstaluj i skonfiguruj rEFInd dla mnie (zalecane)</translation>
+	<translation id="1858708492548921044">rEFInd to program do zarządzania rozruchem, który oferuje ładny interfejs graficzny dla opcji uruchamiania systemu operacyjnego. Po uruchomieniu komputera będziesz mógł wybrać żądany system operacyjny, który chcesz z nim uruchomić. Więcej informacji na temat rEFInd można znaleźć na jego stronie głównej.</translation>
+	<translation id="3861924051442564602">Dodaj dla mnie opcję menu rozruchu UEFI</translation>
+	<translation id="8622370666798589804">Po uruchomieniu komputera może być możliwe wejście do menu opcji rozruchu UEFI (najprawdopodobniej poprzez naciśnięcie klawisza skrótu). Ta opcja dodaje <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> jako pozycję do tego menu. (Obsługuje tylko niektóre modele oprogramowania układowego BIOS i UEFI).</translation>
+	<translation id="1569398690544416170">Nic tu nie rób, sam to skonfiguruję</translation>
+	<translation id="3554866444001249532">Ten skrypt instalacyjny umieści tylko pliki .efi niezbędne do rozruchu <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> na partycję EFI. Musisz samodzielnie skonfigurować sposób uruchamiania.</translation>
+	<translation id="7492832751164189534">Wymuś rezygnację</translation>
+	<translation id="5159534860632584026">Proces instalacji został zakończony</translation>
+	<translation id="8686749782014838344">Nie udało się pobrać informacji o dysku</translation>
+	<translation id="5688543378771259173">Instalacja dobiega końca...</translation>
+	<translation id="5350452134936384991">Zainstaluj na USB</translation>
+	<translation id="8008470485414925603">Zainstaluj <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> na dysku USB; wszystkie dane na docelowym dysku USB zostaną usunięte.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> zostanie zainstalowany na wybranym dysku USB; wszystkie dane na dysku docelowym zostaną usunięte.</translation>
+	<translation id="5725593226060700263">Brak dostępnego dysku USB</translation>
+	<translation id="4357040841587078287">Wykryliśmy, że uruchamiasz tę kopię JemaOS z pobranego pliku obrazu. Aby skorzystać z najbardziej wszechstronnych funkcji wsparcia (w tym aktualizacji Over-The-Air), jakie może zaoferować JemaOS, zdecydowanie zalecamy uruchomienie funkcji „Instalator”, aby przeprowadzić instalację JemaOS na pełnym dysku na oddzielnym urządzeniu magazynującym.</translation>
+	<translation id="1246398339704431302">Możesz <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>mimo wszystko nadal korzystać z tej kopii JemaOS<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, proces instalacji można przeprowadzić na późniejszym etapie w systemie, jednak po instalacji wszystkie Twoje dane zostaną usunięte i zaczniesz od nowa z tej strony.</translation>
+	<translation id="3654532222088291133">Zamiast wpisywać hasło do konta JemaOS, aby się zalogować, możesz utworzyć hasło <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> dla tego urządzenia</translation>
+	<translation id="8377684629839541977">Użyj hasła do konta JemaOS</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">Automatycznie aktualizuj <ph name="DEVICE_OS" /></translation>
+<translation id="2347352406101856238">Aktualizacja <ph name="DEVICE_OS" /> włączona</translation>
+<translation id="185834232609012804">Aktualizacja <ph name="DEVICE_OS" /> wyłączona</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Platforma <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Pulpit zdalny</translation>
+<translation id="6898090158927982244">System Linux jest aktualny</translation>
+<translation id="4886703929102211360">Dostępna jest krytyczna aktualizacja komponentu Linux (beta). Zdecydowanie zaleca się zainstalowanie tej aktualizacji jak najszybciej, w przeciwnym razie Linux (beta) może przestać działać.</translation>
+<translation id="6694016202036959050">Ustawienia <ph name="DEVICE_OS" /></translation>
+<translation id="8362858344151826493">Konto JemaOS, kopia zapasowa, różne</translation>
+<translation id="9150429437595727962">Ustawienia Wi-Fi</translation>
+<translation id="4938972461544498524">Ustawienia panelu dotykowego</translation>
+<translation id="1210024513248363065">Usługi zdalne</translation>
+<translation id="2878862288885588535">Zdalna usługa diagnostyczna</translation>
+<translation id="7409197984340676806">Zdalna usługa diagnostyczna umożliwia oficjalnym przedstawicielom pomocy technicznej JemaOS identyfikację problemów systemowych. Obecnie zdalną usługę diagnostyczną mogą uruchamiać wyłącznie oficjalni przedstawiciele pomocy technicznej JemaOS.</translation>
+<translation id="1791028023086176332">Podaj ten numer oficjalnym przedstawicielom pomocy technicznej JemaOS</translation>
+<translation id="6279304275399437025">Uruchamianie zdalnej usługi diagnostycznej...</translation>
+<translation id="1501882165699826662">Zatrzymaj zdalną usługę diagnostyczną i spróbuj ponownie</translation>
+<translation id="3100283258447375201">Więcej informacji</translation>
+<translation id="4070039109671307724">Różne</translation>
+<translation id="7326893024940073254">Przycisk „Uruchom ponownie”</translation>
+<translation id="3002423764319968103">Pokaż przycisk „Uruchom ponownie” w menu systemowym</translation>
+<translation id="6243454903512423518">Przycisk „Obróć ekran”</translation>
+<translation id="6491049336868978729">Nie jesteś obecnie w trybie tabletu, przycisk „Obróć ekran” jest ukryty</translation>
+<translation id="5496012402277579695">Pokaż przycisk „Obróć ekran” w menu systemowym</translation>
+<translation id="5882838977344999606">Przełącznik trybu tablet/laptop</translation>
+<translation id="472164133625585606">Pokaż przełącznik trybu tablet/laptop w menu systemowym</translation>
+<translation id="1851103550468466960">Włącz Widevine</translation>
+<translation id="4058176713282795846">Włącz Widevine, aby strumieniować chronione treści premium. <ph name="BEGIN_LINK_LEARN_MORE" />Dowiedz się więcej<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">Wybierz „libwidevine.so”</translation>
+<translation id="4838463656205005584">Nie udało się włączyć Widevine...</translation>
+<translation id="2164041826798266548">Instalacja modułu Widevine CDM nie powiodła się. Sprawdź połączenie i spróbuj ponownie.</translation>
+<translation id="4106982328079440606">Ustawienia konta JemaOS</translation>
+<translation id="6468776556018764845">Funkcje eksperymentalne</translation>
+<translation id="3487615413425326553">Pomiń sprawdzanie modułu TPM (Trusted Platform Module)</translation>
+<translation id="4817176087932811573">Niektóre funkcje mogą nie działać z powodu niezgodnego układu TPM w urządzeniu; jako obejście możesz pominąć sprawdzanie TPM.</translation>
+<translation id="3356003366173774486">Automatyczne logowanie</translation>
+<translation id="6218459410891191693">Zezwalaj bieżącemu kontu na automatyczne logowanie do pulpitu po ponownym uruchomieniu urządzenia</translation>
+<translation id="6620839363422062843">Nie można włączyć dla tego konta; automatyczne logowanie jest już aktywne dla innych kont na tym urządzeniu</translation>
+<translation id="6734500226490446035">Nie można włączyć dla tego konta; wystąpił nieznany błąd podczas inicjowania systemów plików dla tego konta. Spróbuj ponownie uruchomić urządzenie lub utworzyć nowe konto</translation>
+<translation id="5464880042146818691">Nie można włączyć dla tego konta; opcja automatycznego logowania jest dostępna tylko dla kont typu „Konto lokalne”.</translation>
+<translation id="3335654854106476749">Przed włączeniem automatycznego logowania dodaj hasło logowania w ustawieniach <ph name="BEGIN_LINK" />Prywatność i bezpieczeństwo<ph name="END_LINK" />.</translation>
+<translation id="5586831602198585601">Dostępna jest nowsza wersja JemaOS do aktualizacji. Jednak Twoja subskrypcja JemaOS for You wygasła; do aktualizacji JemaOS potrzebna jest aktywna subskrypcja.</translation>
+<translation id="3869860597719956574">Dostępna jest nowa główna wersja JemaOS do aktualizacji. Aby kontynuować aktualizację, musisz uiścić jednorazową opłatę.</translation>
+<translation id="6523879681771260760">Podaj ścieżkę do zapisania pliku kopii zapasowej</translation>
+<translation id="2036152819788683293">Utwórz plik kopii zapasowej dla tego konta (beta). <ph name="BEGIN_LINK_LEARN_MORE" />Dowiedz się więcej<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Utwórz kopię zapasową</translation>
+<translation id="4267347174163690295">Utwórz plik kopii zapasowej dla tego konta (beta).</translation>
+<translation id="8112950994208888917">Ta operacja tworzy pełną kopię zapasową dysku dla tego konta, co ułatwia przywrócenie JemaOS do stanu z momentu utworzenia kopii zapasowej, w tym ustawień, zainstalowanych rozszerzeń przeglądarki i aplikacji podsystemu. W zależności od aplikacji i zawartości folderu domowego plik kopii zapasowej może być duży; zaleca się przechowywanie pliku kopii zapasowej na zewnętrznym urządzeniu pamięci. Jeśli masz przenośny dysk USB, podłącz go teraz. <ph name="BEGIN_LINK_LEARN_MORE" />Dowiedz się więcej<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Wprowadź hasło logowania dla tego konta</translation>
+<translation id="8663988871299316062">Zapamiętaj to hasło, ponieważ będzie wymagane podczas przywracania tego pliku kopii zapasowej</translation>
+<translation id="6408904153044317846">Wybierz plik kopii zapasowej do przywrócenia</translation>
+<translation id="8062988348127771021">Przywróć dane JemaOS z pliku kopii zapasowej</translation>
+<translation id="7309192418866543730">Wprowadź hasło kopii zapasowej</translation>
+<translation id="3642408376366598984">Wprowadź hasło użyte do zaszyfrowania tego pliku kopii zapasowej</translation>
+<translation id="7783974937157985523">Hasło kopii zapasowej</translation>
+<translation id="6583780301401541007">Przywracanie zakończone pomyślnie</translation>
+<translation id="3514011352559420398">Przywracanie nie powiodło się</translation>
+<translation id="7535980903266533458">Zapisz kopię zapasową na urządzeniu lub pamięci zewnętrznej</translation>
+<translation id="604001903249547235">Kopia zapasowa w chmurze</translation>
+<translation id="8885702701336541611">Prześlij kopię zapasową do magazynu w chmurze JemaOS</translation>
+<translation id="3939744430096549862">Utwórz kopię zapasową w chmurze</translation>
+<translation id="619129431573254316">Przywróć z lokalnego pliku kopii zapasowej</translation>
+<translation id="1859592711955106569">Przywracanie z chmury</translation>
+<translation id="38222223336741457">Pobierz i przywróć z chmury JemaOS</translation>
+<translation id="1241089811244416179">Przywróć z chmury</translation>
+<translation id="652479689372703360">Trwa tworzenie kopii zapasowej</translation>
+<translation id="3655220146274872918">Kopia zapasowa ukończona</translation>
+<translation id="4243579853635792694">Kopia zapasowa została utworzona pomyślnie</translation>
+<translation id="6337433855796857931">Tworzenie kopii zapasowej nie powiodło się</translation>
+<translation id="4854179463174744546">Wystąpił błąd podczas tworzenia kopii zapasowej</translation>
+<translation id="2410668771600309999">Informacje o użytkowniku Connect API</translation>
+<translation id="2223892939866251845">Identyfikator użytkownika</translation>
+<translation id="3850846286480935456">Analiza magazynu kopii zapasowych</translation>
+<translation id="6244494465581273970">Wymagany identyfikator użytkownika</translation>
+<translation id="9204006549413740506">Ostatnia aktualizacja</translation>
+<translation id="476642412165431515">Urządzenia sprzętowe</translation>
+<translation id="3386337985825120901">Brak dostępnych danych kopii zapasowej</translation>
+<translation id="8490990067870590760">Ładowanie plików kopii zapasowej...</translation>
+<translation id="2955409026764742995">Wybierz plik kopii zapasowej do przywrócenia:</translation>
+<translation id="7414629348005657242">-- Wybierz plik kopii zapasowej --</translation>
+<translation id="918246516374174381">Nie znaleziono plików kopii zapasowej. Najpierw utwórz kopię zapasową.</translation>
+<translation id="77997252117517973">Wkrótce</translation>
+<translation id="1930692852800776096">Dodaj słownik</translation>
+<translation id="8793060353848771694">Obraz lewej słuchawki dousznej</translation>
+<translation id="6257440204887306255">Obraz etui ładującego</translation>
+<translation id="2754700616124958693">Obraz prawej słuchawki dousznej</translation>
+<translation id="1068676292264983586">Domyślny obraz urządzenia</translation>
+<translation id="6364075396486660405">Wyłącz automatyczne skanowanie plików multimedialnych na wszystkich partycjach, aby zoptymalizować czas pracy na baterii. <ph name="BEGIN_LINK_LEARN_MORE" />Dowiedz się więcej<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Opcje zabezpieczeń</translation>
+<translation id="5618366106086725045">Włącz „Tryb dewelopera” dla tej instalacji <ph name="IDS_SHORT_PRODUCT_OS_NAME" />, aby uzyskać więcej funkcji deweloperskich. <ph name="BEGIN_LINK_LEARN_MORE" />Dowiedz się więcej<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Jesteś już w „Trybie dewelopera”</translation>
+<translation id="6074549317340202195">Włącz „Tryb dewelopera”</translation>
+<translation id="418781258674176053">Ostrzeżenie! Włączenie „Trybu dewelopera” jest operacją nieodwracalną. Jeśli chcesz wyłączyć „Tryb dewelopera”, musisz ponownie zainstalować JemaOS, co spowoduje usunięcie wszystkich danych. Utwórz kopię zapasową danych i kontynuuj na własne ryzyko.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Platforma <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Obecnie offline</translation>
+<translation id="2590678769628709242">Sprawdź subskrypcję JemaOS online</translation>
+<translation id="4701836089682883918">Informacje o subskrypcji JemaOS</translation>
+<translation id="5891566673089952188">Wystąpił błąd podczas pobierania identyfikatora urządzenia</translation>
+<translation id="4685086787606104322">Koniec subskrypcji</translation>
+<translation id="3354919960795782984">Identyfikator urządzenia</translation>
+<translation id="5758632069869992306">Sprawdź subskrypcję online</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Platforma <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Subskrypcja próbna</translation>
+<translation id="4362781408813685579">Aktywna subskrypcja</translation>
+<translation id="1141274201089997510">Wygasła subskrypcja</translation>
+<translation id="2553683254139782404">Wersja niekomercyjna</translation>
+<translation id="8466048683756385518">Wersja licencjonowana Enterprise (próbna)</translation>
+<translation id="2853871047705932424">Wersja licencjonowana Enterprise</translation>
+<translation id="5239675900317881945">Wersja licencjonowana Enterprise (wygasła)</translation>
+<translation id="189101945990408398">Starszy Intel</translation>
+<translation id="6816405236809604904">Nowoczesny Intel</translation>
+<translation id="6169452478137972655">Grafika AMD</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="2747689477259164256">JemaOS AI</translation>
+<translation id="1270291881045478104">Włącz JemaOS AI</translation>
+<translation id="2013780539677437932">Włącz lub wyłącz wszystkie funkcje związane z JemaOS AI</translation>
+<translation id="3398637633218757480">Włącz szybkie wywołanie JemaOS AI</translation>
+<translation id="8986197796475507452">Szybko wywołaj opcje JemaOS AI dla zaznaczonej treści, naciskając Ctrl + C + C</translation>
+<translation id="6407628130593274137">Inne ustawienia i opcje JemaOS AI</translation>
+<translation id="4005574560653331142">Aby zmienić kod PIN lub hasło logowania tego konta lokalnego, przejdź do ustawień <ph name="BEGIN_LINK" />Prywatność i bezpieczeństwo<ph name="END_LINK" />.</translation>
+
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">Możesz <ph name="LINK_START" />zalogować się za pomocą lokalnego konta JemaOS<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">Adres e-mail <ph name="EMAIL_ADDRESS" /> już istnieje. Spróbuj ponownie z innym adresem e-mail.</translation>
+<translation id="4519800823932975782">Centrum pomocy JemaOS</translation>
+<translation id="4737474693231655139">Znajdź artykuły pomocy i odpowiedzi na najczęstsze pytania dotyczące JemaOS</translation>
+</translationbundle>

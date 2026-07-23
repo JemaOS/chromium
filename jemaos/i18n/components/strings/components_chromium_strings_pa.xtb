@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="pa">
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">JemaOS ਨੇ ਆਪਣਾ ਸ਼ੁਰੂਆਤੀ ਸੈਟਅੱਪ ਪੂਰਾ ਨਹੀਂ ਕੀਤਾ ਹੈ।</translation>
+<translation id="4257170804800372451">JemaOS ਅਤੇ Thot <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> ਓਪਨ ਸੋਰਸ ਪ੍ਰੋਜੈਕਟ ਅਤੇ ਹੋਰ <ph name="BEGIN_LINK_OSS" />ਓਪਨ ਸੋਰਸ ਸਾਫ਼ਟਵੇਅਰ<ph name="END_LINK_OSS" /> ਕਾਰਨ ਸੰਭਵ ਹੋਏ ਹਨ।</translation>
+</translationbundle>

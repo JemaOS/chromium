@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="is">
+	<translation id="7386402409475121504">Búðu til þinn staðbundna JemaOS reikning</translation>
+	<translation id="3760308806144055927">Skráðu þig inn á þinn staðbundna JemaOS reikning</translation>
+	<translation id="3325117507482096812">Vinsamlega sláðu inn lykilorð</translation>
+	<translation id="1838206877831947154">Lykilorðin þín passa ekki saman</translation>
+	<translation id="2158276988029582286">Búðu til nýjan staðbundinn reikning</translation>
+	<translation id="8592849747346274067">Skráðu þig inn á núverandi reikning</translation>
+	<translation id="482190417986201746">Notandanafnið eða lykilorðið sem þú slóst inn er rangt</translation>
+	<translation id="6603987686259425085">Þú getur <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>skráð þig inn með JemaOS staðbundnum reikningi<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">Netfangið <ph name="EMAIL_ADDRESS">$1</ph> er þegar til. Vinsamlegast reyndu aftur með öðrum tölvupósti.</translation>
+	<translation id="7215016743510876720">Notaðu staðbundinn reikning</translation>
+	<translation id="6657635042185516718">Haltu áfram að nota netreikning</translation>
+	<translation id="6867476688065565618">Skipta yfir í staðbundinn reikning?</translation>
+	<translation id="4840454774882557974">Ef þú velur að nota staðbundinn reikning, eru gagnlegir eiginleikar meðal annars að samstilla gögnin þín og kjörstillingar á mörgum tækjum og sjálfvirk innskráning á vefforrit með JemaOS reikningnum þínum mun ekki virka.</translation>
+	<translation id="8951507920859729424">Við mælum með því að nota netreikning til að nýta JemaOS til hins ýtrasta.</translation>
+	<translation id="479773200536372215">Þú munt ekki geta bætt við Google reikningum vegna þess að Google API lykla vantar. Sjá <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> fyrir frekari upplýsingar.</translation>
+	<translation id="1198491307547164157">Þú munt ekki geta bætt við JemaOS reikningum vegna þess að JemaOS API lykla vantar. Sjá <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> fyrir frekari upplýsingar.</translation>
+	<translation id="5042404702659901995">Persónuverndaryfirlýsing</translation>
+	<translation id="4907736162587268100">Innihald persónuverndaryfirlýsingar</translation>
+	<translation id="5988344732274877691">Skráðu þig á (mjög sjaldgæft, lofað) fréttabréfið fyrir JemaOS</translation>
+	<translation id="1706203008474708805">Vertu með í áætlun um umbætur á notendaupplifun JemaOS</translation>
+	<translation id="1147139514756087229">Skráðu þig inn með staðbundnum reikningi</translation>
+	<translation id="2054784944085654098">Býr til öryggisafrit núna. Þetta getur tekið smá stund; vinsamlegast bíddu…</translation>
+	<translation id="3554401467586751874">Öryggisskrá var búin til</translation>
+	<translation id="2349211327705667074">Skoða öryggisafrit</translation>
+	<translation id="3049367131589710124">Skoða villuskrá</translation>
+	<translation id="1079017345574916945">Fjarstýrt skrifborð</translation>
+	<translation id="3064478898280877715">App verslun</translation>
+	<translation id="5890206344045530832">Uppsetningarforrit</translation>
+	<translation id="2173278076276376488">Þetta tól mun hjálpa þér að setja upp <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> á innri geymslu þessa tækis.</translation>
+	<translation id="5323182426977498659">Viðvörun! Þessi aðferð er eyðileggjandi og ekki hægt að afturkalla hana. Vinsamlegast athugaðu að við munum ekki bera neina ábyrgð á hugsanlegu gagnatapi þínu né veita neina brýna tæknilega aðstoð, haldið áfram á eigin ábyrgð.</translation>
+	<translation id="8517836015601969896">Full uppsetning á disknum</translation>
+	<translation id="7300045760790370189">Settu upp <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> til að taka upp heilan harða disk, öll gögn á harða disknum sem markið er þurrkuð út.</translation>
+	<translation id="8762511733918256595">Multi-boot uppsetning</translation>
+	<translation id="248900698427753678">Settu <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> upp á núverandi sneið á harða diskinum, þar sem <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> getur verið til samhliða öðru stýrikerfi. Öll gögn á miða skiptingunni verða þurrkuð út.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> verður sett upp á harða disknum sem þú valdir; öll gögn á markdiskinum verða þurrkuð út.</translation>
+	<translation id="4039091757234555415">Diskur</translation>
+	<translation id="7783580523889684697">Enginn diskur tiltækur</translation>
+	<translation id="8217653566575018388">Uppsetningu lokið</translation>
+	<translation id="8846746259444262774">Uppsetning mistókst</translation>
+	<translation id="7263815009235541549">Uppsetningunni er lokið. Vinsamlegast slökktu á tækinu þínu fyrst, fjarlægðu síðan hvaða uppsetningarmiðla sem er og kveiktu á því aftur til að ræsa <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>.</translation>
+	<translation id="3380151284134965398">Úbbs, eitthvað hefur farið úrskeiðis og uppsetningunni lauk ekki. Vinsamlegast reyndu ferlið aftur. Ef sama villa er viðvarandi, vinsamlegast hafðu samband við JemaOS stuðning með ofangreindum notandaskrá.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> verður sett upp á völdu skiptingunni á harða disknum þínum. Samkvæmt núverandi fjölræsingarkerfi gæti þetta aðeins haldið áfram ef tækið þitt styður UEFI og harðir diskarnir þínir eru forsniðnir með GPT.</translation>
+	<translation id="7831363758161884243">Markskiptingin verður þurrkuð út; þú þarft líka að tilgreina virku EFI skiptinguna þína (venjulega gert sjálfkrafa) þar sem uppsetningarforritið þarf að breyta ræsistillingum kerfisins.</translation>
+	<translation id="5670799238446305550">Veldu <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> miðsvæði</translation>
+	<translation id="3695537760133394753">Skipting</translation>
+	<translation id="5610519566593708119">Veldu EFI skipting</translation>
+	<translation id="3367650349940010965">Engin skipting er tiltæk fyrir valinn disk</translation>
+	<translation id="7453223384507098390">Engin EFI skipting eru tiltæk fyrir valinn disk</translation>
+	<translation id="1854532683465500847">Stærð valda skiptingarinnar er minni en 20GB, uppsetning gæti mistekist</translation>
+	<translation id="4144613075340468247">Valin skipting hefur verið sett á <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> multi-boot, uppsetning á henni aftur gæti mistekist</translation>
+	<translation id="5793361052649920836">Eftir uppsetningu, hvernig viltu ræsa <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>?</translation>
+	<translation id="4273235330352963866">Settu upp og stilltu rEFInd fyrir mig (mælt með)</translation>
+	<translation id="1858708492548921044">rEFInd er ræsistjórnunarforrit sem býður upp á fallegt grafískt viðmót fyrir ræsivalkosti stýrikerfisins þegar tölvan þín ræsir, þú munt geta valið það stýrikerfi sem þú vilt ræsa með því. Fyrir frekari upplýsingar um rEFInd, vinsamlegast skoðaðu heimasíðu þess.</translation>
+	<translation id="3861924051442564602">Bættu við UEFI ræsivalmynd fyrir mig</translation>
+	<translation id="8622370666798589804">Þegar tölvan þín ræsist gætirðu farið inn í valmynd UEFI ræsivalkosta (líklegast með því að ýta á flýtilykla), þessi valkostur bætir <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> við sem færslu í þá valmynd. (Styður aðeins sumar gerðir BIOS og UEFI fastbúnaðar).</translation>
+	<translation id="1569398690544416170">Gerðu ekkert hér, ég mun stilla það sjálfur</translation>
+	<translation id="3554866444001249532">Þetta uppsetningarforskrift mun aðeins setja nauðsynlegar .efi skrár til að ræsa <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> á EFI skiptinguna þína, þú þarft að stilla hvernig á að ræsa hana sjálfur.</translation>
+	<translation id="7492832751164189534">Þvingaðu að hætta</translation>
+	<translation id="5159534860632584026">Uppsetningarferlinu hefur verið hætt</translation>
+	<translation id="8686749782014838344">Mistókst að fá upplýsingar um diskinn</translation>
+	<translation id="5688543378771259173">Verið er að stöðva uppsetningu...</translation>
+	<translation id="5350452134936384991">Settu upp í USB</translation>
+	<translation id="8008470485414925603">Settu <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> upp á USB disk; öll gögn á USB-markdisknum verða þurrkuð út.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> verður sett upp á valinn USB disk; öll gögn á markdiskinum verða þurrkuð út.</translation>
+	<translation id="5725593226060700263">Enginn USB diskur tiltækur</translation>
+	<translation id="4357040841587078287">Við höfum uppgötvað að þú ert að keyra þetta eintak af JemaOS úr niðurhalðri myndskrá. Til að nýta umfangsmestu stuðningseiginleikana (þar á meðal Over-The-Air uppfærslur) sem JemaOS getur boðið upp á, mælum við eindregið með því að þú ræsir "Installer" aðgerðina til að framkvæma uppsetningu á fullum diski af JemaOS í sérstakt geymslutæki.</translation>
+	<translation id="1246398339704431302">Þú getur <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>haldið áfram að nota þetta eintak af JemaOS samt<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, uppsetningarferlið er hægt að framkvæma síðar í kerfinu, en öll gögn þín verða þurrkuð aftur af þessari síðu og þú munt byrja aftur af þessari síðu.</translation>
+	<translation id="3654532222088291133">Í stað þess að slá inn JemaOS reikningslykilorðið þitt til að skrá þig inn geturðu búið til <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> lykilorð fyrir þetta tæki</translation>
+	<translation id="8377684629839541977">Notaðu lykilorð fyrir JemaOS reikning</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">Halda <ph name="DEVICE_OS" /> sjálfkrafa uppfærðu</translation>
+<translation id="2347352406101856238"><ph name="DEVICE_OS" />-uppfærsla virk</translation>
+<translation id="185834232609012804"><ph name="DEVICE_OS" />-uppfærsla óvirk</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Vettvangur <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Fjarlægt skjáborð</translation>
+<translation id="6898090158927982244">Linux er uppfært</translation>
+<translation id="4886703929102211360">Mikilvæg uppfærsla er fáanleg fyrir Linux (beta)-íhlutinn. Mælt er eindregið með því að setja uppfærsluna upp sem fyrst, annars gæti Linux (beta) hætt að virka.</translation>
+<translation id="6694016202036959050"><ph name="DEVICE_OS" />-stillingar</translation>
+<translation id="8362858344151826493">JemaOS-reikningur, afritun, ýmislegt</translation>
+<translation id="9150429437595727962">Wi-Fi-stillingar</translation>
+<translation id="4938972461544498524">Stillingar snertiplatta</translation>
+<translation id="1210024513248363065">Fjarþjónustur</translation>
+<translation id="2878862288885588535">Fjarlæg greiningarþjónusta</translation>
+<translation id="7409197984340676806">Fjarlæg greiningarþjónusta gerir formlegum JemaOS-þjónustufulltrúum kleift að greina vandamál í kerfinu. Eins og er geta aðeins formlegir JemaOS-þjónustufulltrúar ræst fjarlæga greiningarþjónustuna.</translation>
+<translation id="1791028023086176332">Deildu þessu númeri með formlegum JemaOS-þjónustufulltrúum</translation>
+<translation id="6279304275399437025">Ræsi fjarlæga greiningarþjónustuna...</translation>
+<translation id="1501882165699826662">Stöðvaðu fjarlæga greiningarþjónustuna og reyndu aftur</translation>
+<translation id="3100283258447375201">Nánari upplýsingar</translation>
+<translation id="4070039109671307724">Ýmislegt</translation>
+<translation id="7326893024940073254">„Endurræsa“-hnappur</translation>
+<translation id="3002423764319968103">Sýna „Endurræsa“-hnapp í kerfisvalmyndinni</translation>
+<translation id="6243454903512423518">„Snúa skjá“-hnappur</translation>
+<translation id="6491049336868978729">Þú ert ekki í spjaldtölvustillingu núna, svo „Snúa skjá“-hnappurinn er falinn</translation>
+<translation id="5496012402277579695">Sýna „Snúa skjá“-hnapp í kerfisvalmyndinni</translation>
+<translation id="5882838977344999606">Rofar milli spjaldtölvu-/fartölvustillingar</translation>
+<translation id="472164133625585606">Sýna rofa milli spjaldtölvu-/fartölvustillingar í kerfisvalmyndinni</translation>
+<translation id="1851103550468466960">Virkja Widevine</translation>
+<translation id="4058176713282795846">Virkjaðu Widevine til að streyma varðu úrvalsafni. <ph name="BEGIN_LINK_LEARN_MORE" />Frekari upplýsingar<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">Veldu „libwidevine.so“</translation>
+<translation id="4838463656205005584">Tókst ekki að virkja Widevine...</translation>
+<translation id="2164041826798266548">Uppsetning Widevine CDM-einingarinnar mistókst. Athugaðu tenginguna þína og reyndu aftur.</translation>
+<translation id="4106982328079440606">JemaOS-reikningsstillingar</translation>
+<translation id="6468776556018764845">Tilraunaeiginleikar</translation>
+<translation id="3487615413425326553">Fara framhjá Trusted Platform Module (TPM)-athugunum</translation>
+<translation id="4817176087932811573">Sumir eiginleikar geta mistekst vegna ósamhæfs TPM-flís í tækinu þínu; þú getur farið framhjá TPM-athugununum til að leysa málið.</translation>
+<translation id="3356003366173774486">Sjálfvirk innskráning</translation>
+<translation id="6218459410891191693">Leyfa núverandi reikningi að skrá sig sjálfkrafa inn á skjáborðið þegar tækið er endurræst</translation>
+<translation id="6620839363422062843">Ekki hægt að virkja fyrir þennan reikning; sjálfvirk innskráning er þegar virk fyrir aðra reikninga á þessu tæki</translation>
+<translation id="6734500226490446035">Ekki hægt að virkja fyrir þennan reikning; óþekkt villa kom upp við frumstillingu skráarkerfa þessa reiknings. Reyndu að endurræsa eða búa til nýjan reikning</translation>
+<translation id="5464880042146818691">Ekki hægt að virkja fyrir þennan reikning; valmöguleikinn um sjálfvirka innskráningu er aðeins í boði fyrir reikningsgerðina „Staðvær reikningur“.</translation>
+<translation id="3335654854106476749">Bættu við innskráningarlykilorði í stillingunum <ph name="BEGIN_LINK" />Friðhelgi og öryggi<ph name="END_LINK" /> áður en sjálfvirk innskráning er virkjuð.</translation>
+<translation id="5586831602198585601">Nýrri útgáfa af JemaOS er fáanleg til uppfærslu núna. Hins vegar er JemaOS fyrir þig-áskriftin þín útrunnin; þú þarft virka áskrift til að uppfæra JemaOS.</translation>
+<translation id="3869860597719956574">Ný aðalútgáfa af JemaOS er fáanleg til uppfærslu núna. Þú verður að greiða einstakt gjald til að halda áfram með þessa uppfærslu.</translation>
+<translation id="6523879681771260760">Tilgreindu slóðina þar sem afritunarskráin á að vera geymd</translation>
+<translation id="2036152819788683293">Búðu til afritunarskrá fyrir þennan reikning (beta). <ph name="BEGIN_LINK_LEARN_MORE" />Frekari upplýsingar<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Afrita</translation>
+<translation id="4267347174163690295">Búðu til afritunarskrá fyrir þennan reikning (beta).</translation>
+<translation id="8112950994208888917">Þessi aðgerð býr til fulla diskaafritun fyrir þennan reikning, sem gerir það auðvelt að endurheimta JemaOS í það ástand sem það var í þegar afritunin var gerð, þar á meðal stillingar, uppsettar vafraviðbætur og undirkerfisforrit. Það fer eftir forritunum þínum og innihaldi heimamöppunnar hversu stór afritunarskráin verður; mælt er með að geyma afritunarskrána á ytra geymslutæki. Ef þú átt flytjanlegt USB-lykilrúm skaltu tengja það núna. <ph name="BEGIN_LINK_LEARN_MORE" />Frekari upplýsingar<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Sláðu inn innskráningarlykilorðið fyrir þennan reikning</translation>
+<translation id="8663988871299316062">Mundu þetta lykilorð, því þess verður krafist við endurheimt þessarar afritunarskrár</translation>
+<translation id="6408904153044317846">Veldu afritunarskrána sem á að endurheimta</translation>
+<translation id="8062988348127771021">Endurheimtu JemaOS-gögnin þín úr afritunarskrá</translation>
+<translation id="7309192418866543730">Sláðu inn lykilorð afritunarinnar</translation>
+<translation id="3642408376366598984">Sláðu inn lykilorðið sem notað var til að dulrita þessa afritunarskrá</translation>
+<translation id="7783974937157985523">Lykilorð afritunar</translation>
+<translation id="6583780301401541007">Endurheimt tókst</translation>
+<translation id="3514011352559420398">Endurheimt mistókst</translation>
+<translation id="7535980903266533458">Vistaðu afritunina á tækið þitt eða ytra geymslurými</translation>
+<translation id="604001903249547235">Skýjaafritun</translation>
+<translation id="8885702701336541611">Hlaðaðu afrituninni upp í JemaOS-skýjageymslu</translation>
+<translation id="3939744430096549862">Afrita í skýið</translation>
+<translation id="619129431573254316">Endurheimta úr staðværu afritunarskrá</translation>
+<translation id="1859592711955106569">Skýjaendurheimt</translation>
+<translation id="38222223336741457">Hlaðaðu niður og endurheimtu úr JemaOS-skýinu</translation>
+<translation id="1241089811244416179">Endurheimta úr skýinu</translation>
+<translation id="652479689372703360">Afritun í gangi</translation>
+<translation id="3655220146274872918">Afritun lokið</translation>
+<translation id="4243579853635792694">Afritunin þín var búin til</translation>
+<translation id="6337433855796857931">Afritun mistókst</translation>
+<translation id="4854179463174744546">Villa kom upp meðan á afritun stóð</translation>
+<translation id="2410668771600309999">Connect API-notendaupplýsingar</translation>
+<translation id="2223892939866251845">Notandakenni</translation>
+<translation id="3850846286480935456">Greining á afritunargeymslu</translation>
+<translation id="6244494465581273970">Notandakenni krafist</translation>
+<translation id="9204006549413740506">Síðast uppfært</translation>
+<translation id="476642412165431515">Vélbúnaðartæki</translation>
+<translation id="3386337985825120901">Engin afritunargögn tiltæk</translation>
+<translation id="8490990067870590760">Hleður inn afritunarskrám...</translation>
+<translation id="2955409026764742995">Veldu afritunarskrána sem á að endurheimta:</translation>
+<translation id="7414629348005657242">-- Veldu afritunarskrá --</translation>
+<translation id="918246516374174381">Engar afritunarskrár fundust. Búðu fyrst til afritun.</translation>
+<translation id="77997252117517973">Væntanlegt</translation>
+<translation id="1930692852800776096">Bæta við orðabók</translation>
+<translation id="8793060353848771694">Mynd af vinstra heyrnatólshatti</translation>
+<translation id="6257440204887306255">Mynd af hleðsluhulstri</translation>
+<translation id="2754700616124958693">Mynd af hægra heyrnatólshatti</translation>
+<translation id="1068676292264983586">Sjálfgefin mynd tækis</translation>
+<translation id="6364075396486660405">Slökktu á sjálfvirkri skönnun margmiðlunarskráa fyrir öll hlutsvæði til að hámarka endingartíma rafhlöðunnar. <ph name="BEGIN_LINK_LEARN_MORE" />Frekari upplýsingar<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Öryggisvalkostir</translation>
+<translation id="5618366106086725045">Virkjaðu „Þróunarham“ fyrir þessa <ph name="IDS_SHORT_PRODUCT_OS_NAME" />-uppsetningu með fleiri þróunareiginleikum. <ph name="BEGIN_LINK_LEARN_MORE" />Frekari upplýsingar<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Þú ert þegar í „Þróunarham“</translation>
+<translation id="6074549317340202195">Virkja „Þróunarham“</translation>
+<translation id="418781258674176053">Viðvörun! Að virkja „Þróunarham“ er óafturkræf aðgerð. Ef þú vilt slökkva á „Þróunarham“ verður þú að setja JemaOS upp aftur, sem eyðir öllum gögnum. Afritaðu gögnin þín og haltu áfram á eigin ábyrgð.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Vettvangur <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Ónettengt núna</translation>
+<translation id="2590678769628709242">Athugaðu JemaOS-áskriftina þína á netinu</translation>
+<translation id="4701836089682883918">Upplýsingar um JemaOS-áskrift</translation>
+<translation id="5891566673089952188">Villa kom upp við að sækja tækiskennið þitt</translation>
+<translation id="4685086787606104322">Lok áskriftar</translation>
+<translation id="3354919960795782984">Tækiskenni</translation>
+<translation id="5758632069869992306">Athugaðu áskriftina þína á netinu</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Vettvangur <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Prufuáskrift</translation>
+<translation id="4362781408813685579">Virk áskrift</translation>
+<translation id="1141274201089997510">Útrunnin áskrift</translation>
+<translation id="2553683254139782404">Óviðskiptaleg útgáfa</translation>
+<translation id="8466048683756385518">Enterprise-leyfisútgáfa (prufa)</translation>
+<translation id="2853871047705932424">Enterprise-leyfisútgáfa</translation>
+<translation id="5239675900317881945">Enterprise-leyfisútgáfa (útrunnin)</translation>
+<translation id="189101945990408398">Legacy Intel</translation>
+<translation id="6816405236809604904">Modern Intel</translation>
+<translation id="6169452478137972655">AMD Graphics</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="2747689477259164256">JemaOS AI</translation>
+<translation id="1270291881045478104">Virkja JemaOS AI</translation>
+<translation id="2013780539677437932">Virkja eða slökkva á öllum eiginleikum sem tengjast JemaOS AI</translation>
+<translation id="3398637633218757480">Virkja JemaOS AI-flýtikall</translation>
+<translation id="8986197796475507452">Kallaðu fljótt fram JemaOS AI-valkosti fyrir merkt efni með því að ýta á Ctrl + C + C</translation>
+<translation id="6407628130593274137">Aðrar stillingar og valkostir fyrir JemaOS AI</translation>
+<translation id="4005574560653331142">Til að breyta PIN-númeri eða innskráningarlykilorði þessa staðværa reiknings skaltu fara í stillingarnar <ph name="BEGIN_LINK" />Friðhelgi og öryggi<ph name="END_LINK" />.</translation>
+
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">Þú getur <ph name="LINK_START" />skráð þig inn með staðværum JemaOS-aðgangi<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">Netfangið <ph name="EMAIL_ADDRESS" /> er þegar til. Reyndu aftur með öðru netfangi.</translation>
+<translation id="4519800823932975782">Hjálparmiðstöð JemaOS</translation>
+<translation id="4737474693231655139">Finndu hjálpargreinar og svör við algengum spurningum um JemaOS</translation>
+</translationbundle>

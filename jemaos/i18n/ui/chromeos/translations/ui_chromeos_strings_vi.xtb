@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="vi">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">Đăng ký Nutstore để đồng bộ hóa tệp của bạn trên đám mây trong JemaOS.</translation>
+<translation id="8672291834743661083">Đăng ký Nutstore</translation>
+<translation id="5103639294476249880">Nhấp vào nút "Thêm ứng dụng" trong phần cài đặt Bảo mật</translation>
+<translation id="8371020157576651120">Tạo và sao chép mật khẩu ứng dụng của bạn</translation>
+<translation id="3855250998276979579">Mở ứng dụng Nutstore</translation>
+<translation id="6565655783894300125">và kết nối tài khoản Nutstore với JemaOS bằng email và mật khẩu ứng dụng của bạn</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Sắp ra mắt</translation>
+<translation id="4928968570611226525">Để tiếp tục hành động này, bạn sẽ cần <ph name="BEGIN_LINK_ARC_APP" />&gt;kích hoạt hệ thống con Android<ph name="END_LINK_ARC_APP" /> trên thiết bị JemaOS của mình; đồng thời thiết bị JemaOS của bạn cần được <ph name="BEGIN_LINK_HELP" />chuyển sang Chế độ nhà phát triển<ph name="END_LINK_HELP" />.</translation>
+<translation id="7395250550107972941">Không thể tải cài đặt ngoài (sideload) tệp .apk. Vui lòng đảm bảo rằng hệ thống con Android đã được kích hoạt và bạn đang ở Chế độ nhà phát triển của JemaOS.</translation>
+<translation id="5690820326685091783">Mở bằng JemaOS AI</translation>
+</translationbundle>

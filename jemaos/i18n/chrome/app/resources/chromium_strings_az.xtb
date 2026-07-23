@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="az">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Thot haqqında</translation>
+<translation id="5639860668557220477">Thot brauzeri ilə bağlı kömək alın</translation>
+<translation id="1692689520561928457">JemaOS haqqında</translation>
+<translation id="8692765844418174375">JemaOS versiyası</translation>
+<translation id="2943260250558374955">JemaOS ilə bağlı kömək alın</translation>
+<translation id="713321354492170993">Brauzer qeyri-aktiv tablardan yaddaşı azad edir. Bu, aktiv tablara və digər tətbiqlərə daha çox hesablama resursları verir və brauzeri sürətli saxlayır. Qeyri-aktiv tablarınız onlara qayıtdığınız zaman avtomatik olaraq yenidən aktivləşir.</translation>
+<translation id="1774190491044887444">Brauzer fonda fəaliyyəti və vizual effektləri, məsələn, hamar sürüşdürmə və video kadr sürətini məhdudlaşdıraraq batareyanı qənaət edir.</translation>
+<translation id="180121268008059459">Brauzer səhifələri əvvəlcədən yükləyir, bu da nəzarət və axtarışı daha sürətli edir.</translation>
+<translation id="7127093527178692287">Ehtiyat nüsxəni bərpa edin (beta)</translation>
+<translation id="4439042171549201806">JemaOS-u ehtiyat nüsxə faylından bərpa etmək üçün, zəhmət olmasa, ehtiyat nüsxə faylını ehtiva edən çıxarıla bilən diski indi JemaOS cihazınıza daxil edin və hansı ehtiyat nüsxə faylını bərpa etmək istədiyinizi göstərin. Zəhmət olmasa, nəzərə alın ki, ehtiyat nüsxə faylınız bu sehrbaz tərəfindən aşkar edilməsi üçün çıxarıla bilən diskin kök qovluğunda olmalıdır.</translation>
+<translation id="2955409026764742995">Bərpa ediləcək ehtiyat nüsxə faylını seçin:</translation>
+<translation id="7040434808685140085">Təəssüf ki, seçilmiş ehtiyat nüsxə faylı tanına bilmir; zəhmət olmasa yenisini seçin.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />JemaOS-u seçilmiş ehtiyat nüsxə faylından bərpa etmək üçün ehtiyat nüsxənin yaradıldığı vaxt haqqında dəqiq məlumata sahib olmaq vacibdir. Əks halda, bərpa prosesi uğursuz olacaq.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"Hesab adı" ehtiyat nüsxə faylınızın yaradıldığı hesabın əsas giriş məlumatıdır. Bu, adətən JemaOS/Google hesabınıza qeydiyyatdan keçmək üçün istifadə etdiyiniz e-poçt ünvanıdır. Yerli hesab olsaydı, bu, "@jemaos.local" ilə əlavə olunmuş istifadəçi adı olardı.<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Şifrə, ehtiyat nüsxə yaradıldığı zaman daxil etməyiniz xahiş olunan şifrə ifadəsidir. Bu, adətən bu hesab üçün JemaOS masaüstünə daxil olmaq üçün istifadə etdiyiniz eyni şifrədir.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Hesab adı</translation>
+<translation id="5490570429039308155">Təəssüf ki, zəhmət olmasa düzgün hesab adını daxil edin</translation>
+<translation id="6657585470893396449">Şifrə</translation>
+<translation id="8200189938001188563">Təəssüf ki, şifrə boş ola bilməz</translation>
+<translation id="3157931365184549694">Bərpa et</translation>
+<translation id="8556278756526311953">Ehtiyat nüsxə bərpa olunur</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />İndi ehtiyat nüsxə faylınızı bərpa etmək üzərində işləyirik; bu bir az vaxt apara bilər, ona görə də zəhmət olmasa səbirli olun.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Zəhmət olmasa, nəzərə alın ki, bərpa prosesi uğurla başa çatdıqda istifadəçi interfeysi avtomatik olaraq yenidən başlayacaq.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Ehtiyat nüsxənin bərpası uğursuz oldu</translation>
+<translation id="5003531399442003695">Daha ətraflı məlumat üçün, zəhmət olmasa, jurnalları görmək üçün aşağıdakı keçidə klikləyin. Bu xəta davam edərsə, zəhmət olmasa JemaOS texniki dəstək kanalları ilə əlaqə saxlayın və xəta jurnallarını təqdim edin.</translation>
+<translation id="6363786367719063276">Jurnalları görüntüləyin</translation>
+<translation id="8730621377337864115">Hazırdır</translation>
+<translation id="975238173507911396">Məlumatların bərpası uğurludur</translation>
+<translation id="6276879052695618521">Ehtiyat nüsxə bərpası jurnalları</translation>
+<translation id="4901207598072637766">JemaOS, <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /> tərəfindən təqdim olunur</translation>
+<translation id="7894910504474624324">JemaOS və onun xidmətləri GDPR və Avropa məlumat mühafizəsi qanununun müddəalarına uyğundur. Daha çox məlumat üçün, zəhmət olmasa, bizim <ph name="BEGIN_LINK_PRIVACY" />Məxfilik Siyasətimizə<ph name="END_LINK_PRIVACY" /> və <ph name="BEGIN_LINK_TOS" />Xidmət Şərtlərimizə<ph name="END_LINK_TOS" /> baxın.</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, bütün hüquqlar qorunur.</translation>
+<translation id="370679569376308836">JemaOS, Jema cihazı və onun SaaS-a əsaslanan kommersiya təklifidir.</translation>
+<translation id="2773644194450163486">JemaOS, <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> açıq mənbə layihəsi sayəsində mümkün olub.</translation>
+<translation id="2330680727776977160">Chromium da digər <ph name="BEGIN_LINK_1" />açıq mənbə proqram təminatı<ph name="END_LINK_1" /> və <ph name="BEGIN_LINK_2" />əlavə açıq mənbə proqram təminatı<ph name="END_LINK_2" /> sayəsində mümkün olub.</translation>
+<translation id="1419954813084261088">Jema Technology tərəfindən hazırlanıb və istehsal olunub.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, bütün hüquqlar qorunur.</translation>
+<translation id="6168072053306020326">Jema Technology, Jema Technology LTD və Jema Technology (Beijing) Limited-in ticarət adıdır.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD, İngiltərə və Uelsdə 12273803 şirkət nömrəsi ilə qeydiyyatdan keçmiş şirkətdir.</translation>
+<translation id="1251589813188467292">Cihazın zəmanəti və xidməti haqqında vacib məlumat</translation>
+<translation id="4851115775198886021">Cihaz SN:</translation>
+</translationbundle>

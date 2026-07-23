@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="sk">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">O aplikácii Thot</translation>
+<translation id="5639860668557220477">Získať pomoc s prehliadačom Thot</translation>
+<translation id="1692689520561928457">O systéme JemaOS</translation>
+<translation id="8692765844418174375">Verzia JemaOS</translation>
+<translation id="2943260250558374955">Získať pomoc so systémom JemaOS</translation>
+<translation id="713321354492170993">Prehliadač uvoľňuje pamäť z neaktívnych kariet. Vďaka tomu majú aktívne karty a ostatné aplikácie viac výpočtových prostriedkov a prehliadač zostáva rýchly. Neaktívne karty sa po návrate k nim automaticky znovu aktivujú.</translation>
+<translation id="1774190491044887444">Prehliadač šetrí batériu obmedzením aktivít na pozadí a vizuálnych efektov, ako je plynulé posúvanie a snímková frekvencia videa.</translation>
+<translation id="180121268008059459">Prehliadač vopred načítava stránky, čím urýchľuje prehliadanie a vyhľadávanie.</translation>
+<translation id="7127093527178692287">Obnoviť zálohu (beta)</translation>
+<translation id="4439042171549201806">Ak chcete obnoviť systém JemaOS zo súboru zálohy, vložte teraz do zariadenia JemaOS vymeniteľnú jednotku obsahujúcu súbor zálohy a určite, ktorý súbor zálohy chcete obnoviť. Upozorňujeme, že súbor zálohy musí byť v koreňovom adresári vymeniteľnej jednotky, aby ho sprievodca rozpoznal.</translation>
+<translation id="2955409026764742995">Vyberte súbor zálohy na obnovenie:</translation>
+<translation id="7040434808685140085">Vybraný súbor zálohy sa žiaľ nedá rozpoznať; vyberte nový.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />Na obnovenie systému JemaOS z vybraného súboru zálohy je nevyhnutné mať presné informácie o zálohe z času jej vytvorenia. V opačnom prípade proces obnovenia zlyhá.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />„Názov účtu“ je primárny prihlasovací údaj účtu, pod ktorým bol súbor zálohy vytvorený. Zvyčajne ide o e-mailovú adresu, ktorú ste použili na registráciu účtu JemaOS/Google. Ak išlo o lokálny účet, ide o používateľské meno doplnené o „@jemaos.local“.<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Heslo je fráza, ktorú ste boli požiadaní zadať pri vytváraní zálohy. Zvyčajne ide o rovnaké heslo, aké používate na prihlásenie na plochu JemaOS pre tento účet.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Názov účtu</translation>
+<translation id="5490570429039308155">Zadajte správny názov účtu</translation>
+<translation id="6657585470893396449">Heslo</translation>
+<translation id="8200189938001188563">Heslo nemôže byť prázdne</translation>
+<translation id="3157931365184549694">Obnoviť</translation>
+<translation id="8556278756526311953">Obnovuje sa záloha</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Práve pracujeme na obnovení vášho súboru zálohy; môže to chvíľu trvať, buďte prosím trpezliví.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Upozorňujeme, že po úspešnom dokončení procesu obnovenia sa používateľské rozhranie automaticky reštartuje.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Obnovenie zálohy zlyhalo</translation>
+<translation id="5003531399442003695">Ďalšie podrobnosti získate kliknutím na nižšie uvedený odkaz, kde si môžete zobraziť protokoly. Ak táto chyba pretrváva, obráťte sa na kanály technickej podpory JemaOS a poskytnite protokoly chýb.</translation>
+<translation id="6363786367719063276">Zobraziť protokoly</translation>
+<translation id="8730621377337864115">Hotovo</translation>
+<translation id="975238173507911396">Obnovenie údajov bolo úspešné</translation>
+<translation id="6276879052695618521">Protokoly obnovenia zálohy</translation>
+<translation id="4901207598072637766">JemaOS, poskytuje <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">Systém JemaOS a jeho služby sú v súlade s GDPR a ustanoveniami európskeho práva o ochrane údajov. Ďalšie informácie nájdete v našich <ph name="BEGIN_LINK_PRIVACY" />Zásadách ochrany osobných údajov<ph name="END_LINK_PRIVACY" /> a našich <ph name="BEGIN_LINK_TOS" />Podmienkach služby.<ph name="END_LINK_TOS" /></translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, všetky práva vyhradené.</translation>
+<translation id="370679569376308836">JemaOS je komerčná ponuka založená na zariadení Jema a jeho službe SaaS.</translation>
+<translation id="2773644194450163486">JemaOS vznikol vďaka open source projektu <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" />.</translation>
+<translation id="2330680727776977160">Chromium vznikol tiež vďaka ďalšiemu <ph name="BEGIN_LINK_1" />open source softvéru<ph name="END_LINK_1" /> a <ph name="BEGIN_LINK_2" />dodatočnému open source softvéru<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Navrhnuté a vyrobené spoločnosťou Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, všetky práva vyhradené.</translation>
+<translation id="6168072053306020326">Jema Technology je obchodný názov spoločností Jema Technology LTD a Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD je spoločnosť registrovaná v Anglicku a Walese pod číslom 12273803.</translation>
+<translation id="1251589813188467292">Dôležité informácie o záruke a servise zariadenia</translation>
+<translation id="4851115775198886021">SN zariadenia:</translation>
+</translationbundle>

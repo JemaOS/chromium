@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="cy">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Ynghylch Thot</translation>
+<translation id="5639860668557220477">Cael cymorth gyda'r porwr Thot</translation>
+<translation id="1692689520561928457">Ynghylch JemaOS</translation>
+<translation id="8692765844418174375">Fersiwn JemaOS</translation>
+<translation id="2943260250558374955">Cael cymorth gyda JemaOS</translation>
+<translation id="713321354492170993">Mae'r porwr yn rhyddhau cof o dabiau anweithredol. Mae hyn yn rhoi mwy o adnoddau cyfrifiadurol i dabiau gweithredol ac apiau eraill ac yn cadw'r porwr yn gyflym. Daw'ch tabiau anweithredol yn weithredol eto'n awtomatig pan fyddwch yn dychwelyd atynt.</translation>
+<translation id="1774190491044887444">Mae'r porwr yn arbed batri trwy gyfyngu ar weithgaredd cefndir ac effeithiau gweledol, megis sgrolio llyfn a chyfraddau fframiau fideo.</translation>
+<translation id="180121268008059459">Mae'r porwr yn rhaglwytho tudalennau, gan wneud pori a chwilio yn gyflymach.</translation>
+<translation id="7127093527178692287">Adfer copi wrth gefn (beta)</translation>
+<translation id="4439042171549201806">I adfer JemaOS o ffeil wrth gefn, mewnosodwch y gyriant symudadwy sy'n cynnwys y ffeil wrth gefn i'ch dyfais JemaOS nawr a nodi pa ffeil wrth gefn yr hoffech ei hadfer. Sylwch fod angen i'ch ffeil wrth gefn fod yng nghyfeiriadur gwraidd eich gyriant symudadwy i'w chanfod gan y dewin hwn.</translation>
+<translation id="2955409026764742995">Dewiswch y ffeil wrth gefn i'w hadfer:</translation>
+<translation id="7040434808685140085">Mae'n ddrwg gennym, ni ellir adnabod y ffeil wrth gefn a ddewiswyd; dewiswch un newydd, os gwelwch yn dda.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />I adfer JemaOS o'r ffeil wrth gefn a ddewiswyd, mae'n hanfodol cael gwybodaeth gywir am y copi wrth gefn pan gafodd ei greu. Fel arall, bydd y broses adfer yn methu.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Yr "enw cyfrif" yw prif dystiolaeth fewngofnodi'r cyfrif y crëwyd eich ffeil wrth gefn oddi tano. Fel arfer dyma'r cyfeiriad e-bost a ddefnyddioch i gofrestru ar gyfer eich cyfrif JemaOS/Google. Pe bai'n gyfrif lleol, byddai'r enw defnyddiwr gyda "@jemaos.local" ychwanegedig.<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Y cyfrinair yw'r ymadrodd cyfrin a ofynnwyd i chi ei roi pan grëwyd y copi wrth gefn. Fel arfer dyma'r un cyfrinair a ddefnyddioch i fewngofnodi i bwrdd gwaith JemaOS ar gyfer y cyfrif hwn.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Enw'r cyfrif</translation>
+<translation id="5490570429039308155">Mae'n ddrwg gennym, rhowch enw'r cyfrif cywir, os gwelwch yn dda</translation>
+<translation id="6657585470893396449">Cyfrinair</translation>
+<translation id="8200189938001188563">Mae'n ddrwg gennym, ni all y cyfrinair fod yn wag</translation>
+<translation id="3157931365184549694">Adfer</translation>
+<translation id="8556278756526311953">Adfer copi wrth gefn</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Rydym nawr yn gweithio ar adfer eich ffeil wrth gefn; gall hyn gymryd amser, felly byddwch yn amyneddgar, os gwelwch yn dda.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Sylwch y bydd y rhyngwyneb yn ailgychwyn yn awtomatig pan fydd y broses adfer yn cwblhau'n llwyddiannus.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Mae adfer copi wrth gefn wedi methu</translation>
+<translation id="5003531399442003695">Am ragor o fanylion, cliciwch y ddolen isod i weld y logiau. Os yw'r gwall hwn yn parhau, cysylltwch â sianeli cymorth technegol JemaOS a darparwch y logiau gwallau.</translation>
+<translation id="6363786367719063276">Gweld logiau</translation>
+<translation id="8730621377337864115">Wedi'i gwneud</translation>
+<translation id="975238173507911396">Adfer data yn llwyddiannus</translation>
+<translation id="6276879052695618521">Logiau adfer copi wrth gefn</translation>
+<translation id="4901207598072637766">JemaOS, wedi'i ddarparu gan <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">Mae JemaOS a'i wasanaethau yn cydymffurfio â'r GDPR a darpariaethau cyfraith diogelu data Ewropeaidd. Am fwy o wybodaeth, gweler ein <ph name="BEGIN_LINK_PRIVACY" />Polisi Preifatrwydd<ph name="END_LINK_PRIVACY" /> a'n <ph name="BEGIN_LINK_TOS" />Telerau Gwasanaeth.<ph name="END_LINK_TOS" /></translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, cedwir pob hawl.</translation>
+<translation id="370679569376308836">Cynnig masnachol yw JemaOS yn seiliedig ar y ddyfais Jema a'i SaaS.</translation>
+<translation id="2773644194450163486">Mae JemaOS yn bosibl diolch i'r prosiect cod agored <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" />.</translation>
+<translation id="2330680727776977160">Mae Chromium hefyd yn bosibl diolch i <ph name="BEGIN_LINK_1" />feddalwedd cod agored arall<ph name="END_LINK_1" /> a <ph name="BEGIN_LINK_2" />feddalwedd cod agored ychwanegol<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Wedi'i gynllunio a'i gynhyrchu gan Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, cedwir pob hawl.</translation>
+<translation id="6168072053306020326">Jema Technology yw enw masnachu Jema Technology LTD a Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        Mae Jema Technology LTD yn gwmni sydd wedi'i gofrestru yn Lloegr a Chymru gyda rhif cwmni 12273803.</translation>
+<translation id="1251589813188467292">Gwybodaeth bwysig am warantu a gwasanaeth y ddyfais</translation>
+<translation id="4851115775198886021">SN y ddyfais:</translation>
+</translationbundle>

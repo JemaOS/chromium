@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="pt-BR">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Sobre o Thot</translation>
+<translation id="5639860668557220477">Receba ajuda com o navegador Thot</translation>
+<translation id="1692689520561928457">Sobre o JemaOS</translation>
+<translation id="8692765844418174375">Versão do JemaOS</translation>
+<translation id="2943260250558374955">Receba ajuda com o JemaOS</translation>
+<translation id="713321354492170993">O navegador libera memória das guias inativas. Isso dá às guias ativas e a outros apps mais recursos de computação e mantém o navegador rápido. Suas guias inativas ficam ativas automaticamente quando você volta a elas.</translation>
+<translation id="1774190491044887444">O navegador economiza bateria limitando a atividade em segundo plano e os efeitos visuais, como a rolagem suave e as taxas de quadros de vídeo.</translation>
+<translation id="180121268008059459">O navegador pré-carrega páginas, tornando a navegação e a pesquisa mais rápidas.</translation>
+<translation id="7127093527178692287">Restaurar backup (beta)</translation>
+<translation id="4439042171549201806">Para restaurar o JemaOS a partir de um arquivo de backup, insira agora a unidade removível que contém o arquivo de backup no seu dispositivo JemaOS e especifique qual arquivo de backup você gostaria de restaurar. Observe que o arquivo de backup precisa estar no diretório raiz da unidade removível para ser detectado por este assistente.</translation>
+<translation id="2955409026764742995">Selecione o arquivo de backup a ser restaurado:</translation>
+<translation id="7040434808685140085">Desculpe, o arquivo de backup selecionado não pode ser reconhecido. Selecione um novo.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />Para restaurar o JemaOS a partir do arquivo de backup selecionado, é essencial ter informações precisas sobre quando o backup foi criado. Caso contrário, o processo de restauração falhará.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />O "nome da conta" é a credencial de login principal da conta sob a qual o arquivo de backup foi criado. Geralmente é o endereço de e-mail que você usou para se inscrever na sua conta do JemaOS/Google. Se fosse uma conta local, seria o nome de usuário seguido de "@jemaos.local".<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />A senha é a frase-senha solicitada quando o backup foi criado. Geralmente é a mesma senha que você usou para fazer login na área de trabalho do JemaOS para esta conta.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Nome da conta</translation>
+<translation id="5490570429039308155">Desculpe, insira o nome correto da conta</translation>
+<translation id="6657585470893396449">Senha</translation>
+<translation id="8200189938001188563">Desculpe, a senha não pode ficar vazia</translation>
+<translation id="3157931365184549694">Restaurar</translation>
+<translation id="8556278756526311953">Restaurando backup</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Estamos trabalhando na restauração do seu arquivo de backup. Isso pode levar algum tempo, portanto, tenha paciência.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Observe que a interface será reiniciada automaticamente quando o processo de restauração for concluído com sucesso.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">A restauração do backup falhou</translation>
+<translation id="5003531399442003695">Para mais detalhes, clique no link abaixo para ver os registros. Se esse erro persistir, entre em contato com os canais de suporte técnico do JemaOS e forneça os registros de erro.</translation>
+<translation id="6363786367719063276">Ver registros</translation>
+<translation id="8730621377337864115">Concluído</translation>
+<translation id="975238173507911396">Dados restaurados com sucesso</translation>
+<translation id="6276879052695618521">Registros da restauração de backup</translation>
+<translation id="4901207598072637766">JemaOS, fornecido por <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">O JemaOS e seus serviços estão em conformidade com o GDPR e as disposições da legislação europeia de proteção de dados. Para mais informações, consulte nossa <ph name="BEGIN_LINK_PRIVACY" />Política de Privacidade<ph name="END_LINK_PRIVACY" /> e nossos <ph name="BEGIN_LINK_TOS" />Termos de Serviço.<ph name="END_LINK_TOS" /></translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, todos os direitos reservados.</translation>
+<translation id="370679569376308836">O JemaOS é uma oferta comercial baseada no dispositivo Jema e seu SaaS.</translation>
+<translation id="2773644194450163486">O JemaOS é possível graças ao projeto de código aberto <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" />.</translation>
+<translation id="2330680727776977160">O Chromium também é possível graças a outros <ph name="BEGIN_LINK_1" />softwares de código aberto<ph name="END_LINK_1" /> e <ph name="BEGIN_LINK_2" />softwares de código aberto adicionais<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Projetado e fabricado pela Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, todos os direitos reservados.</translation>
+<translation id="6168072053306020326">Jema Technology é o nome comercial da Jema Technology LTD e da Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        A Jema Technology LTD é uma empresa registrada na Inglaterra e no País de Gales com o número 12273803.</translation>
+<translation id="1251589813188467292">Informações importantes sobre garantia e serviço do dispositivo</translation>
+<translation id="4851115775198886021">Número de série do dispositivo:</translation>
+</translationbundle>

@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="ko">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Thot 정보</translation>
+<translation id="5639860668557220477">Thot 브라우저 사용 관련 도움말 보기</translation>
+<translation id="1692689520561928457">JemaOS 정보</translation>
+<translation id="8692765844418174375">JemaOS 버전</translation>
+<translation id="2943260250558374955">JemaOS 사용 관련 도움말 보기</translation>
+<translation id="713321354492170993">브라우저가 비활성 탭의 메모리를 확보합니다. 이를 통해 활성 탭과 다른 앱에 더 많은 컴퓨팅 리소스가 제공되고 브라우저 속도가 빠르게 유지됩니다. 비활성 탭은 다시 돌아갈 때 자동으로 활성화됩니다.</translation>
+<translation id="1774190491044887444">브라우저는 백그라운드 활동과 부드러운 스크롤, 동영상 프레임 속도 같은 시각 효과를 제한하여 배터리를 절약합니다.</translation>
+<translation id="180121268008059459">브라우저가 페이지를 미리 로드하여 탐색과 검색이 더 빨라집니다.</translation>
+<translation id="7127093527178692287">백업 복원(베타)</translation>
+<translation id="4439042171549201806">백업 파일에서 JemaOS를 복원하려면 백업 파일이 저장된 이동식 드라이브를 지금 JemaOS 기기에 삽입하고 복원할 백업 파일을 지정하세요. 이 마법사가 백업 파일을 감지하려면 백업 파일이 이동식 드라이브의 루트 디렉터리에 있어야 합니다.</translation>
+<translation id="2955409026764742995">복원할 백업 파일 선택:</translation>
+<translation id="7040434808685140085">선택한 백업 파일을 인식할 수 없습니다. 새 파일을 선택하세요.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />선택한 백업 파일에서 JemaOS를 복원하려면 백업 생성 당시의 정확한 정보가 반드시 필요합니다. 그렇지 않으면 복원 프로세스가 실패합니다.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />'계정 이름'은 백업 파일을 생성한 계정의 기본 로그인 사용자 인증 정보입니다. 일반적으로 JemaOS/Google 계정 가입에 사용한 이메일 주소입니다. 로컬 계정인 경우 사용자 이름 뒤에 '@jemaos.local'이 붙은 형태입니다.<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />비밀번호는 백업 생성 시 입력하라는 메시지가 표시된 암호 문구입니다. 일반적으로 이 계정으로 JemaOS 데스크톱에 로그인할 때 사용한 비밀번호와 동일합니다.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">계정 이름</translation>
+<translation id="5490570429039308155">올바른 계정 이름을 입력하세요</translation>
+<translation id="6657585470893396449">비밀번호</translation>
+<translation id="8200189938001188563">비밀번호는 비워 둘 수 없습니다</translation>
+<translation id="3157931365184549694">복원</translation>
+<translation id="8556278756526311953">백업 복원 중</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />현재 백업 파일을 복원하고 있습니다. 시간이 다소 걸릴 수 있으니 잠시만 기다려 주세요.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />복원 프로세스가 성공적으로 완료되면 UI가 자동으로 다시 시작됩니다.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">백업 복원에 실패했습니다</translation>
+<translation id="5003531399442003695">자세한 내용은 아래 링크를 클릭하여 로그를 확인하세요. 이 오류가 계속되면 JemaOS 기술 지원 채널에 문의하고 오류 로그를 제공하세요.</translation>
+<translation id="6363786367719063276">로그 보기</translation>
+<translation id="8730621377337864115">완료</translation>
+<translation id="975238173507911396">데이터 복원 성공</translation>
+<translation id="6276879052695618521">백업 복원 로그</translation>
+<translation id="4901207598072637766">JemaOS, 제공: <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS 및 해당 서비스는 GDPR과 유럽 데이터 보호법 규정을 준수합니다. 자세한 내용은 <ph name="BEGIN_LINK_PRIVACY" />개인정보처리방침<ph name="END_LINK_PRIVACY" />과 <ph name="BEGIN_LINK_TOS" />서비스 약관<ph name="END_LINK_TOS" />을 참조하세요.</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, 판권 소유.</translation>
+<translation id="370679569376308836">JemaOS는 Jema 기기와 해당 SaaS를 기반으로 하는 상용 제품입니다.</translation>
+<translation id="2773644194450163486">JemaOS는 <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> 오픈소스 프로젝트를 통해 만들어졌습니다.</translation>
+<translation id="2330680727776977160">Chromium은 다른 <ph name="BEGIN_LINK_1" />오픈소스 소프트웨어<ph name="END_LINK_1" /> 및 <ph name="BEGIN_LINK_2" />추가 오픈소스 소프트웨어<ph name="END_LINK_2" />를 통해서도 만들어졌습니다.</translation>
+<translation id="1419954813084261088">Jema Technology가 설계 및 제조했습니다.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, 판권 소유.</translation>
+<translation id="6168072053306020326">Jema Technology는 Jema Technology LTD와 Jema Technology (Beijing) Limited의 상표명입니다.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD는 회사 번호 12273803으로 잉글랜드 및 웨일스에 등록된 회사입니다.</translation>
+<translation id="1251589813188467292">기기 보증 및 서비스에 관한 중요 정보</translation>
+<translation id="4851115775198886021">기기 SN:</translation>
+</translationbundle>

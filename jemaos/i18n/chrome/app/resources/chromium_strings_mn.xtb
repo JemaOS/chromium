@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="mn">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Thot-ийн тухай</translation>
+<translation id="5639860668557220477">Thot хөтчийн талаар тусламж авах</translation>
+<translation id="1692689520561928457">JemaOS-ийн тухай</translation>
+<translation id="8692765844418174375">JemaOS-ийн хувилбар</translation>
+<translation id="2943260250558374955">JemaOS-ийн талаар тусламж авах</translation>
+<translation id="713321354492170993">Хөтөч нь идэвхгүй табуудаас санах ойг чөлөөлдөг. Энэ нь идэвхтэй табууд болон бусад аппуудад илүү их тооцооллын нөөц өгч, хөтчийг хурдан ажиллуулдаг. Та тэдгээрт буцаж очиход идэвхгүй табууд тань автоматаар дахин идэвхждэг.</translation>
+<translation id="1774190491044887444">Хөтөч нь дэвсгэр үйл ажиллагаа болон визуал эффектуудыг, жишээлбэл, жигд гүйлгэх, видео кадрын хурдыг хязгаарлаж батерей хэмнэдэг.</translation>
+<translation id="180121268008059459">Хөтөч нь хуудсыг урьдчилан ачаалж, үзэх болон хайх ажиллагааг хурдасгадаг.</translation>
+<translation id="7127093527178692287">Нөөцлөлтийг сэргээх (бета)</translation>
+<translation id="4439042171549201806">JemaOS-ийг нөөцлөлтийн файлаас сэргээхийн тулд нөөцлөлтийн файл байгаа зөөврийн дискийг JemaOS төхөөрөмжидөө залгаж, аль нөөцлөлтийн файлыг сэргээхийг хүсч байгаагаа заана уу. Нөөцлөлтийн файл тань энэхүү удирдамжаар илрүүлэхийн тулд зөөврийн дискний үндсэн хавтаст байх шаардлагатайг анхаарна уу.</translation>
+<translation id="2955409026764742995">Сэргээх нөөцлөлтийн файлыг сонгоно уу:</translation>
+<translation id="7040434808685140085">Уучлаарай, сонгосон нөөцлөлтийн файлыг таних боломжгүй байна; шинэ файлыг сонгоно уу.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />Сонгосон нөөцлөлтийн файлаас JemaOS-ийг сэргээхийн тулд нөөцлөлт үүсгэгдсэн үеийн тухай үнэн зөв мэдээлэлтэй байх нь чухал. Эс бөгөөс сэргээх процесс амжилтгүй болно.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"Бүртгэлийн нэр" гэдэг нь таны нөөцлөлтийн файл үүсгэгдсэн бүртгэлийн үндсэн нэвтрэх мэдээлэл юм. Энэ нь ихэвчлэн JemaOS/Google бүртгэлдээ бүртгүүлэхдээ ашигласан и-мэйл хаяг байдаг. Хэрэв энэ нь локал бүртгэл бол "@jemaos.local" залгаастай хэрэглэгчийн нэр байна.<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Нууц үг гэдэг нь нөөцлөлт үүсгэх үед оруулахыг шаарддаг нууц үг юм. Энэ нь ихэвчлэн энэ бүртгэлийн JemaOS ажлын ширээ рүү нэвтрэхдээ ашигладаг нууц үгтэй ижил байдаг.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Бүртгэлийн нэр</translation>
+<translation id="5490570429039308155">Уучлаарай, зөв бүртгэлийн нэрийг оруулна уу</translation>
+<translation id="6657585470893396449">Нууц үг</translation>
+<translation id="8200189938001188563">Уучлаарай, нууц үг хоосон байж болохгүй</translation>
+<translation id="3157931365184549694">Сэргээх</translation>
+<translation id="8556278756526311953">Нөөцлөлтийг сэргээж байна</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Бид одоо таны нөөцлөлтийн файлыг сэргээх ажил дээр ажиллаж байна; энэ нь бага хэмжээний хугацаа шаардаж болох тул тэвчээртэй байна уу.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Сэргээх процесс амжилттай дуусахад хэрэглэгчийн интерфейс автоматаар дахин эхлэхийг анхаарна уу.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Нөөцлөлтийг сэргээх амжилтгүй боллоо</translation>
+<translation id="5003531399442003695">Дэлгэрэнгүй мэдээллийн тулд логуудыг харахын тулд доорх холбоос дээр дарна уу. Хэрэв энэ алдаа үргэлжилбэл JemaOS-ийн техникийн дэмжлэгийн сувгуудтай холбогдож, алдааны логуудыг ирүүлнэ үү.</translation>
+<translation id="6363786367719063276">Логуудыг харах</translation>
+<translation id="8730621377337864115">Дууссан</translation>
+<translation id="975238173507911396">Өгөгдлийн сэргээлт амжилттай</translation>
+<translation id="6276879052695618521">Нөөцлөлт сэргээх логууд</translation>
+<translation id="4901207598072637766">JemaOS-ийг <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /> хангадаг</translation>
+<translation id="7894910504474624324">JemaOS болон түүний үйлчилгээнүүд нь GDPR болон Европын өгөгдөл хамгаалах хуулийн заалтуудад нийцдэг. Дэлгэрэнгүй мэдээллийн тулд бидний <ph name="BEGIN_LINK_PRIVACY" />Нууцлалын бодлого<ph name="END_LINK_PRIVACY" /> болон <ph name="BEGIN_LINK_TOS" />Үйлчилгээний нөхцөлийг.<ph name="END_LINK_TOS" /> үзнэ үү.</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, бүх эрх хуулиар хамгаалагдсан.</translation>
+<translation id="370679569376308836">JemaOS нь Jema төхөөрөмж болон түүний SaaS дээр үндэслэгдсэн арилжааны санал юм.</translation>
+<translation id="2773644194450163486">JemaOS нь <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> нээлттэй эхийн төслийн ачаар боломжит болсон.</translation>
+<translation id="2330680727776977160">Chromium мөн бусад <ph name="BEGIN_LINK_1" />нээлттэй эхийн программ хангамж<ph name="END_LINK_1" /> болон <ph name="BEGIN_LINK_2" />нэмэлт нээлттэй эхийн программ хангамжийн<ph name="END_LINK_2" /> ачаар боломжит болсон.</translation>
+<translation id="1419954813084261088">Jema Technology-ийн бүтээж, үйлдвэрлэсэн.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, бүх эрх хуулиар хамгаалагдсан.</translation>
+<translation id="6168072053306020326">Jema Technology нь Jema Technology LTD болон Jema Technology (Beijing) Limited компаниудын худалдааны нэр юм.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD нь Английн ба Уэльст 12273803 компанийн дугаараар бүртгэгдсэн компани юм.</translation>
+<translation id="1251589813188467292">Төхөөрөмжийн баталгаат хугацаа болон үйлчилгээний чухал мэдээлэл</translation>
+<translation id="4851115775198886021">Төхөөрөмжийн серийн дугаар:</translation>
+</translationbundle>

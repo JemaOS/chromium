@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="af">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Oor Thot</translation>
+<translation id="5639860668557220477">Kry hulp met die Thot-blaaier</translation>
+<translation id="1692689520561928457">Oor JemaOS</translation>
+<translation id="8692765844418174375">JemaOS-weergawe</translation>
+<translation id="2943260250558374955">Kry hulp met JemaOS</translation>
+<translation id="713321354492170993">Die blaaier maak geheue vry van onaktiewe oortjies. Dit gee aktiewe oortjies en ander toepassings meer rekenhulpbronne en hou die blaaier vinnig. Jou onaktiewe oortjies word outomaties weer aktief wanneer jy na hulle terugkeer.</translation>
+<translation id="1774190491044887444">Die blaaier bespaar battery deur agtergrondaktiwiteit en visuele effekte, soos gladde rol en videoraamtempo's, te beperk.</translation>
+<translation id="180121268008059459">Die blaaier laai bladsye vooraf, wat blaai en soek vinniger maak.</translation>
+<translation id="7127093527178692287">Herstel rugsteun (beta)</translation>
+<translation id="4439042171549201806">Om JemaOS vanaf 'n rugsteunlêer te herstel, plaas nou die verwyderbare skyf wat die rugsteunlêer bevat in jou JemaOS-toestel en spesifiseer watter rugsteunlêer jy wil herstel. Let daarop dat jou rugsteunlêer in die hoofgids van jou verwyderbare skyf moet wees om deur hierdie assistent opgespoor te word.</translation>
+<translation id="2955409026764742995">Kies die rugsteunlêer om te herstel:</translation>
+<translation id="7040434808685140085">Jammer, die gekose rugsteunlêer kan nie herken word nie; kies asseblief 'n nuwe een.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />Om JemaOS vanaf die gekose rugsteunlêer te herstel, is dit noodsaaklik om akkurate inligting oor die rugsteun te hê toe dit geskep is. Anders sal die herstelproses misluk.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Die "rekeningnaam" is die primêre aanmeldingsbewys van die rekening waaronder jou rugsteunlêer geskep is. Dit is gewoonlik die e-posadres wat jy gebruik het om vir jou JemaOS/Google-rekening te registreer. As dit 'n plaaslike rekening was, sou dit die gebruikersnaam wees met "@jemaos.local" agteraan.<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Die wagwoord is die wagwoordfrase wat jy gevra is om in te voer toe die rugsteun geskep is. Dit is gewoonlik dieselfde wagwoord wat jy gebruik het om by die JemaOS-werkskerm vir hierdie rekening aan te meld.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Rekeningnaam</translation>
+<translation id="5490570429039308155">Jammer, voer asseblief die korrekte rekeningnaam in</translation>
+<translation id="6657585470893396449">Wagwoord</translation>
+<translation id="8200189938001188563">Jammer, die wagwoord kan nie leeg wees nie</translation>
+<translation id="3157931365184549694">Herstel</translation>
+<translation id="8556278756526311953">Rugsteun word herstel</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Ons werk nou aan die herstel van jou rugsteunlêer; dit kan 'n rukkie neem, so wees asseblief geduldig.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Let daarop dat die gebruikerskoppelvlak outomaties sal herbegin wanneer die herstelproses suksesvol voltooi is.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Herstel van rugsteun het misluk</translation>
+<translation id="5003531399442003695">Vir meer besonderhede, klik asseblief op die skakel hieronder om die logboeke te bekyk. As hierdie fout voortduur, skakel asseblief die JemaOS-tegniese ondersteuningskanale en verskaf die foutlogboeke.</translation>
+<translation id="6363786367719063276">Bekyk logboeke</translation>
+<translation id="8730621377337864115">Klaar</translation>
+<translation id="975238173507911396">Herstel van data suksesvol</translation>
+<translation id="6276879052695618521">Herstel-rugsteunlogboeke</translation>
+<translation id="4901207598072637766">JemaOS, verskaf deur <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS en sy dienste voldoen aan die GDPR en die bepalings van die Europese databeskermingswet. Vir meer inligting, sien asseblief ons <ph name="BEGIN_LINK_PRIVACY" />Privaatheidsbeleid<ph name="END_LINK_PRIVACY" /> en ons <ph name="BEGIN_LINK_TOS" />Diensvoorwaardes.<ph name="END_LINK_TOS" /></translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, alle regte voorbehou.</translation>
+<translation id="370679569376308836">JemaOS is 'n kommersiële aanbod gebaseer op die Jema-toestel en sy SaaS.</translation>
+<translation id="2773644194450163486">JemaOS word moontlik gemaak deur die <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> oopbronprojek.</translation>
+<translation id="2330680727776977160">Chromium word ook moontlik gemaak deur ander <ph name="BEGIN_LINK_1" />oopbronsagteware<ph name="END_LINK_1" /> en <ph name="BEGIN_LINK_2" />bykomende oopbronsagteware<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Ontwerp en vervaardig deur Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, alle regte voorbehou.</translation>
+<translation id="6168072053306020326">Jema Technology is die handelsnaam van Jema Technology LTD en Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD is 'n maatskappy geregistreer in Engeland en Wallis met maatskappynommer 12273803.</translation>
+<translation id="1251589813188467292">Belangrike toestelwaarborg- en diensinligting</translation>
+<translation id="4851115775198886021">Toestel SN:</translation>
+</translationbundle>

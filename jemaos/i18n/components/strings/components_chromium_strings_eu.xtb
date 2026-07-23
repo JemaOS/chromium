@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="eu">
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">JemaOS-ek ez du hasierako konfigurazioa osatu.</translation>
+<translation id="4257170804800372451">JemaOS eta Thot <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> kode irekiko proiektuaren eta beste <ph name="BEGIN_LINK_OSS" />kode irekiko software<ph name="END_LINK_OSS" /> batzuen bidez dira posible.</translation>
+</translationbundle>

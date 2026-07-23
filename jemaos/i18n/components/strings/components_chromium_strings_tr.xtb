@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="tr">
+
+
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">JemaOS ilk kurulumunu tamamlamadı.</translation>
+<translation id="4257170804800372451">JemaOS ve Thot, <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> açık kaynak projesi ve diğer <ph name="BEGIN_LINK_OSS" />açık kaynak yazılımlar<ph name="END_LINK_OSS" /> sayesinde mümkün olmuştur.</translation>
+</translationbundle>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="si">
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">JemaOS එහි මූලික සැකසුම සම්පූර්ණ කර නොමැත.</translation>
+<translation id="4257170804800372451">JemaOS සහ Thot <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> විවෘත මූලාශ්‍ර ව්‍යාපෘතිය සහ වෙනත් <ph name="BEGIN_LINK_OSS" />විවෘත මූලාශ්‍ර මෘදුකාංග<ph name="END_LINK_OSS" /> මඟින් සෑදී ඇත.</translation>
+</translationbundle>

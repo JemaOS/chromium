@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="ar">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">حول Thot</translation>
+<translation id="5639860668557220477">الحصول على مساعدة حول متصفح Thot</translation>
+<translation id="1692689520561928457">حول JemaOS</translation>
+<translation id="8692765844418174375">إصدار JemaOS</translation>
+<translation id="2943260250558374955">الحصول على مساعدة حول JemaOS</translation>
+<translation id="713321354492170993">يعمل المتصفح على تحرير الذاكرة من علامات التبويب غير النشطة. وهذا يمنح علامات التبويب النشطة والتطبيقات الأخرى المزيد من موارد الحوسبة ويحافظ على سرعة المتصفح. تصبح علامات التبويب غير النشطة نشطة تلقائيًا مرة أخرى عند العودة إليها.</translation>
+<translation id="1774190491044887444">يوفر المتصفح طاقة البطارية عن طريق تقييد نشاط الخلفية والتأثيرات المرئية، مثل التمرير السلس ومعدلات إطارات الفيديو.</translation>
+<translation id="180121268008059459">يقوم المتصفح بتحميل الصفحات مسبقًا، مما يجعل التصفح والبحث أسرع.</translation>
+<translation id="7127093527178692287">استعادة النسخة الاحتياطية (تجريبي)</translation>
+<translation id="4439042171549201806">لاستعادة JemaOS من ملف نسخة احتياطية، يرجى إدخال محرك الأقراص القابل للإزالة الذي يحتوي على ملف النسخة الاحتياطية في جهاز JemaOS الآن وتحديد ملف النسخة الاحتياطية الذي تريد استعادته. يُرجى ملاحظة أن ملف النسخة الاحتياطية يجب أن يكون في الدليل الجذر لمحرك الأقراص القابل للإزالة ليتم اكتشافه بواسطة هذا المعالج.</translation>
+<translation id="2955409026764742995">حدد ملف النسخة الاحتياطية المراد استعادته:</translation>
+<translation id="7040434808685140085">عذرًا، لا يمكن التعرف على ملف النسخة الاحتياطية المحدد؛ يرجى تحديد ملف جديد.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />لاستعادة JemaOS من ملف النسخة الاحتياطية المحدد، من الضروري توفر معلومات دقيقة عن النسخة الاحتياطية عند إنشائها. وإلا فستفشل عملية الاستعادة.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"اسم الحساب" هو بيانات اعتماد تسجيل الدخول الأساسية للحساب الذي تم إنشاء ملف النسخة الاحتياطية بموجبه. وهو عادةً عنوان البريد الإلكتروني الذي استخدمته للتسجيل في حساب JemaOS/Google. وإذا كان حسابًا محليًا، فسيكون اسم المستخدم متبوعًا بـ "@jemaos.local".<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />كلمة المرور هي عبارة المرور التي طُلب منك إدخالها عند إنشاء النسخة الاحتياطية. وهي عادةً نفس كلمة المرور التي استخدمتها لتسجيل الدخول إلى سطح مكتب JemaOS لهذا الحساب.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">اسم الحساب</translation>
+<translation id="5490570429039308155">عذرًا، يرجى إدخال اسم الحساب الصحيح</translation>
+<translation id="6657585470893396449">كلمة المرور</translation>
+<translation id="8200189938001188563">عذرًا، لا يمكن أن تكون كلمة المرور فارغة</translation>
+<translation id="3157931365184549694">استعادة</translation>
+<translation id="8556278756526311953">جارٍ استعادة النسخة الاحتياطية</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />نعمل الآن على استعادة ملف النسخة الاحتياطية؛ قد يستغرق ذلك بعض الوقت، لذا يرجى التحلي بالصبر.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />يرجى ملاحظة أن واجهة المستخدم ستُعاد تشغيلها تلقائيًا عند اكتمال عملية الاستعادة بنجاح.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">فشلت استعادة النسخة الاحتياطية</translation>
+<translation id="5003531399442003695">لمزيد من التفاصيل، يرجى النقر على الرابط أدناه لعرض السجلات. إذا استمر هذا الخطأ، يرجى التواصل مع قنوات الدعم الفني لـ JemaOS وتقديم سجلات الأخطاء.</translation>
+<translation id="6363786367719063276">عرض السجلات</translation>
+<translation id="8730621377337864115">تم</translation>
+<translation id="975238173507911396">تمت استعادة البيانات بنجاح</translation>
+<translation id="6276879052695618521">سجلات استعادة النسخة الاحتياطية</translation>
+<translation id="4901207598072637766">JemaOS، مقدَّم من <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">يلتزم JemaOS وخدماته باللائحة العامة لحماية البيانات (GDPR) وأحكام قانون حماية البيانات الأوروبي. لمزيد من المعلومات، يرجى الاطلاع على <ph name="BEGIN_LINK_PRIVACY" />سياسة الخصوصية<ph name="END_LINK_PRIVACY" /> و<ph name="BEGIN_LINK_TOS" />شروط الخدمة<ph name="END_LINK_TOS" /> الخاصة بنا.</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology، جميع الحقوق محفوظة.</translation>
+<translation id="370679569376308836">JemaOS هو عرض تجاري قائم على جهاز Jema وخدمة SaaS الخاصة به.</translation>
+<translation id="2773644194450163486">أصبح JemaOS ممكنًا بفضل مشروع <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> مفتوح المصدر.</translation>
+<translation id="2330680727776977160">أصبح Chromium أيضًا ممكنًا بفضل <ph name="BEGIN_LINK_1" />برامج مفتوحة المصدر<ph name="END_LINK_1" /> أخرى و<ph name="BEGIN_LINK_2" />برامج مفتوحة المصدر إضافية<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">صُمِّم وصُنِع بواسطة Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD، جميع الحقوق محفوظة.</translation>
+<translation id="6168072053306020326">Jema Technology هو الاسم التجاري لشركتَي Jema Technology LTD وJema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD شركة مسجلة في إنجلترا وويلز برقم شركة 12273803.</translation>
+<translation id="1251589813188467292">معلومات مهمة حول ضمان الجهاز وخدمته</translation>
+<translation id="4851115775198886021">الرقم التسلسلي للجهاز:</translation>
+</translationbundle>

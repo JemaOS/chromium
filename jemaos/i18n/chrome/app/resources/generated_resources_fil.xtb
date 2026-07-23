@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="fil">
+	<translation id="7386402409475121504">Create your local JemaOS account</translation>
+	<translation id="3760308806144055927">Sign in your local JemaOS account</translation>
+	<translation id="3325117507482096812">Please input a password</translation>
+	<translation id="1838206877831947154">Your passwords do not match</translation>
+	<translation id="2158276988029582286">Create a new local account</translation>
+	<translation id="8592849747346274067">Sign in to an existing account</translation>
+	<translation id="482190417986201746">The username or password you entered is incorrect</translation>
+	<translation id="6603987686259425085">You can <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>sign in with a JemaOS local account<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">Email <ph name="EMAIL_ADDRESS">$1</ph> already exists. Please retry with another email.</translation>
+	<translation id="7215016743510876720">Use local account</translation>
+	<translation id="6657635042185516718">Continue to use online account</translation>
+	<translation id="6867476688065565618">Switch to local account?</translation>
+	<translation id="4840454774882557974">If you opt to use a local account, useful features include synchronising your data and preferences across multiple devices and automatically signing in web apps using your JemaOS account will not work.</translation>
+	<translation id="8951507920859729424">We recommend using an online account to utilise JemaOS to its fullest.</translation>
+	<translation id="479773200536372215">You will not be able to add Google accounts because Google API keys are missing. See <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> for details.</translation>
+	<translation id="1198491307547164157">You will not be able to add JemaOS accounts because JemaOS API keys are missing. See <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> for details.</translation>
+	<translation id="5042404702659901995">Privacy statement</translation>
+	<translation id="4907736162587268100">Privacy statement contents</translation>
+	<translation id="5988344732274877691">Sign up for the (very infrequent, promised) newsletter for JemaOS</translation>
+	<translation id="1706203008474708805">Join JemaOS user experience improvement plan</translation>
+	<translation id="1147139514756087229">Sign in with a local account</translation>
+	<translation id="2054784944085654098">Creating backup file now. This may take a while; please wait…</translation>
+	<translation id="3554401467586751874">Backup file was created successfully</translation>
+	<translation id="2349211327705667074">View backup file</translation>
+	<translation id="3049367131589710124">View error log</translation>
+	<translation id="1079017345574916945">Remote desktop</translation>
+	<translation id="3064478898280877715">App store</translation>
+	<translation id="5890206344045530832">Installer</translation>
+	<translation id="2173278076276376488">This utility will help you install <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> onto the internal storage of this device.</translation>
+	<translation id="5323182426977498659">Warning! This procedure is destructive and cannot be undone. Please note that we will not hold any responsibility for your potential data loss nor provide any urgent technical support, proceed at your own risk.</translation>
+	<translation id="8517836015601969896">Full disk installation</translation>
+	<translation id="7300045760790370189">Install <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> to occupy an entire hard disk, all data of the target hard disk will be wiped.</translation>
+	<translation id="8762511733918256595">Multi-boot installation</translation>
+	<translation id="248900698427753678">Install <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> to an existing partition of a hard disk, where <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> can exist in parallel with other OS. All data on the target partition will be wiped.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> will be installed on your selected hard drive; all data on the target disk will be wiped.</translation>
+	<translation id="4039091757234555415">Disk</translation>
+	<translation id="7783580523889684697">No disk available</translation>
+	<translation id="8217653566575018388">Installation completed</translation>
+	<translation id="8846746259444262774">Installation failed</translation>
+	<translation id="7263815009235541549">The installation has finished successfully. Please power off your device first, then remove any installation media, and power it on again to boot <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>.</translation>
+	<translation id="3380151284134965398">Oops, something has gone wrong and the installation did not complete. Please retry the process. If the same error persists, please reach out for JemaOS Support with the above log.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> will be installed on the selected partition of your hard drive. Under the current multi-boot scheme, this could only proceed if your device supports UEFI and your hard disks are formatted with GPT.</translation>
+	<translation id="7831363758161884243">The target partition will be wiped; you also need to specify your active EFI partition (usually done automatically) as the Installer needs to modify system boot configurations.</translation>
+	<translation id="5670799238446305550">Select <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> target partition</translation>
+	<translation id="3695537760133394753">Partition</translation>
+	<translation id="5610519566593708119">Select EFI partition</translation>
+	<translation id="3367650349940010965">There are no partitions available for the selected disk</translation>
+	<translation id="7453223384507098390">There are no EFI partitions available for the selected disk</translation>
+	<translation id="1854532683465500847">The size of the selected partition is less than 20GB, installation may fail</translation>
+	<translation id="4144613075340468247">The selected partition has been mounted to <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> multi-boot, install to it again may fail</translation>
+	<translation id="5793361052649920836">After installation, how would you like to boot <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>?</translation>
+	<translation id="4273235330352963866">Install and configure rEFInd for me (recommended)</translation>
+	<translation id="1858708492548921044">rEFInd is a boot manager program that offers a nice graphical interface for OS boot options when your PC starts up, you will be able to choose your desired OS to boot with it. For more information regarding rEFInd, please refer to its homepage.</translation>
+	<translation id="3861924051442564602">Add a UEFI boot menu option for me</translation>
+	<translation id="8622370666798589804">When your PC starts up you may be able to enter the UEFI boot options menu (most likely by pressing a hotkey), this option adds <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> as an entry to that menu. (Only supports some models of BIOS and UEFI firmware).</translation>
+	<translation id="1569398690544416170">Do nothing here, I will configure it myself</translation>
+	<translation id="3554866444001249532">This installation script will only put necessary .efi files for booting <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> to your EFI partition, you will need to configure how to boot it by yourself.</translation>
+	<translation id="7492832751164189534">Force quit</translation>
+	<translation id="5159534860632584026">The installation process has been terminated</translation>
+	<translation id="8686749782014838344">Failed to get disk information</translation>
+	<translation id="5688543378771259173">The installation is being terminated...</translation>
+	<translation id="5350452134936384991">Install in USB</translation>
+	<translation id="8008470485414925603">Install <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> onto a USB disk; all data on the target USB disk will be wiped.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> will be installed on your selected USB disk; all data on the target disk will be wiped.</translation>
+	<translation id="5725593226060700263">No USB disk available</translation>
+	<translation id="4357040841587078287">We have detected that you are running this copy of JemaOS from a downloaded image file. To utilise the most comprehensive support features (including Over-The-Air updates) that JemaOS can offer, we strongly recommend you launch the "Installer" function to perform a full-disk installation of JemaOS to a separate storage device.</translation>
+	<translation id="1246398339704431302">You can <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>continue to use this copy of JemaOS anyway<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, the installation process can be executed at a later stage in the system, however, all your data will be wiped after installation and you will begin again from this page.</translation>
+	<translation id="3654532222088291133">Instead of entering your JemaOS account password to sign in, you can create a <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> password for this device</translation>
+	<translation id="8377684629839541977">Use JemaOS account password</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">Awtomatikong panatilihing updated ang <ph name="DEVICE_OS" /></translation>
+<translation id="2347352406101856238">Naka-enable ang update ng <ph name="DEVICE_OS" /></translation>
+<translation id="185834232609012804">Naka-disable ang update ng <ph name="DEVICE_OS" /></translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Platform <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Remote Desktop</translation>
+<translation id="6898090158927982244">Updated na ang iyong Linux</translation>
+<translation id="4886703929102211360">May kritikal na update na available para sa bahaging Linux (beta). Lubos na inirerekomendang i-install ang update na ito sa lalong madaling panahon, kung hindi ay maaaring tumigil sa pagtakbo ang iyong Linux (beta).</translation>
+<translation id="6694016202036959050">Mga setting ng <ph name="DEVICE_OS" /></translation>
+<translation id="8362858344151826493">JemaOS account, backup, iba pa</translation>
+<translation id="9150429437595727962">Mga setting ng Wi-Fi</translation>
+<translation id="4938972461544498524">Mga setting ng touchpad</translation>
+<translation id="1210024513248363065">Mga remote na serbisyo</translation>
+<translation id="2878862288885588535">Remote diagnostic service</translation>
+<translation id="7409197984340676806">Pinapayagan ng remote diagnostic service ang mga opisyal na kinatawan ng suporta ng JemaOS na matukoy ang mga isyu ng system. Sa kasalukuyan, ang remote diagnostic service ay maaari lamang simulan ng mga opisyal na kinatawan ng suporta ng JemaOS.</translation>
+<translation id="1791028023086176332">Ibahagi ang numerong ito sa mga opisyal na kinatawan ng suporta ng JemaOS</translation>
+<translation id="6279304275399437025">Sinisimulan ang remote diagnostic service...</translation>
+<translation id="1501882165699826662">Pahintuin ang remote diagnostic service at subukang muli</translation>
+<translation id="3100283258447375201">Higit pang impormasyon</translation>
+<translation id="4070039109671307724">Iba pa</translation>
+<translation id="7326893024940073254">Button na "I-restart"</translation>
+<translation id="3002423764319968103">Magpakita ng button na "I-restart" sa menu ng system</translation>
+<translation id="6243454903512423518">Button na "I-rotate ang screen"</translation>
+<translation id="6491049336868978729">Hindi ka kasalukuyang nasa tablet mode, nakatago ang button na "I-rotate ang screen"</translation>
+<translation id="5496012402277579695">Magpakita ng button na "I-rotate ang screen" sa menu ng system</translation>
+<translation id="5882838977344999606">Switch ng tablet/laptop mode</translation>
+<translation id="472164133625585606">Magpakita ng switch ng tablet/laptop mode sa menu ng system</translation>
+<translation id="1851103550468466960">I-enable ang Widevine</translation>
+<translation id="4058176713282795846">I-enable ang Widevine para mag-stream ng protektadong premium na content. <ph name="BEGIN_LINK_LEARN_MORE" />Alamin pa<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">Piliin ang "libwidevine.so"</translation>
+<translation id="4838463656205005584">Hindi na-enable ang Widevine...</translation>
+<translation id="2164041826798266548">Nabigo ang pag-install ng Widevine CDM module. Pakisuri ang iyong koneksyon at subukang muli.</translation>
+<translation id="4106982328079440606">Mga setting ng JemaOS account</translation>
+<translation id="6468776556018764845">Mga experimental na feature</translation>
+<translation id="3487615413425326553">I-bypass ang mga pagsusuri ng Trusted Platform Module (TPM)</translation>
+<translation id="4817176087932811573">Maaaring mabigo ang ilang feature dahil sa hindi tugmang TPM chip sa iyong device; maaari mong i-bypass ang mga pagsusuri ng TPM bilang pansamantalang solusyon.</translation>
+<translation id="3356003366173774486">Awtomatikong pag-sign in</translation>
+<translation id="6218459410891191693">Payagan ang kasalukuyang account na awtomatikong mag-sign in sa desktop kapag ni-restart ang device</translation>
+<translation id="6620839363422062843">Hindi maaaring i-enable para sa account na ito; aktibo na ang awtomatikong pag-sign in para sa iba pang account sa device na ito</translation>
+<translation id="6734500226490446035">Hindi maaaring i-enable para sa account na ito; may naganap na hindi kilalang error habang sinisimulan ang mga file system para sa account na ito. Pakisubukang i-restart o gumawa ng bagong account</translation>
+<translation id="5464880042146818691">Hindi maaaring i-enable para sa account na ito; ang opsyon sa awtomatikong pag-sign in ay available lamang para sa uri ng "Lokal na account".</translation>
+<translation id="3335654854106476749">Pakidagdagan ng sign-in password sa mga setting ng <ph name="BEGIN_LINK" />Privacy at seguridad<ph name="END_LINK" /> bago i-enable ang awtomatikong pag-sign in.</translation>
+<translation id="5586831602198585601">May mas bagong bersyon ng JemaOS na available na i-update ngayon. Gayunman, nag-expire na ang iyong JemaOS for You subscription; kailangan mo ng aktibong subscription para ma-update ang iyong JemaOS.</translation>
+<translation id="3869860597719956574">May bagong major na bersyon ng JemaOS na available na i-update ngayon. Kailangan mong magbayad nang isang beses para magpatuloy sa update na ito.</translation>
+<translation id="6523879681771260760">Pakitukoy ang path kung saan ise-save ang backup file</translation>
+<translation id="2036152819788683293">Gumawa ng backup file para sa account na ito (beta). <ph name="BEGIN_LINK_LEARN_MORE" />Alamin pa<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">I-backup</translation>
+<translation id="4267347174163690295">Gumawa ng backup file para sa account na ito (beta).</translation>
+<translation id="8112950994208888917">Ang operasyong ito ay gumagawa ng buong disk backup para sa account na ito, na nagpapadali sa pag-restore ng iyong JemaOS sa estado nito nang ginawa ang backup, kabilang ang mga setting, naka-install na browser extension, at mga subsystem app. Depende sa iyong mga app at sa nilalaman ng iyong home folder, maaaring malaki ang backup file; inirerekomendang i-save ang backup file sa isang external storage device. Kung may portable USB drive ka, pakikonekta ito ngayon. <ph name="BEGIN_LINK_LEARN_MORE" />Alamin pa<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Pakilagay ang sign-in password para sa account na ito</translation>
+<translation id="8663988871299316062">Pakitandaan ang password na ito, dahil kakailanganin ito kapag ni-restore ang backup file na ito</translation>
+<translation id="6408904153044317846">Piliin ang backup file na ire-restore</translation>
+<translation id="8062988348127771021">I-restore ang iyong JemaOS data mula sa backup file</translation>
+<translation id="7309192418866543730">Ilagay ang backup password</translation>
+<translation id="3642408376366598984">Ilagay ang password na ginamit para i-encrypt ang backup file na ito</translation>
+<translation id="7783974937157985523">Backup password</translation>
+<translation id="6583780301401541007">Matagumpay ang pag-restore</translation>
+<translation id="3514011352559420398">Nabigo ang pag-restore</translation>
+<translation id="7535980903266533458">I-save ang backup sa iyong device o external storage</translation>
+<translation id="604001903249547235">Cloud backup</translation>
+<translation id="8885702701336541611">I-upload ang backup sa JemaOS cloud storage</translation>
+<translation id="3939744430096549862">I-backup sa cloud</translation>
+<translation id="619129431573254316">I-restore mula sa lokal na backup file</translation>
+<translation id="1859592711955106569">Cloud restore</translation>
+<translation id="38222223336741457">I-download at i-restore mula sa JemaOS cloud</translation>
+<translation id="1241089811244416179">I-restore mula sa cloud</translation>
+<translation id="652479689372703360">Isinasagawa ang backup</translation>
+<translation id="3655220146274872918">Tapos na ang backup</translation>
+<translation id="4243579853635792694">Matagumpay na nagawa ang iyong backup</translation>
+<translation id="6337433855796857931">Nabigo ang backup</translation>
+<translation id="4854179463174744546">May naganap na error sa proseso ng backup</translation>
+<translation id="2410668771600309999">Impormasyon ng Connect API user</translation>
+<translation id="2223892939866251845">User ID</translation>
+<translation id="3850846286480935456">Pagsusuri ng backup storage</translation>
+<translation id="6244494465581273970">Kinakailangan ang User ID</translation>
+<translation id="9204006549413740506">Huling na-update</translation>
+<translation id="476642412165431515">Mga hardware device</translation>
+<translation id="3386337985825120901">Walang available na backup data</translation>
+<translation id="8490990067870590760">Nilo-load ang mga backup file...</translation>
+<translation id="2955409026764742995">Piliin ang backup file na ire-restore:</translation>
+<translation id="7414629348005657242">-- Pumili ng backup file --</translation>
+<translation id="918246516374174381">Walang nahanap na backup file. Gumawa muna ng backup.</translation>
+<translation id="77997252117517973">Malapit na</translation>
+<translation id="1930692852800776096">Magdagdag ng diksyunaryo</translation>
+<translation id="8793060353848771694">Larawan ng kaliwang earbud</translation>
+<translation id="6257440204887306255">Larawan ng charging case</translation>
+<translation id="2754700616124958693">Larawan ng kanang earbud</translation>
+<translation id="1068676292264983586">Larawan ng default na device</translation>
+<translation id="6364075396486660405">I-disable ang awtomatikong pag-scan ng mga media file para sa lahat ng partition para ma-optimize ang buhay ng baterya. <ph name="BEGIN_LINK_LEARN_MORE" />Alamin pa<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Mga opsyon sa seguridad</translation>
+<translation id="5618366106086725045">I-enable ang "Developer Mode" para sa installation ng <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> na ito na may higit pang mga developer feature. <ph name="BEGIN_LINK_LEARN_MORE" />Alamin pa<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Nasa "Developer Mode" ka na</translation>
+<translation id="6074549317340202195">I-enable ang "Developer Mode"</translation>
+<translation id="418781258674176053">Babala! Ang pag-enable sa "Developer Mode" ay isang operasyong hindi na mababalik. Kung gusto mong i-disable ang "Developer Mode", kailangan mong i-reinstall ang JemaOS, na magbubura ng lahat ng data. Paki-backup ang iyong data at magpatuloy sa sarili mong panganib.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Platform <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Kasalukuyang offline</translation>
+<translation id="2590678769628709242">Suriin ang iyong JemaOS subscription online</translation>
+<translation id="4701836089682883918">Impormasyon ng JemaOS subscription</translation>
+<translation id="5891566673089952188">May naganap na error sa pagkuha ng iyong device ID</translation>
+<translation id="4685086787606104322">Pagtatapos ng subscription</translation>
+<translation id="3354919960795782984">Device ID</translation>
+<translation id="5758632069869992306">Suriin ang iyong subscription online</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Platform <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Trial subscription</translation>
+<translation id="4362781408813685579">Aktibong subscription</translation>
+<translation id="1141274201089997510">Nag-expire na subscription</translation>
+<translation id="2553683254139782404">Hindi pangkomersyal na edisyon</translation>
+<translation id="8466048683756385518">Bersyong may Enterprise license (trial)</translation>
+<translation id="2853871047705932424">Bersyong may Enterprise license</translation>
+<translation id="5239675900317881945">Bersyong may Enterprise license (nag-expire)</translation>
+<translation id="189101945990408398">Lumang Intel</translation>
+<translation id="6816405236809604904">Modernong Intel</translation>
+<translation id="6169452478137972655">AMD Graphics</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="2747689477259164256">JemaOS AI</translation>
+<translation id="1270291881045478104">I-enable ang JemaOS AI</translation>
+<translation id="2013780539677437932">I-enable o i-disable ang lahat ng feature na may kaugnayan sa JemaOS AI</translation>
+<translation id="3398637633218757480">I-enable ang JemaOS AI Quick Call</translation>
+<translation id="8986197796475507452">Mabilis na ilabas ang mga opsyon ng JemaOS AI para sa naka-highlight na content sa pamamagitan ng pagpindot sa Ctrl + C + C</translation>
+<translation id="6407628130593274137">Iba pang setting at opsyon para sa JemaOS AI</translation>
+<translation id="4005574560653331142">Para baguhin ang PIN o sign-in password ng lokal na account na ito, pumunta sa mga setting ng <ph name="BEGIN_LINK" />Privacy at seguridad<ph name="END_LINK" />.</translation>
+
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">Maaari kang <ph name="LINK_START" />mag-sign in gamit ang isang lokal na account sa JemaOS<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">Umiiral na ang email na <ph name="EMAIL_ADDRESS" />. Pakisubukang muli gamit ang ibang email.</translation>
+<translation id="4519800823932975782">JemaOS Help Center</translation>
+<translation id="4737474693231655139">Maghanap ng mga artikulo sa tulong at mga sagot sa mga karaniwang tanong tungkol sa JemaOS</translation>
+</translationbundle>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="kk">
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">JemaOS ішіндегі файлдарыңызды бұлтпен синхрондау үшін Nutstore-ға тіркеліңіз.</translation>
+<translation id="8672291834743661083">Nutstore-ға тіркелу</translation>
+<translation id="5103639294476249880">Қауіпсіздік параметрлеріндегі «Қосымша қосу» түймесін басыңыз</translation>
+<translation id="8371020157576651120">Қосымша құпия сөзіңізді жасап, көшіріп алыңыз</translation>
+<translation id="3855250998276979579">Nutstore қосымшасын ашыңыз</translation>
+<translation id="6565655783894300125">және Nutstore тіркелгісін электрондық поштаңыз бен қосымша құпия сөзіңіз арқылы JemaOS-қа қосыңыз</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Жақында</translation>
+<translation id="4928968570611226525">Бұл әрекетті жалғастыру үшін JemaOS құрылғыңызда <ph name="BEGIN_LINK_ARC_APP" />&gt;Android ішкі жүйесін іске қосу<ph name="END_LINK_ARC_APP" /> қажет; сондай-ақ JemaOS құрылғыңыз <ph name="BEGIN_LINK_HELP" />Әзірлеуші режиміне ауыстырылған<ph name="END_LINK_HELP" /> болуы керек.</translation>
+<translation id="7395250550107972941">.apk файлдарын жүктеп қою мүмкін емес. Android ішкі жүйесі іске қосылғанына және JemaOS Әзірлеуші режимінде екеніңізге көз жеткізіңіз.</translation>
+<translation id="5690820326685091783">JemaOS AI арқылы ашу</translation>
+</translationbundle>

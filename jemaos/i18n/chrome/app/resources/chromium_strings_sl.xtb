@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="sl">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">O programu Thot</translation>
+<translation id="5639860668557220477">Pomoč za brskalnik Thot</translation>
+<translation id="1692689520561928457">O sistemu JemaOS</translation>
+<translation id="8692765844418174375">Različica JemaOS</translation>
+<translation id="2943260250558374955">Pomoč za JemaOS</translation>
+<translation id="713321354492170993">Brskalnik sprosti pomnilnik iz neaktivnih zavihkov. To aktivnim zavihkom in drugim aplikacijam zagotavlja več računskih virov in ohranja brskalnik hiter. Vaši neaktivni zavihki se samodejno znova aktivirajo, ko se vrnete nanje.</translation>
+<translation id="1774190491044887444">Brskalnik varčuje z baterijo z omejevanjem dejavnosti v ozadju in vizualnih učinkov, kot sta gladko drsenje in hitrost sličic videa.</translation>
+<translation id="180121268008059459">Brskalnik vnaprej naloži strani, kar pospeši brskanje in iskanje.</translation>
+<translation id="7127093527178692287">Obnovi varnostno kopijo (beta)</translation>
+<translation id="4439042171549201806">Če želite obnoviti JemaOS iz datoteke varnostne kopije, zdaj vstavite izmenljivi pogon, ki vsebuje datoteko varnostne kopije, v svojo napravo JemaOS in navedite, katero datoteko varnostne kopije želite obnoviti. Upoštevajte, da mora biti datoteka varnostne kopije v korenskem imeniku vašega izmenljivega pogona, da jo ta čarovnik zazna.</translation>
+<translation id="2955409026764742995">Izberite datoteko varnostne kopije za obnovitev:</translation>
+<translation id="7040434808685140085">Žal izbrane datoteke varnostne kopije ni mogoče prepoznati; izberite novo.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />Za obnovitev JemaOS iz izbrane datoteke varnostne kopije je ključno, da imate točne podatke o varnostni kopiji ob njenem ustvarjanju. V nasprotnem primeru bo postopek obnovitve spodletel.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />»Ime računa« je primarna prijavna poverilnica računa, pod katerim je bila datoteka varnostne kopije ustvarjena. Običajno je to e-poštni naslov, ki ste ga uporabili za registracijo računa JemaOS/Google. Če je bil to lokalni račun, bi bilo to uporabniško ime z dodatkom »@jemaos.local«.<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Geslo je geselna fraza, ki ste jo morali vnesti ob ustvarjanju varnostne kopije. Običajno je to isto geslo, ki ga uporabljate za prijavo na namizje JemaOS za ta račun.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Ime računa</translation>
+<translation id="5490570429039308155">Žal, vnesite pravilno ime računa</translation>
+<translation id="6657585470893396449">Geslo</translation>
+<translation id="8200189938001188563">Žal geslo ne sme biti prazno</translation>
+<translation id="3157931365184549694">Obnovi</translation>
+<translation id="8556278756526311953">Obnavljanje varnostne kopije</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Zdaj obnavljamo vašo datoteko varnostne kopije; to lahko traja nekaj časa, zato bodite potrpežljivi.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Upoštevajte, da se bo uporabniški vmesnik samodejno znova zagnal, ko se postopek obnovitve uspešno zaključi.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Obnovitev varnostne kopije ni uspela</translation>
+<translation id="5003531399442003695">Za več podrobnosti kliknite spodnjo povezavo za ogled dnevnikov. Če se ta napaka ponavlja, se obrnite na kanale tehnične podpore JemaOS in posredujte dnevnike napak.</translation>
+<translation id="6363786367719063276">Ogled dnevnikov</translation>
+<translation id="8730621377337864115">Končano</translation>
+<translation id="975238173507911396">Podatki so bili uspešno obnovljeni</translation>
+<translation id="6276879052695618521">Dnevniki obnovitve varnostne kopije</translation>
+<translation id="4901207598072637766">JemaOS, zagotavlja <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS in njegove storitve so skladne z GDPR in določbami evropske zakonodaje o varstvu podatkov. Za več informacij si oglejte našo <ph name="BEGIN_LINK_PRIVACY" />Politiko zasebnosti<ph name="END_LINK_PRIVACY" /> in naše <ph name="BEGIN_LINK_TOS" />Pogoje storitve.<ph name="END_LINK_TOS" /></translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, vse pravice pridržane.</translation>
+<translation id="370679569376308836">JemaOS je komercialna ponudba, ki temelji na napravi Jema in njeni storitvi SaaS.</translation>
+<translation id="2773644194450163486">JemaOS omogoča odprtokodni projekt <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" />.</translation>
+<translation id="2330680727776977160">Chromium omogočajo tudi druga <ph name="BEGIN_LINK_1" />odprtokodna programska oprema<ph name="END_LINK_1" /> in <ph name="BEGIN_LINK_2" />dodatna odprtokodna programska oprema<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Zasnoval in izdelal Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, vse pravice pridržane.</translation>
+<translation id="6168072053306020326">Jema Technology je trgovsko ime podjetij Jema Technology LTD in Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD je podjetje, registrirano v Angliji in Walesu s številko 12273803.</translation>
+<translation id="1251589813188467292">Pomembne informacije o garanciji in servisu naprave</translation>
+<translation id="4851115775198886021">Serijska številka naprave:</translation>
+</translationbundle>

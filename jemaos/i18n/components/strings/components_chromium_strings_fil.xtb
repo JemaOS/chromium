@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="fil">
+
+
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">Hindi pa nakukumpleto ng JemaOS ang paunang setup nito.</translation>
+<translation id="4257170804800372451">Ang JemaOS at Thot ay naging posible dahil sa <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> open source project at iba pang <ph name="BEGIN_LINK_OSS" />open source software<ph name="END_LINK_OSS" />.</translation>
+</translationbundle>

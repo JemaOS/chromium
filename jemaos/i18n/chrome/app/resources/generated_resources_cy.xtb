@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="cy">
+	<translation id="7386402409475121504">Creu eich cyfrif JemaOS lleol</translation>
+	<translation id="3760308806144055927">Mewngofnodwch yn eich cyfrif JemaOS lleol</translation>
+	<translation id="3325117507482096812">Rhowch gyfrinair</translation>
+	<translation id="1838206877831947154">Nid yw eich cyfrineiriau yn cyfateb</translation>
+	<translation id="2158276988029582286">Creu cyfrif lleol newydd</translation>
+	<translation id="8592849747346274067">Mewngofnodwch i gyfrif sy'n bodoli eisoes</translation>
+	<translation id="482190417986201746">Mae'r enw defnyddiwr neu gyfrinair a roesoch yn anghywir</translation>
+	<translation id="6603987686259425085">Gallwch <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph> fewngofnodi gyda chyfrif lleol JemaOS<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">Mae e-bost <ph name="EMAIL_ADDRESS">$1</ph> eisoes yn bodoli. Rhowch gynnig arall arni gydag e-bost arall.</translation>
+	<translation id="7215016743510876720">Defnyddio cyfrif lleol</translation>
+	<translation id="6657635042185516718">Parhau i ddefnyddio cyfrif ar-lein</translation>
+	<translation id="6867476688065565618">Newid i gyfrif lleol?</translation>
+	<translation id="4840454774882557974">Os dewiswch ddefnyddio cyfrif lleol, mae nodweddion defnyddiol yn cynnwys cysoni'ch data a'ch dewisiadau ar draws dyfeisiau lluosog ac ni fydd llofnodi apiau gwe yn awtomatig gan ddefnyddio'ch cyfrif JemaOS yn gweithio.</translation>
+	<translation id="8951507920859729424">Rydym yn argymell defnyddio cyfrif ar-lein i ddefnyddio JemaOS i'r eithaf.</translation>
+	<translation id="479773200536372215">Ni fyddwch yn gallu ychwanegu cyfrifon Google oherwydd bod allweddi API Google ar goll. Gweler <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> am fanylion.</translation>
+	<translation id="1198491307547164157">Ni fyddwch yn gallu ychwanegu cyfrifon JemaOS oherwydd bod allweddi API JemaOS ar goll. Gweler <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> am fanylion.</translation>
+	<translation id="5042404702659901995">Datganiad preifatrwydd</translation>
+	<translation id="4907736162587268100">Cynnwys datganiad preifatrwydd</translation>
+	<translation id="5988344732274877691">Cofrestrwch ar gyfer y cylchlythyr (anaml iawn, wedi'i addo) ar gyfer JemaOS</translation>
+	<translation id="1706203008474708805">Ymunwch â chynllun gwella profiad defnyddiwr JemaOS</translation>
+	<translation id="1147139514756087229">Mewngofnodwch gyda chyfrif lleol</translation>
+	<translation id="2054784944085654098">Creu ffeil wrth gefn nawr. Gall hyn gymryd peth amser; arhoswch os gwelwch yn dda…</translation>
+	<translation id="3554401467586751874">Crëwyd ffeil wrth gefn yn llwyddiannus</translation>
+	<translation id="2349211327705667074">Gweld ffeil wrth gefn</translation>
+	<translation id="6337433855796857931">Wedi methu gwneud copi wrth gefn</translation>
+	<translation id="3049367131589710124">Gweld log gwall</translation>
+	<translation id="1079017345574916945">Bwrdd gwaith o bell</translation>
+	<translation id="3064478898280877715">Siop app</translation>
+	<translation id="2747689477259164256">JemaOS AI</translation>
+	<translation id="5890206344045530832">Gosodwr</translation>
+	<translation id="2173278076276376488">Bydd y cyfleuster hwn yn eich helpu i osod <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ar storfa fewnol y ddyfais hon.</translation>
+	<translation id="5323182426977498659">Rhybudd! Mae'r weithdrefn hon yn ddinistriol ac ni ellir ei dadwneud. Sylwch na fyddwn yn dal unrhyw gyfrifoldeb am eich colled data posibl nac yn darparu unrhyw gymorth technegol brys, symud ymlaen ar eich menter eich hun.</translation>
+	<translation id="8517836015601969896">Gosod disg llawn</translation>
+	<translation id="7300045760790370189">Gosod <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> i feddiannu disg galed gyfan, bydd holl ddata'r ddisg galed darged yn cael ei sychu.</translation>
+	<translation id="8762511733918256595">Gosodiad aml-gist</translation>
+	<translation id="248900698427753678">Gosod <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> i raniad presennol o ddisg galed, lle gall <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> fodoli ochr yn ochr ag OS arall. Bydd yr holl ddata ar y rhaniad targed yn cael ei sychu.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">Bydd $1 <ex>JemaOS</ex></ph> yn cael ei osod ar eich gyriant caled dewisol; bydd yr holl ddata ar y ddisg darged yn cael ei sychu.</translation>
+	<translation id="4039091757234555415">Disg</translation>
+	<translation id="7783580523889684697">Dim disg ar gael</translation>
+	<translation id="8217653566575018388">Gosod wedi'i gwblhau</translation>
+	<translation id="8846746259444262774">Methodd y gosodiad</translation>
+	<translation id="7263815009235541549">Mae'r gosodiad wedi gorffen yn llwyddiannus. Pwerwch eich dyfais i ffwrdd yn gyntaf, yna tynnwch unrhyw gyfrwng gosod, a phwerwch ef ymlaen eto i gychwyn <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>.</translation>
+	<translation id="3380151284134965398">Wps, mae rhywbeth wedi mynd o'i le ac ni chwblhawyd y gosodiad. Rhowch gynnig arall ar y broses. Os yw'r un gwall yn parhau, cysylltwch â Chymorth JemaOS gyda'r log uchod.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS"> Bydd $1 <ex>JemaOS</ex></ph> yn cael ei osod ar y rhaniad dewisiedig o'ch gyriant caled. O dan y cynllun aml-gist presennol, dim ond os yw'ch dyfais yn cefnogi UEFI a bod eich disgiau caled wedi'u fformatio â GPT y gallai hyn fynd ymlaen.</translation>
+	<translation id="7831363758161884243">Bydd y rhaniad targed yn cael ei sychu; mae angen i chi hefyd nodi eich rhaniad EFI gweithredol (a wneir yn awtomatig fel arfer) gan fod angen i'r Gosodwr addasu ffurfweddiadau cychwyn y system.</translation>
+	<translation id="5670799238446305550">Dewiswch <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> rhaniad targed</translation>
+	<translation id="3695537760133394753">Rhaniad</translation>
+	<translation id="5610519566593708119">Dewiswch rhaniad EFI</translation>
+	<translation id="3367650349940010965">Nid oes unrhyw raniadau ar gael ar gyfer y ddisg a ddewiswyd</translation>
+	<translation id="7453223384507098390">Nid oes unrhyw raniadau EFI ar gael ar gyfer y ddisg a ddewiswyd</translation>
+	<translation id="1854532683465500847">Mae maint y rhaniad a ddewiswyd yn llai na 20GB, efallai y bydd y gosodiad yn methu</translation>
+	<translation id="4144613075340468247">Mae'r rhaniad dewisiedig wedi ei osod i <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> multi-boot, efallai y bydd gosod iddo eto yn methu</translation>
+	<translation id="5793361052649920836">Ar ôl gosod, sut hoffech chi gychwyn <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>?</translation>
+	<translation id="4273235330352963866">Gosod a ffurfweddu reEFInd i mi (argymhellir)</translation>
+	<translation id="1858708492548921044">Mae rEFInd yn rhaglen rheolwr cist sy'n cynnig rhyngwyneb graffigol braf ar gyfer opsiynau cychwyn OS pan fydd eich cyfrifiadur personol yn cychwyn, byddwch yn gallu dewis eich OS dymunol i gychwyn ag ef. I gael rhagor o wybodaeth am REFInd, cyfeiriwch at ei hafan.</translation>
+	<translation id="3861924051442564602">Ychwanegu opsiwn dewislen cychwyn UEFI i mi</translation>
+	<translation id="8622370666798589804">Pan fydd eich PC yn cychwyn efallai y byddwch yn gallu mynd i mewn i ddewislen opsiynau cychwyn UEFI (trwy wasgu bysell boeth yn ôl pob tebyg), mae'r opsiwn hwn yn ychwanegu <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> fel cofnod i'r ddewislen honno. (Dim ond yn cefnogi rhai modelau o firmware BIOS a UEFI).</translation>
+	<translation id="1569398690544416170">Gwneud dim byd yma, byddaf yn ei ffurfweddu fy hun</translation>
+	<translation id="3554866444001249532">Bydd y sgript gosod hon ond yn rhoi'r ffeiliau .efi angenrheidiol ar gyfer cychwyn <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> i'ch rhaniad EFI, bydd angen i chi ffurfweddu sut i'w gychwyn eich hun.</translation>
+	<translation id="7492832751164189534">Gorfod rhoi'r gorau iddi</translation>
+	<translation id="5159534860632584026">Mae'r broses osod wedi'i therfynu</translation>
+	<translation id="8686749782014838344">Wedi methu cael gwybodaeth disg</translation>
+	<translation id="5688543378771259173">Mae'r gosodiad yn cael ei derfynu...</translation>
+	<translation id="5350452134936384991">Gosod yn USB</translation>
+	<translation id="8008470485414925603">Gosod <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ar ddisg USB; bydd yr holl ddata ar y ddisg USB targed yn cael ei sychu.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS"> Bydd $1 <ex>JemaOS</ex></ph> yn cael ei osod ar y ddisg USB a ddewiswyd gennych; bydd yr holl ddata ar y ddisg darged yn cael ei sychu.</translation>
+	<translation id="5725593226060700263">Dim disg USB ar gael</translation>
+	<translation id="4357040841587078287">Rydym wedi canfod eich bod yn rhedeg y copi hwn o JemaOS o ffeil delwedd wedi'i lawrlwytho. Er mwyn defnyddio'r nodweddion cymorth mwyaf cynhwysfawr (gan gynnwys diweddariadau Over-The-Air) y gall JemaOS eu cynnig, rydym yn argymell yn gryf eich bod yn lansio'r swyddogaeth "Installer" i berfformio gosodiad disg llawn o JemaOS ar ddyfais storio ar wahân.</translation>
+	<translation id="1246398339704431302">Gallwch <ph name="LINK_BEGIN">&amp;lt;span id="parhau-beth bynnag"&amp;gt;</ph> barhau i ddefnyddio'r copi hwn o JemaOS beth bynnag <ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, gall y broses osod gael ei gweithredu yn ddiweddarach yn y system, fodd bynnag, bydd eich holl ddata yn cael ei sychu ar ôl gosod a byddwch yn dechrau eto o'r gosodiad hwn.</translation>
+	<translation id="3654532222088291133">Yn lle rhoi cyfrinair eich cyfrif JemaOS i fewngofnodi, gallwch greu cyfrinair <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> ar gyfer y ddyfais hon</translation>
+	<translation id="8377684629839541977">Defnyddiwch gyfrinair cyfrif JemaOS</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">Cadwch <ph name="DEVICE_OS" /> yn gyfredol yn awtomatig</translation>
+<translation id="2347352406101856238">Diweddariad <ph name="DEVICE_OS" /> wedi'i alluogi</translation>
+<translation id="185834232609012804">Diweddariad <ph name="DEVICE_OS" /> wedi'i analluogi</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Llwyfan <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Penbwrdd Anghysbell</translation>
+<translation id="6898090158927982244">Mae eich Linux yn gyfredol</translation>
+<translation id="4886703929102211360">Mae diweddariad hanfodol ar gael ar gyfer y gydran Linux (beta). Argymhellir yn gryf eich bod yn gosod y diweddariad hwn cyn gynted â phosibl, fel arall gall eich Linux (beta) roi'r gorau i weithio.</translation>
+<translation id="6694016202036959050">Gosodiadau <ph name="DEVICE_OS" /></translation>
+<translation id="8362858344151826493">Cyfrif JemaOS, copi wrth gefn, amrywiol</translation>
+<translation id="9150429437595727962">Gosodiadau Wi-Fi</translation>
+<translation id="4938972461544498524">Gosodiadau pad cyffwrdd</translation>
+<translation id="1210024513248363065">Gwasanaethau o bell</translation>
+<translation id="2878862288885588535">Gwasanaeth diagnostig o bell</translation>
+<translation id="7409197984340676806">Mae'r gwasanaeth diagnostig o bell yn caniatáu i gynrychiolwyr cymorth swyddogol JemaOS nodi problemau system. Ar hyn o bryd, dim ond cynrychiolwyr cymorth swyddogol JemaOS all gychwyn y gwasanaeth diagnostig o bell.</translation>
+<translation id="1791028023086176332">Rhannwch y rhif hwn â chynrychiolwyr cymorth swyddogol JemaOS</translation>
+<translation id="6279304275399437025">Wrthi'n cychwyn y gwasanaeth diagnostig o bell...</translation>
+<translation id="1501882165699826662">Ataliwch y gwasanaeth diagnostig o bell a cheisiwch eto</translation>
+<translation id="3100283258447375201">Rhagor o wybodaeth</translation>
+<translation id="4070039109671307724">Amrywiol</translation>
+<translation id="7326893024940073254">Botwm "Ailgychwyn"</translation>
+<translation id="3002423764319968103">Dangos botwm "Ailgychwyn" yn fwlen y system</translation>
+<translation id="6243454903512423518">Botwm "Troi'r sgrin"</translation>
+<translation id="6491049336868978729">Nid ydych ym modd llechen ar hyn o bryd; mae'r botwm "Troi'r sgrin" wedi'i guddio</translation>
+<translation id="5496012402277579695">Dangos botwm "Troi'r sgrin" yn fwlen y system</translation>
+<translation id="5882838977344999606">Switsh modd llechen/gliniadur</translation>
+<translation id="472164133625585606">Dangos switsh modd llechen/gliniadur yn fwlen y system</translation>
+<translation id="1851103550468466960">Galluogi Widevine</translation>
+<translation id="4058176713282795846">Galluogwch Widevine i ffrydio cynnwys premiwm gwarchodedig. <ph name="BEGIN_LINK_LEARN_MORE" />Dysgwch fwy<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">Dewiswch "libwidevine.so"</translation>
+<translation id="4838463656205005584">Wedi methu galluogi Widevine...</translation>
+<translation id="2164041826798266548">Methodd gosodiad modiwl Widevine CDM. Gwiriwch eich cysylltiad a cheisiwch eto.</translation>
+<translation id="4106982328079440606">Gosodiadau cyfrif JemaOS</translation>
+<translation id="6468776556018764845">Nodweddion arbrofol</translation>
+<translation id="3487615413425326553">Osgoi gwiriadau Trusted Platform Module (TPM)</translation>
+<translation id="4817176087932811573">Gall rhai nodweddion fethu oherwydd sglodion TPM anghydnaws yn eich dyfais; gallwch osgoi'r gwiriadau TPM fel datrysiad dros dro.</translation>
+<translation id="3356003366173774486">Mewngofnodi awtomatig</translation>
+<translation id="6218459410891191693">Caniatáu i'r cyfrif presennol fewngofnodi'n awtomatig i'r penbwrdd pan fydd y ddyfais yn ailgychwyn</translation>
+<translation id="6620839363422062843">Ni ellir ei alluogi ar gyfer y cyfrif hwn; mae mewngofnodi awtomatig eisoes yn weithredol ar gyfer cyfrifon eraill ar y ddyfais hon</translation>
+<translation id="6734500226490446035">Ni ellir ei alluogi ar gyfer y cyfrif hwn; bu gwall anhysbys wrth gychwyn y systemau ffeiliau ar gyfer y cyfrif hwn. Ceisiwch ailgychwyn neu greu cyfrif newydd</translation>
+<translation id="5464880042146818691">Ni ellir ei alluogi ar gyfer y cyfrif hwn; dim ond ar gyfer y math "Cyfrif lleol" y mae'r opsiwn mewngofnodi awtomatig ar gael.</translation>
+<translation id="3335654854106476749">Ychwanegwch gyfrinair mewngofnodi yn y gosodiadau <ph name="BEGIN_LINK" />Preifatrwydd a diogelwch<ph name="END_LINK" /> cyn galluogi mewngofnodi awtomatig.</translation>
+<translation id="5586831602198585601">Mae fersiwn newydd o JemaOS ar gael i'w ddiweddaru nawr. Fodd bynnag, mae eich tanysgrifiad JemaOS for You wedi dod i ben; mae angen tanysgrifiad gweithredol arnoch i ddiweddaru eich JemaOS.</translation>
+<translation id="3869860597719956574">Mae fersiwn mawr newydd o JemaOS ar gael i'w ddiweddaru nawr. Rhaid i chi dalu ffi untro i barhau â'r diweddariad hwn.</translation>
+<translation id="6523879681771260760">Nodwch y llwybr i storio'r ffeil wrth gefn</translation>
+<translation id="2036152819788683293">Creu ffeil wrth gefn ar gyfer y cyfrif hwn (beta). <ph name="BEGIN_LINK_LEARN_MORE" />Dysgwch fwy<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Gwneud copi wrth gefn</translation>
+<translation id="4267347174163690295">Creu ffeil wrth gefn ar gyfer y cyfrif hwn (beta).</translation>
+<translation id="8112950994208888917">Mae'r weithred hon yn creu copi wrth gefn disg llawn ar gyfer y cyfrif hwn, gan ei gwneud hi'n hawdd adfer eich JemaOS i'r cyflwr yr oedd ynddo pan grëwyd y copi wrth gefn, gan gynnwys gosodiadau, estyniadau porwr gosodedig a rhaglenni is-system. Yn dibynnu ar eich rhaglenni a chynnwys eich ffolder cartref, gall y ffeil wrth gefn fod yn fawr; argymhellir storio'r ffeil wrth gefn ar ddyfais storio allanol. Os oes gennych yriant USB cludadwy, cysylltwch ef nawr. <ph name="BEGIN_LINK_LEARN_MORE" />Dysgwch fwy<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Rhowch gyfrinair mewngofnodi'r cyfrif hwn</translation>
+<translation id="8663988871299316062">Cofiwch y cyfrinair hwn, gan y bydd ei angen wrth adfer y ffeil wrth gefn hon</translation>
+<translation id="6408904153044317846">Dewiswch y ffeil wrth gefn i'w hadfer</translation>
+<translation id="8062988348127771021">Adfer eich data JemaOS o ffeil wrth gefn</translation>
+<translation id="7309192418866543730">Rhowch gyfrinair y copi wrth gefn</translation>
+<translation id="3642408376366598984">Rhowch y cyfrinair a ddefnyddiwyd i amgryptio'r ffeil wrth gefn hon</translation>
+<translation id="7783974937157985523">Cyfrinair y copi wrth gefn</translation>
+<translation id="6583780301401541007">Adferwyd yn llwyddiannus</translation>
+<translation id="3514011352559420398">Methodd yr adfer</translation>
+<translation id="7535980903266533458">Cadwch y copi wrth gefn ar eich dyfais neu storfa allanol</translation>
+<translation id="604001903249547235">Copi wrth gefn yn y cwmwl</translation>
+<translation id="8885702701336541611">Llwythwch y copi wrth gefn i storfa gwmwl JemaOS</translation>
+<translation id="3939744430096549862">Gwneud copi wrth gefn i'r cwmwl</translation>
+<translation id="619129431573254316">Adfer o ffeil wrth gefn leol</translation>
+<translation id="1859592711955106569">Adfer o'r cwmwl</translation>
+<translation id="38222223336741457">Lawrlwytho ac adfer o gwmwl JemaOS</translation>
+<translation id="1241089811244416179">Adfer o'r cwmwl</translation>
+<translation id="652479689372703360">Copi wrth gefn ar waith</translation>
+<translation id="3655220146274872918">Copi wrth gefn wedi gorffen</translation>
+<translation id="4243579853635792694">Crëwyd eich copi wrth gefn yn llwyddiannus</translation>
+<translation id="4854179463174744546">Bu gwall yn ystod y broses o wneud copi wrth gefn</translation>
+<translation id="2410668771600309999">Gwybodaeth defnyddiwr Connect API</translation>
+<translation id="2223892939866251845">ID defnyddiwr</translation>
+<translation id="3850846286480935456">Dadansoddi storfa copïau wrth gefn</translation>
+<translation id="6244494465581273970">Angen ID defnyddiwr</translation>
+<translation id="9204006549413740506">Diweddarwyd ddiwethaf</translation>
+<translation id="476642412165431515">Dyfeisiau caledwedd</translation>
+<translation id="3386337985825120901">Dim data copi wrth gefn ar gael</translation>
+<translation id="8490990067870590760">Wrthi'n llwytho ffeiliau wrth gefn...</translation>
+<translation id="2955409026764742995">Dewiswch y ffeil wrth gefn i'w hadfer:</translation>
+<translation id="7414629348005657242">-- Dewiswch ffeil wrth gefn --</translation>
+<translation id="918246516374174381">Heb ganfod ffeiliau wrth gefn. Crëwch gopi wrth gefn yn gyntaf.</translation>
+<translation id="77997252117517973">Yn dod yn fuan</translation>
+<translation id="1930692852800776096">Ychwanegu geiriadur</translation>
+<translation id="8793060353848771694">Delwedd clustffon chwith</translation>
+<translation id="6257440204887306255">Delwedd y cas gwefru</translation>
+<translation id="2754700616124958693">Delwedd clustffon dde</translation>
+<translation id="1068676292264983586">Delwedd dyfais ddiofyn</translation>
+<translation id="6364075396486660405">Analluogwch sganio awtomatig o ffeiliau cyfryngau ar gyfer pob rhaniad i wneud y mwyaf o oes y batri. <ph name="BEGIN_LINK_LEARN_MORE" />Dysgwch fwy<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Opsiynau diogelwch</translation>
+<translation id="5618366106086725045">Galluogwch "Modd Datblygwr" ar gyfer y gosodiad <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> hwn gyda mwy o nodweddion datblygwr. <ph name="BEGIN_LINK_LEARN_MORE" />Dysgwch fwy<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Rydych eisoes yn "Modd Datblygwr"</translation>
+<translation id="6074549317340202195">Galluogi "Modd Datblygwr"</translation>
+<translation id="418781258674176053">Rhybudd! Mae galluogi "Modd Datblygwr" yn weithred anghildroadwy. Os ydych am analluogi "Modd Datblygwr", rhaid i chi ailosod JemaOS, a fydd yn dileu'r holl ddata. Gwnewch gopi wrth gefn o'ch data a bwrw ymlaen ar eich risg eich hun.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Llwyfan <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">All-lein ar hyn o bryd</translation>
+<translation id="2590678769628709242">Gwiriwch eich tanysgrifiad JemaOS ar-lein</translation>
+<translation id="4701836089682883918">Gwybodaeth am danysgrifiad JemaOS</translation>
+<translation id="5891566673089952188">Bu gwall wrth gael ID eich dyfais</translation>
+<translation id="4685086787606104322">Diwedd y tanysgrifiad</translation>
+<translation id="3354919960795782984">ID y ddyfais</translation>
+<translation id="5758632069869992306">Gwiriwch eich tanysgrifiad ar-lein</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Llwyfan <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Tanysgrifiad prawf</translation>
+<translation id="4362781408813685579">Tanysgrifiad gweithredol</translation>
+<translation id="1141274201089997510">Tanysgrifiad wedi dod i ben</translation>
+<translation id="2553683254139782404">Argraffiad anfasnachol</translation>
+<translation id="8466048683756385518">Fersiwn trwyddedig menter (prawf)</translation>
+<translation id="2853871047705932424">Fersiwn trwyddedig menter</translation>
+<translation id="5239675900317881945">Fersiwn trwyddedig menter (wedi dod i ben)</translation>
+<translation id="189101945990408398">Intel etifeddol</translation>
+<translation id="6816405236809604904">Intel modern</translation>
+<translation id="6169452478137972655">Graffeg AMD</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="1270291881045478104">Galluogi JemaOS AI</translation>
+<translation id="2013780539677437932">Galluogi neu analluogi pob nodwedd sy'n gysylltiedig â JemaOS AI</translation>
+<translation id="3398637633218757480">Galluogi Galwad Gyflym JemaOS AI</translation>
+<translation id="8986197796475507452">Dewch ag opsiynau JemaOS AI i fyny'n gyflym ar gyfer cynnwys wedi'i amlygu drwy wasgu Ctrl + C + C</translation>
+<translation id="6407628130593274137">Gosodiadau ac opsiynau eraill ar gyfer JemaOS AI</translation>
+<translation id="4005574560653331142">I newid PIN neu gyfrinair mewngofnodi'r cyfrif lleol hwn, ewch i'r gosodiadau <ph name="BEGIN_LINK" />Preifatrwydd a diogelwch<ph name="END_LINK" />.</translation>
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">Gallwch <ph name="LINK_START" />fewngofnodi gyda chyfrif lleol JemaOS<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">Mae e-bost <ph name="EMAIL_ADDRESS" /> eisoes yn bodoli. Rhowch gynnig arall arni gydag e-bost arall, os gwelwch yn dda.</translation>
+<translation id="4519800823932975782">Canolfan Gymorth JemaOS</translation>
+<translation id="4737474693231655139">Dod o hyd i erthyglau cymorth ac atebion i gwestiynau cyffredin JemaOS</translation>
+</translationbundle>

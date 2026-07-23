@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="da">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">Tilmeld dig Nutstore for at synkronisere dine filer i skyen i JemaOS.</translation>
+<translation id="8672291834743661083">Tilmeld dig Nutstore</translation>
+<translation id="5103639294476249880">Klik på knappen "Tilføj applikation" i sikkerhedsindstillingerne</translation>
+<translation id="8371020157576651120">Generer og kopiér din applikationsadgangskode</translation>
+<translation id="3855250998276979579">Åbn Nutstore-appen</translation>
+<translation id="6565655783894300125">og tilslut din Nutstore-konto til JemaOS med din e-mailadresse og applikationsadgangskode</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Kommer snart</translation>
+<translation id="4928968570611226525">For at fortsætte med denne handling skal du <ph name="BEGIN_LINK_ARC_APP" />&gt;aktivere Android-undersystemet<ph name="END_LINK_ARC_APP" /> på din JemaOS-enhed; desuden skal din JemaOS-enhed <ph name="BEGIN_LINK_HELP" />skiftes til udviklertilstand<ph name="END_LINK_HELP" />.</translation>
+<translation id="7395250550107972941">Det er ikke muligt at sideloade .apk-filer. Sørg for, at Android-undersystemet er aktiveret, og at din JemaOS-enhed er i udviklertilstand.</translation>
+<translation id="5690820326685091783">Åbn med JemaOS AI</translation>
+</translationbundle>

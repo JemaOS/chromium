@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="or">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Thot ବିଷୟରେ</translation>
+<translation id="5639860668557220477">Thot ବ୍ରାଉଜର ସହିତ ସାହାଯ୍ୟ ପାଆନ୍ତୁ</translation>
+<translation id="1692689520561928457">JemaOS ବିଷୟରେ</translation>
+<translation id="8692765844418174375">JemaOS ସଂସ୍କରଣ</translation>
+<translation id="2943260250558374955">JemaOS ସହିତ ସାହାଯ୍ୟ ପାଆନ୍ତୁ</translation>
+<translation id="713321354492170993">ବ୍ରାଉଜର ନିଷ୍କ୍ରିୟ ଟ୍ୟାବଗୁଡ଼ିକରୁ ମେମୋରି ମୁକ୍ତ କରେ। ଏହା ସକ୍ରିୟ ଟ୍ୟାବ ଏବଂ ଅନ୍ୟ ଆପ୍ଗୁଡ଼ିକୁ ଅଧିକ କମ୍ପ୍ୟୁଟିଂ ସମ୍ବଳ ଦିଏ ଏବଂ ବ୍ରାଉଜରକୁ ଦ୍ରୁତ ରଖେ। ଆପଣ ନିଷ୍କ୍ରିୟ ଟ୍ୟାବଗୁଡ଼ିକୁ ଫେରିଲେ ସେଗୁଡ଼ିକ ସ୍ୱୟଂଚାଳିତ ଭାବରେ ପୁଣି ସକ୍ରିୟ ହୁଅନ୍ତି।</translation>
+<translation id="1774190491044887444">ବ୍ରାଉଜର ପଛପଟ କାର୍ଯ୍ୟକଳାପ ଏବଂ ସ୍ମୁଦ୍ ସ୍କ୍ରୋଲିଂ ଓ ଭିଡିଓ ଫ୍ରେମ୍ ରେଟ୍ ଭଳି ଭିଜୁଆଲ୍ ଇଫେକ୍ଟଗୁଡ଼ିକୁ ସୀମିତ କରି ବ୍ୟାଟେରୀ ସଞ୍ଚୟ କରେ।</translation>
+<translation id="180121268008059459">ବ୍ରାଉଜର ପୃଷ୍ଠାଗୁଡ଼ିକୁ ପୂର୍ବ-ଲୋଡ୍ କରେ, ଯାହା ବ୍ରାଉଜିଂ ଏବଂ ସନ୍ଧାନକୁ ଦ୍ରୁତ କରେ।</translation>
+<translation id="7127093527178692287">ବ୍ୟାକଅପ୍ ପୁନଃସ୍ଥାପନ କରନ୍ତୁ (ବିଟା)</translation>
+<translation id="4439042171549201806">ବ୍ୟାକଅପ୍ ଫାଇଲରୁ JemaOS ପୁନଃସ୍ଥାପନ କରିବା ପାଇଁ, ଦୟାକରି ବ୍ୟାକଅପ୍ ଫାଇଲ ଥିବା ଅଲଗା କରାଯାଇପାରୁଥିବା ଡ୍ରାଇଭକୁ ବର୍ତ୍ତମାନ ଆପଣଙ୍କର JemaOS ଡିଭାଇସରେ ଭର୍ତ୍ତି କରନ୍ତୁ ଏବଂ ଆପଣ କେଉଁ ବ୍ୟାକଅପ୍ ଫାଇଲ ପୁନଃସ୍ଥାପନ କରିବାକୁ ଚାହୁଁଛନ୍ତି ତାହା ନିର୍ଦ୍ଦିଷ୍ଟ କରନ୍ତୁ। ଦୟାକରି ଧ୍ୟାନ ଦିଅନ୍ତୁ ଯେ ଏହି ୱିଜାର୍ଡ ଦ୍ୱାରା ଚିହ୍ନଟ ହେବା ପାଇଁ ଆପଣଙ୍କର ବ୍ୟାକଅପ୍ ଫାଇଲ ଆପଣଙ୍କର ଅଲଗା କରାଯାଇପାରୁଥିବା ଡ୍ରାଇଭର ରୁଟ୍ ଡିରେକ୍ଟୋରୀରେ ଥିବା ଆବଶ୍ୟକ।</translation>
+<translation id="2955409026764742995">ପୁନଃସ୍ଥାପନ କରିବା ପାଇଁ ବ୍ୟାକଅପ୍ ଫାଇଲ ଚୟନ କରନ୍ତୁ:</translation>
+<translation id="7040434808685140085">କ୍ଷମା କରନ୍ତୁ, ଚୟନ କରାଯାଇଥିବା ବ୍ୟାକଅପ୍ ଫାଇଲ ଚିହ୍ନଟ ହେଲା ନାହିଁ; ଦୟାକରି ନୂତନ ଫାଇଲ ଚୟନ କରନ୍ତୁ।</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />ଚୟନ କରାଯାଇଥିବା ବ୍ୟାକଅପ୍ ଫାଇଲରୁ JemaOS ପୁନଃସ୍ଥାପନ କରିବା ପାଇଁ, ବ୍ୟାକଅପ୍ ସୃଷ୍ଟି ହେବା ସମୟର ସଠିକ୍ ସୂଚନା ଥିବା ଅତ୍ୟନ୍ତ ଆବଶ୍ୟକ। ଅନ୍ୟଥା, ପୁନଃସ୍ଥାପନ ପ୍ରକ୍ରିୟା ବିଫଳ ହେବ।<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"ଖାତା ନାମ" ହେଉଛି ଆପଣଙ୍କର ବ୍ୟାକଅପ୍ ଫାଇଲ ସୃଷ୍ଟି ହୋଇଥିବା ଖାତାର ପ୍ରାଥମିକ ଲଗଇନ୍ ପରିଚୟ। ଏହା ସାଧାରଣତଃ ଆପଣଙ୍କର JemaOS/Google ଖାତା ପାଇଁ ସାଇନ୍ ଅପ୍ କରିବାକୁ ବ୍ୟବହାର କରାଯାଇଥିବା ଇମେଲ୍ ଠିକଣା। ଯଦି ଏହା ସ୍ଥାନୀୟ ଖାତା ହୋଇଥାଏ, ତେବେ ଏହା "@jemaos.local" ସହିତ ଯୋଡ଼ାଯାଇଥିବା ବ୍ୟବହାରକାରୀ ନାମ ହେବ।<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />ପାସୱାର୍ଡ ହେଉଛି ବ୍ୟାକଅପ୍ ସୃଷ୍ଟି ହେବା ସମୟରେ ଆପଣଙ୍କୁ ପ୍ରବେଶ କରିବାକୁ କୁହାଯାଇଥିବା ପାସଫ୍ରେଜ୍। ଏହା ସାଧାରଣତଃ ଏହି ଖାତା ପାଇଁ JemaOS ଡେସ୍କଟପରେ ସାଇନ୍ ଇନ୍ କରିବାକୁ ବ୍ୟବହାର କରାଯାଇଥିବା ସେହି ସମାନ ପାସୱାର୍ଡ।<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">ଖାତା ନାମ</translation>
+<translation id="5490570429039308155">କ୍ଷମା କରନ୍ତୁ, ଦୟାକରି ସଠିକ୍ ଖାତା ନାମ ପ୍ରବେଶ କରନ୍ତୁ</translation>
+<translation id="6657585470893396449">ପାସୱାର୍ଡ</translation>
+<translation id="8200189938001188563">କ୍ଷମା କରନ୍ତୁ, ପାସୱାର୍ଡ ଖାଲି ହୋଇପାରିବ ନାହିଁ</translation>
+<translation id="3157931365184549694">ପୁନଃସ୍ଥାପନ କରନ୍ତୁ</translation>
+<translation id="8556278756526311953">ବ୍ୟାକଅପ୍ ପୁନଃସ୍ଥାପନ କରାଯାଉଛି</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />ଆମେ ବର୍ତ୍ତମାନ ଆପଣଙ୍କର ବ୍ୟାକଅପ୍ ଫାଇଲ ପୁନଃସ୍ଥାପନ କାର୍ଯ୍ୟ କରୁଛୁ; ଏଥିରେ କିଛି ସମୟ ଲାଗିପାରେ, ତେଣୁ ଦୟାକରି ଧୈର୍ଯ୍ୟ ଧରନ୍ତୁ।<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />ଦୟାକରି ଧ୍ୟାନ ଦିଅନ୍ତୁ ଯେ ପୁନଃସ୍ଥାପନ ପ୍ରକ୍ରିୟା ସଫଳତାର ସହିତ ସମ୍ପୂର୍ଣ୍ଣ ହେବା ପରେ UI ସ୍ୱୟଂଚାଳିତ ଭାବରେ ପୁନରାରମ୍ଭ ହେବ।<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">ବ୍ୟାକଅପ୍ ପୁନଃସ୍ଥାପନ ବିଫଳ ହୋଇଛି</translation>
+<translation id="5003531399442003695">ଅଧିକ ବିବରଣୀ ପାଇଁ, ଦୟାକରି ଲଗଗୁଡ଼ିକ ଦେଖିବା ପାଇଁ ନିମ୍ନ ଲିଙ୍କ ଉପରେ କ୍ଲିକ୍ କରନ୍ତୁ। ଯଦି ଏହି ତ୍ରୁଟି ଲାଗୁରହେ, ତେବେ ଦୟାକରି JemaOS କାରିଗରୀ ସହାୟତା ଚ୍ୟାନେଲଗୁଡ଼ିକ ସହିତ ଯୋଗାଯୋଗ କରନ୍ତୁ ଏବଂ ତ୍ରୁଟି ଲଗଗୁଡ଼ିକ ପ୍ରଦାନ କରନ୍ତୁ।</translation>
+<translation id="6363786367719063276">ଲଗଗୁଡ଼ିକ ଦେଖନ୍ତୁ</translation>
+<translation id="8730621377337864115">ସମ୍ପୂର୍ଣ୍ଣ ହେଲା</translation>
+<translation id="975238173507911396">ଡାଟା ପୁନଃସ୍ଥାପନ ସଫଳ</translation>
+<translation id="6276879052695618521">ବ୍ୟାକଅପ୍ ପୁନଃସ୍ଥାପନ ଲଗଗୁଡ଼ିକ</translation>
+<translation id="4901207598072637766">JemaOS, <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /> ଦ୍ୱାରା ପ୍ରଦାନ କରାଯାଇଛି</translation>
+<translation id="7894910504474624324">JemaOS ଏବଂ ଏହାର ସେବାଗୁଡ଼ିକ GDPR ଏବଂ ୟୁରୋପୀୟ ତଥ୍ୟ ସୁରକ୍ଷା ଆଇନର ବ୍ୟବସ୍ଥାଗୁଡ଼ିକୁ ପାଳନ କରନ୍ତି। ଅଧିକ ସୂଚନା ପାଇଁ, ଦୟାକରି ଆମର <ph name="BEGIN_LINK_PRIVACY" />ଗୋପନୀୟତା ନୀତି<ph name="END_LINK_PRIVACY" /> ଏବଂ ଆମର <ph name="BEGIN_LINK_TOS" />ସେବା ସର୍ତ୍ତାବଳୀ<ph name="END_LINK_TOS" /> ଦେଖନ୍ତୁ।</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, ସମସ୍ତ ଅଧିକାର ସଂରକ୍ଷିତ।</translation>
+<translation id="370679569376308836">JemaOS ହେଉଛି Jema ଉପକରଣ ଏବଂ ଏହାର SaaS ଉପରେ ଆଧାରିତ ଏକ ବାଣିଜ୍ୟିକ ଅଫର।</translation>
+<translation id="2773644194450163486">JemaOS <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> ମୁକ୍ତ ଉତ୍ସ ପ୍ରକଳ୍ପ ଦ୍ୱାରା ସମ୍ଭବ ହୋଇଛି।</translation>
+<translation id="2330680727776977160">Chromium ମଧ୍ୟ ଅନ୍ୟ <ph name="BEGIN_LINK_1" />ମୁକ୍ତ ଉତ୍ସ ସଫ୍ଟୱେର<ph name="END_LINK_1" /> ଏବଂ <ph name="BEGIN_LINK_2" />ଅତିରିକ୍ତ ମୁକ୍ତ ଉତ୍ସ ସଫ୍ଟୱେର<ph name="END_LINK_2" /> ଦ୍ୱାରା ସମ୍ଭବ ହୋଇଛି।</translation>
+<translation id="1419954813084261088">Jema Technology ଦ୍ୱାରା ଡିଜାଇନ୍ ଏବଂ ଉତ୍ପାଦିତ।</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, ସମସ୍ତ ଅଧିକାର ସଂରକ୍ଷିତ।</translation>
+<translation id="6168072053306020326">Jema Technology ହେଉଛି Jema Technology LTD ଏବଂ Jema Technology (Beijing) Limited ର ବ୍ୟାପାରିକ ନାମ।
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD ହେଉଛି ଇଂଲଣ୍ଡ ଏବଂ ୱେଲ୍ସରେ କମ୍ପାନୀ ନମ୍ବର 12273803 ସହିତ ପଞ୍ଜୀକୃତ ଏକ କମ୍ପାନୀ।</translation>
+<translation id="1251589813188467292">ଗୁରୁତ୍ୱପୂର୍ଣ୍ଣ ଉପକରଣ ୱାରେଣ୍ଟି ଏବଂ ସେବା ସୂଚନା</translation>
+<translation id="4851115775198886021">ଉପକରଣ SN:</translation>
+</translationbundle>

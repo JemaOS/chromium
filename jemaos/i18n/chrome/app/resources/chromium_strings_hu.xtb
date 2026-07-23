@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="hu">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">A Thot névjegye</translation>
+<translation id="5639860668557220477">Súgó a Thot böngészőhöz</translation>
+<translation id="1692689520561928457">A JemaOS névjegye</translation>
+<translation id="8692765844418174375">JemaOS-verzió</translation>
+<translation id="2943260250558374955">Súgó a JemaOS-hez</translation>
+<translation id="713321354492170993">A böngésző felszabadítja a memóriát az inaktív lapokról. Ez több számítási erőforrást biztosít az aktív lapoknak és más alkalmazásoknak, és a böngésző gyors marad. Az inaktív lapok automatikusan ismét aktívvá válnak, amikor visszatér rájuk.</translation>
+<translation id="1774190491044887444">A böngésző a háttértevékenységek és a vizuális effektusok, például a sima görgetés és a videók képkockasebességének korlátozásával takarékoskodik az akkumulátorral.</translation>
+<translation id="180121268008059459">A böngésző előre betölti az oldalakat, így gyorsabbá teszi a böngészést és a keresést.</translation>
+<translation id="7127093527178692287">Biztonsági mentés visszaállítása (béta)</translation>
+<translation id="4439042171549201806">Ha vissza szeretné állítani a JemaOS-t egy biztonsági mentési fájlból, csatlakoztassa most a biztonsági mentési fájlt tartalmazó cserélhető meghajtót a JemaOS-eszközéhez, és adja meg, melyik biztonsági mentési fájlt szeretné visszaállítani. Kérjük, vegye figyelembe, hogy a biztonsági mentési fájlnak a cserélhető meghajtó gyökérkönyvtárában kell lennie ahhoz, hogy a varázsló észlelje.</translation>
+<translation id="2955409026764742995">Válassza ki a visszaállítandó biztonsági mentési fájlt:</translation>
+<translation id="7040434808685140085">Sajnáljuk, a kiválasztott biztonsági mentési fájl nem ismerhető fel; válasszon egy újat.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />A JemaOS kiválasztott biztonsági mentési fájlból történő visszaállításához elengedhetetlen a mentés létrehozásakori pontos adatok ismerete. Ellenkező esetben a visszaállítás sikertelen lesz.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />A „fióknév” annak a fióknak az elsődleges bejelentkezési hitelesítő adata, amelyhez a biztonsági mentési fájl tartozik. Ez általában a JemaOS/Google-fiók regisztrálásához használt e-mail-cím. Helyi fiók esetén a felhasználónév „@jemaos.local” végződéssel.<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />A jelszó a mentés létrehozásakor megadandó jelmondat. Ez általában megegyezik azzal a jelszóval, amellyel bejelentkezett a JemaOS asztalra ezzel a fiókkal.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Fióknév</translation>
+<translation id="5490570429039308155">Sajnáljuk, adja meg a helyes fióknevet</translation>
+<translation id="6657585470893396449">Jelszó</translation>
+<translation id="8200189938001188563">Sajnáljuk, a jelszó nem lehet üres</translation>
+<translation id="3157931365184549694">Visszaállítás</translation>
+<translation id="8556278756526311953">A biztonsági mentés visszaállítása folyamatban</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />A biztonsági mentési fájl visszaállítása folyamatban van; ez eltarthat egy ideig, kérjük, legyen türelemmel.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Kérjük, vegye figyelembe, hogy a visszaállítás sikeres befejezésekor a felhasználói felület automatikusan újraindul.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">A biztonsági mentés visszaállítása nem sikerült</translation>
+<translation id="5003531399442003695">További részletekért kattintson az alábbi hivatkozásra a naplók megtekintéséhez. Ha ez a hiba továbbra is fennáll, forduljon a JemaOS technikai támogatási csatornáihoz, és adja meg a hibanaplókat.</translation>
+<translation id="6363786367719063276">Naplók megtekintése</translation>
+<translation id="8730621377337864115">Kész</translation>
+<translation id="975238173507911396">Az adatok visszaállítása sikeres</translation>
+<translation id="6276879052695618521">Biztonsági mentés visszaállítási naplói</translation>
+<translation id="4901207598072637766">JemaOS, szolgáltató: <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">A JemaOS és szolgáltatásai megfelelnek a GDPR-nak és az európai adatvédelmi jog rendelkezéseinek. További információkért tekintse meg <ph name="BEGIN_LINK_PRIVACY" />Adatvédelmi irányelveinket<ph name="END_LINK_PRIVACY" /> és <ph name="BEGIN_LINK_TOS" />Szolgáltatási feltételeinket<ph name="END_LINK_TOS" />.</translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, minden jog fenntartva.</translation>
+<translation id="370679569376308836">A JemaOS a Jema eszközre és annak SaaS-jára épülő kereskedelmi ajánlat.</translation>
+<translation id="2773644194450163486">A JemaOS-t a <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" /> nyílt forráskódú projekt teszi lehetővé.</translation>
+<translation id="2330680727776977160">A Chromiumot is más <ph name="BEGIN_LINK_1" />nyílt forráskódú szoftverek<ph name="END_LINK_1" /> és <ph name="BEGIN_LINK_2" />további nyílt forráskódú szoftverek<ph name="END_LINK_2" /> teszik lehetővé.</translation>
+<translation id="1419954813084261088">Tervezte és gyártotta: Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, minden jog fenntartva.</translation>
+<translation id="6168072053306020326">A Jema Technology a Jema Technology LTD és a Jema Technology (Beijing) Limited kereskedelmi neve.
+        <ph name="LINE_BREAK" />
+        A Jema Technology LTD Angliában és Walesben bejegyzett társaság, cégjegyzékszáma: 12273803.</translation>
+<translation id="1251589813188467292">Fontos eszközgarancia- és szervizinformációk</translation>
+<translation id="4851115775198886021">Eszköz SN:</translation>
+</translationbundle>

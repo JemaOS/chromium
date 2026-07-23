@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="sr">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">Региструјте се у Nutstore да бисте синхронизовали своје датотеке у облаку у JemaOS.</translation>
+<translation id="8672291834743661083">Региструјте се у Nutstore</translation>
+<translation id="5103639294476249880">Кликните на дугме „Додај апликацију“ у безбедносним подешавањима</translation>
+<translation id="8371020157576651120">Генеришите и копирајте лозинку апликације</translation>
+<translation id="3855250998276979579">Отворите апликацију Nutstore</translation>
+<translation id="6565655783894300125">и повежите Nutstore налог са JemaOS помоћу своје е-поште и лозинке апликације</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Ускоро</translation>
+<translation id="4928968570611226525">Да бисте наставили са овом радњом, мораћете да <ph name="BEGIN_LINK_ARC_APP" />&gt;активирате Android подсистем<ph name="END_LINK_ARC_APP" /> на свом JemaOS уређају; такође ваш JemaOS уређај мора бити <ph name="BEGIN_LINK_HELP" />пребачен у режим за програмере<ph name="END_LINK_HELP" />.</translation>
+<translation id="7395250550107972941">Није могуће бочно учитати .apk датотеке. Уверите се да је Android подсистем активиран и да сте у JemaOS режиму за програмере.</translation>
+<translation id="5690820326685091783">Отвори помоћу JemaOS AI</translation>
+</translationbundle>

@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="sq">
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">Regjistrohuni në Nutstore për të sinkronizuar skedarët tuaj në re në JemaOS.</translation>
+<translation id="8672291834743661083">Regjistrohuni në Nutstore</translation>
+<translation id="5103639294476249880">Klikoni butonin "Shto aplikacion" në cilësimet e sigurisë</translation>
+<translation id="8371020157576651120">Gjeneroni dhe kopjoni fjalëkalimin tuaj të aplikacionit</translation>
+<translation id="3855250998276979579">Hapni aplikacionin Nutstore</translation>
+<translation id="6565655783894300125">dhe lidhni llogarinë Nutstore me JemaOS me email-in dhe fjalëkalimin tuaj të aplikacionit</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Së shpejti</translation>
+<translation id="4928968570611226525">Për të vazhduar me këtë veprim do t'ju duhet të <ph name="BEGIN_LINK_ARC_APP" />&gt;aktivizoni nënsistemin Android<ph name="END_LINK_ARC_APP" /> në pajisjen tuaj JemaOS; gjithashtu pajisja juaj JemaOS duhet të <ph name="BEGIN_LINK_HELP" />kalohet në Mënyrën e Zhvilluesit<ph name="END_LINK_HELP" />.</translation>
+<translation id="7395250550107972941">Nuk mund të ngarkohen anash skedarë .apk. Ju lutemi sigurohuni që nënsistemi Android të jetë aktivizuar dhe të jeni në mënyrën e zhvilluesit të JemaOS.</translation>
+<translation id="5690820326685091783">Hap me JemaOS AI</translation>
+</translationbundle>

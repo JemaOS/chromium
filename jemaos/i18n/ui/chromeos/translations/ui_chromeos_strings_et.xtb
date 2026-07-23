@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="et">
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">Registreeru Nutstore'is, et sünkroonida oma faile JemaOS-is pilve.</translation>
+<translation id="8672291834743661083">Registreeru Nutstore'is</translation>
+<translation id="5103639294476249880">Klõpsa turvaseadetes nuppu "Lisa rakendus"</translation>
+<translation id="8371020157576651120">Genereeri ja kopeeri oma rakenduse parool</translation>
+<translation id="3855250998276979579">Ava Nutstore'i rakendus</translation>
+<translation id="6565655783894300125">ja ühenda Nutstore'i konto JemaOS-iga oma e-posti ja rakenduse parooliga</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">Varsti saadaval</translation>
+<translation id="4928968570611226525">Selle toiminguga jätkamiseks pead oma JemaOS-i seadmes <ph name="BEGIN_LINK_ARC_APP" />&gt;aktiveerima Androidi alamsüsteemi<ph name="END_LINK_ARC_APP" />; samuti peab su JemaOS-i seade olema <ph name="BEGIN_LINK_HELP" />lülitatud arendusrežiimi<ph name="END_LINK_HELP" />.</translation>
+<translation id="7395250550107972941">.apk-faile ei saa kõrvallaadida. Veendu, et Androidi alamsüsteem on aktiveeritud ja et oled JemaOS-i arendusrežiimis.</translation>
+<translation id="5690820326685091783">Ava JemaOS AI-ga</translation>
+</translationbundle>

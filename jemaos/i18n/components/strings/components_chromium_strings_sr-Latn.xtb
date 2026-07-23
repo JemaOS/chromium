@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="sr-Latn">
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">JemaOS nije završio svoju početnu konfiguraciju.</translation>
+<translation id="4257170804800372451">JemaOS i Thot su omogućeni <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> projektom otvorenog koda i drugim <ph name="BEGIN_LINK_OSS" />softverom otvorenog koda<ph name="END_LINK_OSS" />.</translation>
+</translationbundle>

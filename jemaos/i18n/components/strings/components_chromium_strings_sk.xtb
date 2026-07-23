@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="sk">
+
+
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">JemaOS nedokončil počiatočné nastavenie.</translation>
+<translation id="4257170804800372451">JemaOS a Thot vznikli vďaka open source projektu <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> a ďalšiemu <ph name="BEGIN_LINK_OSS" />open source softvéru<ph name="END_LINK_OSS" />.</translation>
+</translationbundle>

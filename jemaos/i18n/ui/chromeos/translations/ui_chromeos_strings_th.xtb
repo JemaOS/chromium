@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="th">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6011650404329072318">JemaOS × Nutstore</translation>
+<translation id="7292499970804736756">ลงทะเบียน Nutstore เพื่อซิงก์ไฟล์ของคุณบนคลาวด์ใน JemaOS</translation>
+<translation id="8672291834743661083">ลงทะเบียน Nutstore</translation>
+<translation id="5103639294476249880">คลิกปุ่ม "เพิ่มแอปพลิเคชัน" ในการตั้งค่าความปลอดภัย</translation>
+<translation id="8371020157576651120">สร้างและคัดลอกรหัสผ่านแอปพลิเคชันของคุณ</translation>
+<translation id="3855250998276979579">เปิดแอป Nutstore</translation>
+<translation id="6565655783894300125">และเชื่อมต่อบัญชี Nutstore เข้ากับ JemaOS ด้วยอีเมลและรหัสผ่านแอปพลิเคชันของคุณ</translation>
+<translation id="4208217820626259628">JemaDrop</translation>
+<translation id="77997252117517973">เร็วๆ นี้</translation>
+<translation id="4928968570611226525">หากต้องการดำเนินการนี้ต่อ คุณจะต้อง<ph name="BEGIN_LINK_ARC_APP" />&gt;เปิดใช้งานระบบย่อย Android<ph name="END_LINK_ARC_APP" />บนอุปกรณ์ JemaOS ของคุณ และอุปกรณ์ JemaOS ของคุณจะต้อง<ph name="BEGIN_LINK_HELP" />สลับเป็นโหมดนักพัฒนา<ph name="END_LINK_HELP" />ด้วย</translation>
+<translation id="7395250550107972941">ไม่สามารถติดตั้งไฟล์ .apk แบบไซด์โหลดได้ โปรดตรวจสอบว่าได้เปิดใช้งานระบบย่อย Android แล้วและคุณอยู่ในโหมดนักพัฒนาของ JemaOS</translation>
+<translation id="5690820326685091783">เปิดด้วย JemaOS AI</translation>
+</translationbundle>

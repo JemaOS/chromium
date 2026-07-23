@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="lo">
+	<translation id="7386402409475121504">ສ້າງບັນຊີ JemaOS ທ້ອງຖິ່ນຂອງທ່ານ</translation>
+	<translation id="3760308806144055927">ເຂົ້າສູ່ລະບົບບັນຊີ JemaOS ທ້ອງຖິ່ນຂອງທ່ານ</translation>
+	<translation id="3325117507482096812">ກະລຸນາໃສ່ລະຫັດຜ່ານ</translation>
+	<translation id="1838206877831947154">ລະຫັດຜ່ານຂອງທ່ານບໍ່ກົງກັນ</translation>
+	<translation id="2158276988029582286">ສ້າງບັນຊີທ້ອງຖິ່ນໃຫມ່</translation>
+	<translation id="8592849747346274067">ເຂົ້າສູ່ລະບົບບັນຊີທີ່ມີຢູ່ແລ້ວ</translation>
+	<translation id="482190417986201746">ຊື່ຜູ້ໃຊ້ ຫຼືລະຫັດຜ່ານທີ່ທ່ານລະບຸນັ້ນບໍ່ຖືກຕ້ອງ</translation>
+	<translation id="6603987686259425085">ທ່ານສາມາດ <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>ເຂົ້າສູ່ລະບົບດ້ວຍບັນຊີທ້ອງຖິ່ນຂອງ JemaOS<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">ອີເມວ <ph name="EMAIL_ADDRESS">$1</ph> ມີຢູ່ແລ້ວ. ກະລຸນາລອງໃໝ່ດ້ວຍອີເມວອື່ນ.</translation>
+	<translation id="7215016743510876720">ໃຊ້ບັນຊີທ້ອງຖິ່ນ</translation>
+	<translation id="6657635042185516718">ສືບຕໍ່ໃຊ້ບັນຊີອອນໄລນ໌</translation>
+	<translation id="6867476688065565618">ປ່ຽນເປັນບັນຊີທ້ອງຖິ່ນບໍ?</translation>
+	<translation id="4840454774882557974">ຖ້າທ່ານເລືອກໃຊ້ບັນຊີທ້ອງຖິ່ນ, ຄຸນສົມບັດທີ່ເປັນປະໂຫຍດລວມມີການຊິງໂຄຣນຂໍ້ມູນ ແລະຄວາມມັກຂອງທ່ານໃນທົ່ວອຸປະກອນຕ່າງໆ ແລະ ການເຂົ້າສູ່ລະບົບແອັບເວັບໂດຍອັດຕະໂນມັດໂດຍໃຊ້ບັນຊີ JemaOS ຂອງທ່ານຈະໃຊ້ບໍ່ໄດ້.</translation>
+	<translation id="8951507920859729424">ພວກເຮົາແນະນໍາໃຫ້ໃຊ້ບັນຊີອອນໄລນ໌ເພື່ອນໍາໃຊ້ JemaOS ຢ່າງເຕັມທີ່.</translation>
+	<translation id="479773200536372215">ທ່ານຈະບໍ່ສາມາດເພີ່ມບັນຊີ Google ໄດ້ເນື່ອງຈາກກະແຈ Google API ຫາຍໄປ. ເບິ່ງ <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> ສຳລັບລາຍລະອຽດ.</translation>
+	<translation id="1198491307547164157">ທ່ານຈະບໍ່ສາມາດເພີ່ມບັນຊີ JemaOS ໄດ້ເນື່ອງຈາກກະແຈ JemaOS API ຫາຍໄປ. ເບິ່ງ <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph> ສຳລັບລາຍລະອຽດ.</translation>
+	<translation id="5042404702659901995">ຖະແຫຼງການຄວາມເປັນສ່ວນຕົວ</translation>
+	<translation id="4907736162587268100">ເນື້ອໃນຖະແຫຼງການຄວາມເປັນສ່ວນຕົວ</translation>
+	<translation id="5988344732274877691">ລົງທະບຽນສໍາລັບຈົດຫມາຍຂ່າວ (ເລື້ອຍໆ, ສັນຍາ) ສໍາລັບ JemaOS</translation>
+	<translation id="1706203008474708805">ເຂົ້າຮ່ວມແຜນການປັບປຸງປະສົບການຜູ້ໃຊ້ JemaOS</translation>
+	<translation id="1147139514756087229">ເຂົ້າສູ່ລະບົບດ້ວຍບັນຊີທ້ອງຖິ່ນ</translation>
+	<translation id="2054784944085654098">ກຳລັງສ້າງໄຟລ໌ສຳຮອງດຽວນີ້. ນີ້ອາດຈະໃຊ້ເວລາໃນຂະນະທີ່; ກະລຸນາລໍຖ້າ…</translation>
+	<translation id="3554401467586751874">ໄຟລ໌ສໍາຮອງຂໍ້ມູນໄດ້ຖືກສ້າງຂື້ນສໍາເລັດ</translation>
+	<translation id="2349211327705667074">ເບິ່ງໄຟລ໌ສໍາຮອງຂໍ້ມູນ</translation>
+	<translation id="6337433855796857931">ການສຳຮອງຂໍ້ມູນລົ້ມເຫລວ</translation>
+	<translation id="3049367131589710124">ເບິ່ງບັນທຶກຄວາມຜິດພາດ</translation>
+	<translation id="1079017345574916945">ເດັສທັອບທາງໄກ</translation>
+	<translation id="3064478898280877715">ຮ້ານແອັບ</translation>
+	<translation id="2747689477259164256">JemaOS AI</translation>
+	<translation id="5890206344045530832">ຜູ້ຕິດຕັ້ງ</translation>
+	<translation id="2173278076276376488">ປະໂຫຍດນີ້ຈະຊ່ວຍໃຫ້ທ່ານຕິດຕັ້ງ <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ໃສ່ບ່ອນເກັບຂໍ້ມູນພາຍໃນຂອງອຸປະກອນນີ້.</translation>
+	<translation id="5323182426977498659">ເຕືອນໄພ! ຂັ້ນຕອນນີ້ແມ່ນເປັນການທໍາລາຍ ແລະບໍ່ສາມາດຍົກເລີກໄດ້. ກະລຸນາຮັບຊາບວ່າພວກເຮົາຈະບໍ່ຮັບຜິດຊອບໃດໆຕໍ່ການສູນເສຍຂໍ້ມູນທີ່ອາດເກີດຂຶ້ນຂອງເຈົ້າ ຫຼືໃຫ້ການຊ່ວຍເຫຼືອດ້ານເຕັກນິກອັນຮີບດ່ວນໃດໆ, ດໍາເນີນການຢູ່ໃນຄວາມສ່ຽງຂອງທ່ານເອງ.</translation>
+	<translation id="8517836015601969896">ການຕິດຕັ້ງແຜ່ນເຕັມ</translation>
+	<translation id="7300045760790370189">ຕິດຕັ້ງ <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ເພື່ອຄອບຄອງຮາດດິດທັງໝົດ, ຂໍ້ມູນທັງໝົດຂອງຮາດດິດເປົ້າໝາຍຈະຖືກລຶບລ້າງ.</translation>
+	<translation id="8762511733918256595">ການຕິດຕັ້ງຫຼາຍບູດ</translation>
+	<translation id="248900698427753678">ຕິດຕັ້ງ <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ໃສ່ພາທິຊັນທີ່ມີຢູ່ແລ້ວຂອງຮາດດິດ, ບ່ອນທີ່ <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ສາມາດມີຢູ່ໃນຂະຫນານກັບ OS ອື່ນໆ. ຂໍ້​ມູນ​ທັງ​ຫມົດ​ກ່ຽວ​ກັບ​ການ​ແບ່ງ​ປັນ​ເປົ້າ​ຫມາຍ​ຈະ​ຖືກ​ລົບ​ລ້າງ​.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ຈະຖືກຕິດຕັ້ງຢູ່ໃນຮາດໄດທີ່ທ່ານເລືອກ; ຂໍ້​ມູນ​ທັງ​ຫມົດ​ໃນ​ແຜ່ນ​ເປົ້າ​ຫມາຍ​ຈະ​ຖືກ​ລົບ​ລ້າງ​.</translation>
+	<translation id="4039091757234555415">ແຜ່ນ</translation>
+	<translation id="7783580523889684697">ບໍ່ມີແຜ່ນທີ່ມີຢູ່</translation>
+	<translation id="8217653566575018388">ການຕິດຕັ້ງສຳເລັດແລ້ວ</translation>
+	<translation id="8846746259444262774">ການຕິດຕັ້ງລົ້ມເຫລວ</translation>
+	<translation id="7263815009235541549">ການຕິດຕັ້ງສຳເລັດແລ້ວ. ກະລຸນາປິດອຸປະກອນຂອງທ່ານກ່ອນ, ຈາກນັ້ນເອົາສື່ຕິດຕັ້ງອອກ, ແລະເປີດມັນອີກຄັ້ງເພື່ອເປີດເຄື່ອງ <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>.</translation>
+	<translation id="3380151284134965398">ອຸຍ, ມີບາງຢ່າງຜິດພາດເກີດຂຶ້ນ ແລະການຕິດຕັ້ງບໍ່ສຳເລັດ. ກະລຸນາລອງຂະບວນການອີກຄັ້ງ. ຖ້າຂໍ້ຜິດພາດດຽວກັນຍັງຄົງຢູ່, ກະລຸນາຕິດຕໍ່ຫາ JemaOS Support ດ້ວຍບັນທຶກຂ້າງເທິງ.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ຈະຖືກຕິດຕັ້ງຢູ່ໃນພາທິຊັນທີ່ເລືອກຂອງຮາດໄດຂອງທ່ານ. ພາຍ​ໃຕ້​ໂຄງ​ການ multi-boot ໃນ​ປັດ​ຈຸ​ບັນ​, ນີ້​ສາ​ມາດ​ດໍາ​ເນີນ​ການ​ພຽງ​ແຕ່​ຖ້າ​ຫາກ​ວ່າ​ອຸ​ປະ​ກອນ​ຂອງ​ທ່ານ​ສະ​ຫນັບ​ສະ​ຫນູນ UEFI ແລະ​ຮາດ​ດິດ​ຂອງ​ທ່ານ​ໄດ້​ຮັບ​ການ​ຈັດ​ຮູບ​ແບບ GPT​.</translation>
+	<translation id="7831363758161884243">ການແບ່ງສ່ວນເປົ້າຫມາຍຈະຖືກເຊັດ; ທ່ານຍັງຈໍາເປັນຕ້ອງລະບຸພາທິຊັນ EFI ທີ່ໃຊ້ວຽກຂອງທ່ານ (ໂດຍປົກກະຕິຈະເຮັດໂດຍອັດຕະໂນມັດ) ເນື່ອງຈາກຜູ້ຕິດຕັ້ງຕ້ອງການແກ້ໄຂການຕັ້ງຄ່າການບູດລະບົບ.</translation>
+	<translation id="5670799238446305550">ເລືອກພາທິຊັນເປົ້າໝາຍ <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph></translation>
+	<translation id="3695537760133394753">ການແບ່ງສ່ວນ</translation>
+	<translation id="5610519566593708119">ເລືອກ​ພາ​ທິ​ຊັນ EFI​</translation>
+	<translation id="3367650349940010965">ບໍ່ມີພາທິຊັນທີ່ມີຢູ່ສໍາລັບແຜ່ນທີ່ເລືອກ</translation>
+	<translation id="7453223384507098390">ບໍ່ມີພາຕິຊັນ EFI ທີ່ມີຢູ່ສໍາລັບແຜ່ນທີ່ເລືອກ</translation>
+	<translation id="1854532683465500847">ຂະຫນາດຂອງພາທິຊັນທີ່ເລືອກແມ່ນຫນ້ອຍກວ່າ 20GB, ການຕິດຕັ້ງອາດຈະລົ້ມເຫລວ</translation>
+	<translation id="4144613075340468247">ການ​ແບ່ງ​ພາ​ຕິ​ຊັນ​ທີ່​ເລືອກ​ໄດ້​ຖືກ​ຕິດ​ຕັ້ງ​ກັບ <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> multi-boot, ການ​ຕິດ​ຕັ້ງ​ມັນ​ອີກ​ເທື່ອ​ຫນຶ່ງ​ອາດ​ຈະ​ບໍ່​ສໍາ​ເລັດ</translation>
+	<translation id="5793361052649920836">ຫຼັງຈາກການຕິດຕັ້ງ, ທ່ານຕ້ອງການບູດ <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ແນວໃດ?</translation>
+	<translation id="4273235330352963866">ຕິດຕັ້ງແລະຕັ້ງຄ່າ rEFInd ສໍາລັບຂ້ອຍ (ແນະນໍາ)</translation>
+	<translation id="1858708492548921044">rEFInd ເປັນໂປລແກລມຈັດການບູດທີ່ສະຫນອງການໂຕ້ຕອບຮູບພາບທີ່ສວຍງາມສໍາລັບທາງເລືອກໃນການບູດ OS ເມື່ອ PC ຂອງທ່ານເລີ່ມຕົ້ນ, ທ່ານຈະສາມາດເລືອກ OS ທີ່ຕ້ອງການເພື່ອບູດກັບມັນ. ສໍາລັບຂໍ້ມູນເພີ່ມເຕີມກ່ຽວກັບ rEFInd, ກະລຸນາເບິ່ງຫນ້າທໍາອິດຂອງມັນ.</translation>
+	<translation id="3861924051442564602">ເພີ່ມຕົວເລືອກເມນູບູດ UEFI ສໍາລັບຂ້ອຍ</translation>
+	<translation id="8622370666798589804">ເມື່ອ PC ຂອງ​ທ່ານ​ເລີ່ມ​ຕົ້ນ​ຂຶ້ນ​, ທ່ານ​ອາດ​ຈະ​ສາ​ມາດ​ເຂົ້າ​ໄປ​ໃນ​ເມ​ນູ​ທາງ​ເລືອກ​ການ​ບູດ UEFI (ໂດຍ​ທີ່​ສຸດ​ໂດຍ​ການ​ກົດ hotkey​)​, ທາງ​ເລືອກ​ນີ້​ຈະ​ເພີ່ມ <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ເປັນ​ການ​ເຂົ້າ​ໃນ​ເມ​ນູ​ນັ້ນ. (ຮອງຮັບສະເພາະບາງລຸ້ນຂອງ BIOS ແລະ UEFI firmware).</translation>
+	<translation id="1569398690544416170">ບໍ່ເຮັດຫຍັງຢູ່ທີ່ນີ້, ຂ້ອຍຈະຕັ້ງຄ່າມັນເອງ</translation>
+	<translation id="3554866444001249532">ສະຄຣິບການຕິດຕັ້ງນີ້ຈະໃສ່ພຽງແຕ່ໄຟລ໌ .efi ທີ່ຈໍາເປັນສໍາລັບການບູດ <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ໃສ່ພາທິຊັນ EFI ຂອງທ່ານ, ທ່ານຈະຕ້ອງຕັ້ງຄ່າວິທີການບູດມັນດ້ວຍຕົວທ່ານເອງ.</translation>
+	<translation id="7492832751164189534">ບັງຄັບໃຫ້ເຊົາ</translation>
+	<translation id="5159534860632584026">ຂະບວນການຕິດຕັ້ງໄດ້ຖືກຢຸດເຊົາ</translation>
+	<translation id="8686749782014838344">ລົ້ມເຫລວໃນການຮັບເອົາຂໍ້ມູນແຜ່ນ</translation>
+	<translation id="5688543378771259173">ການຕິດຕັ້ງກຳລັງຖືກຢຸດຕິ...</translation>
+	<translation id="5350452134936384991">ຕິດຕັ້ງໃນ USB</translation>
+	<translation id="8008470485414925603">ຕິດຕັ້ງ <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ໃສ່ແຜ່ນ USB; ຂໍ້ມູນທັງໝົດໃນແຜ່ນ USB ເປົ້າໝາຍຈະຖືກລຶບລ້າງ.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> ຈະຖືກຕິດຕັ້ງໃສ່ແຜ່ນ USB ທີ່ເລືອກຂອງທ່ານ; ຂໍ້​ມູນ​ທັງ​ຫມົດ​ໃນ​ແຜ່ນ​ເປົ້າ​ຫມາຍ​ຈະ​ຖືກ​ລົບ​ລ້າງ​.</translation>
+	<translation id="5725593226060700263">ບໍ່ມີແຜ່ນ USB ທີ່ສາມາດໃຊ້ໄດ້</translation>
+	<translation id="4357040841587078287">ພວກເຮົາໄດ້ກວດພົບວ່າທ່ານກຳລັງໃຊ້ສຳເນົາຂອງ JemaOS ນີ້ຈາກໄຟລ໌ຮູບພາບທີ່ດາວໂຫລດມາ. ເພື່ອນໍາໃຊ້ຄຸນສົມບັດສະຫນັບສະຫນູນທີ່ສົມບູນແບບທີ່ສຸດ (ລວມທັງການອັບເດດ Over-The-Air) ທີ່ JemaOS ສາມາດສະເຫນີໄດ້, ພວກເຮົາແນະນໍາໃຫ້ທ່ານເປີດຟັງຊັນ "Installer" ເພື່ອປະຕິບັດການຕິດຕັ້ງເຕັມແຜ່ນຂອງ JemaOS ກັບອຸປະກອນເກັບຮັກສາແຍກຕ່າງຫາກ.</translation>
+	<translation id="1246398339704431302">ທ່ານສາມາດ <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>ສືບຕໍ່ໃຊ້ສຳເນົາຂອງ JemaOS ນີ້ຕໍ່ໄປ<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, ຂັ້ນຕອນການຕິດຕັ້ງສາມາດຖືກປະຕິບັດໄດ້ໃນຂັ້ນຕອນຕໍ່ມາໃນລະບົບ, ແນວໃດກໍ່ຕາມ, ຂໍ້ມູນທັງໝົດຂອງເຈົ້າຈະຖືກລຶບລ້າງຫຼັງຈາກການຕິດຕັ້ງ ແລະທ່ານຈະເລີ່ມຕົ້ນອີກຄັ້ງ.</translation>
+	<translation id="3654532222088291133">ແທນທີ່ຈະໃສ່ລະຫັດຜ່ານບັນຊີ JemaOS ຂອງທ່ານເພື່ອເຂົ້າສູ່ລະບົບ, ທ່ານສາມາດສ້າງລະຫັດຜ່ານ <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> ສໍາລັບອຸປະກອນນີ້.</translation>
+	<translation id="8377684629839541977">ໃຊ້ລະຫັດຜ່ານບັນຊີ JemaOS</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">ຮັກສາ <ph name="DEVICE_OS" /> ໃຫ້ທັນສະໄໝໂດຍອັດຕະໂນມັດ</translation>
+<translation id="2347352406101856238">ເປີດການອັບເດດ <ph name="DEVICE_OS" /> ແລ້ວ</translation>
+<translation id="185834232609012804">ປິດການອັບເດດ <ph name="DEVICE_OS" /> ແລ້ວ</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) ແພລດຟອມ <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">ເດັດສະທັອບທາງໄກ</translation>
+<translation id="6898090158927982244">Linux ຂອງທ່ານທັນສະໄໝແລ້ວ</translation>
+<translation id="4886703929102211360">ມີການອັບເດດທີ່ສຳຄັນສຳລັບສ່ວນປະກອບ Linux (ເບຕ້າ). ຂໍແນະນຳຢ່າງຍິ່ງໃຫ້ຕິດຕັ້ງການອັບເດດນີ້ໄວທີ່ສຸດເທົ່າທີ່ຈະເປັນໄປໄດ້, ບໍ່ດັ່ງນັ້ນ Linux (ເບຕ້າ) ຂອງທ່ານອາດຢຸດເຮັດວຽກ.</translation>
+<translation id="6694016202036959050">ການຕັ້ງຄ່າ <ph name="DEVICE_OS" /></translation>
+<translation id="8362858344151826493">ບັນຊີ JemaOS, ການສຳຮອງ, ເບັດເຕລັດ</translation>
+<translation id="9150429437595727962">ການຕັ້ງຄ່າ Wi-Fi</translation>
+<translation id="4938972461544498524">ການຕັ້ງຄ່າທັດແພດ</translation>
+<translation id="1210024513248363065">ບໍລິການທາງໄກ</translation>
+<translation id="2878862288885588535">ບໍລິການວິນິດໄສທາງໄກ</translation>
+<translation id="7409197984340676806">ບໍລິການວິນິດໄສທາງໄກອະນຸຍາດໃຫ້ຕົວແທນສະໜັບສະໜູນຢ່າງເປັນທາງການຂອງ JemaOS ລະບຸບັນຫາຂອງລະບົບ. ປັດຈຸບັນ, ບໍລິການວິນິດໄສທາງໄກສາມາດເລີ່ມໄດ້ໂດຍຕົວແທນສະໜັບສະໜູນຢ່າງເປັນທາງການຂອງ JemaOS ເທົ່ານັ້ນ.</translation>
+<translation id="1791028023086176332">ກະລຸນາແບ່ງປັນໝາຍເລກນີ້ກັບຕົວແທນສະໜັບສະໜູນຢ່າງເປັນທາງການຂອງ JemaOS</translation>
+<translation id="6279304275399437025">ກຳລັງເລີ່ມບໍລິການວິນິດໄສທາງໄກ...</translation>
+<translation id="1501882165699826662">ກະລຸນາຢຸດບໍລິການວິນິດໄສທາງໄກ ແລ້ວລອງໃໝ່ອີກຄັ້ງ</translation>
+<translation id="3100283258447375201">ຂໍ້ມູນເພີ່ມເຕີມ</translation>
+<translation id="4070039109671307724">ເບັດເຕລັດ</translation>
+<translation id="7326893024940073254">ປຸ່ມ "ເລີ່ມໃໝ່"</translation>
+<translation id="3002423764319968103">ສະແດງປຸ່ມ "ເລີ່ມໃໝ່" ໃນເມນູລະບົບ</translation>
+<translation id="6243454903512423518">ປຸ່ມ "ໝຸນໜ້າຈໍ"</translation>
+<translation id="6491049336868978729">ທ່ານບໍ່ຢູ່ໃນໂໝດແທັບເລັດດຽວນີ້, ປຸ່ມ "ໝຸນໜ້າຈໍ" ຖືກເຊື່ອງໄວ້</translation>
+<translation id="5496012402277579695">ສະແດງປຸ່ມ "ໝຸນໜ້າຈໍ" ໃນເມນູລະບົບ</translation>
+<translation id="5882838977344999606">ສະວິດໂໝດແທັບເລັດ/ແລັບທັອບ</translation>
+<translation id="472164133625585606">ສະແດງສະວິດໂໝດແທັບເລັດ/ແລັບທັອບ ໃນເມນູລະບົບ</translation>
+<translation id="1851103550468466960">ເປີດ Widevine</translation>
+<translation id="4058176713282795846">ເປີດ Widevine ເພື່ອສະຕຣີມເນື້ອຫາພຣີມຽມທີ່ໄດ້ຮັບການປົກປ້ອງ. <ph name="BEGIN_LINK_LEARN_MORE" />ຮຽນຮູ້ເພີ່ມເຕີມ<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">ເລືອກ "libwidevine.so"</translation>
+<translation id="4838463656205005584">ເປີດ Widevine ບໍ່ສຳເລັດ...</translation>
+<translation id="2164041826798266548">ການຕິດຕັ້ງໂມດູນ Widevine CDM ລົ້ມເຫຼວ. ກະລຸນາກວດການເຊື່ອມຕໍ່ຂອງທ່ານ ແລ້ວລອງໃໝ່ອີກຄັ້ງ.</translation>
+<translation id="4106982328079440606">ການຕັ້ງຄ່າບັນຊີ JemaOS</translation>
+<translation id="6468776556018764845">ຄຸນສົມບັດທົດລອງ</translation>
+<translation id="3487615413425326553">ຂ້າມການກວດສອບ Trusted Platform Module (TPM)</translation>
+<translation id="4817176087932811573">ບາງຄຸນສົມບັດອາດລົ້ມເຫຼວເນື່ອງຈາກຊິບ TPM ທີ່ບໍ່ເຂົ້າກັນໃນອຸປະກອນຂອງທ່ານ; ທ່ານສາມາດຂ້າມການກວດສອບ TPM ເປັນວິທີແກ້ໄຂຊົ່ວຄາວໄດ້.</translation>
+<translation id="3356003366173774486">ການເຂົ້າສູ່ລະບົບອັດຕະໂນມັດ</translation>
+<translation id="6218459410891191693">ອະນຸຍາດໃຫ້ບັນຊີປັດຈຸບັນເຂົ້າສູ່ລະບົບເດັດສະທັອບໂດຍອັດຕະໂນມັດເມື່ອອຸປະກອນເລີ່ມໃໝ່</translation>
+<translation id="6620839363422062843">ບໍ່ສາມາດເປີດໃຫ້ບັນຊີນີ້ໄດ້; ການເຂົ້າສູ່ລະບົບອັດຕະໂນມັດຖືກເປີດໃຊ້ຢູ່ແລ້ວສຳລັບບັນຊີອື່ນໃນອຸປະກອນນີ້</translation>
+<translation id="6734500226490446035">ບໍ່ສາມາດເປີດໃຫ້ບັນຊີນີ້ໄດ້; ເກີດຂໍ້ຜິດພາດທີ່ບໍ່ຮູ້ຈັກຂະນະເລີ່ມຕົ້ນລະບົບໄຟລ໌ສຳລັບບັນຊີນີ້. ກະລຸນາລອງເລີ່ມໃໝ່ ຫຼື ສ້າງບັນຊີໃໝ່</translation>
+<translation id="5464880042146818691">ບໍ່ສາມາດເປີດໃຫ້ບັນຊີນີ້ໄດ້; ທາງເລືອກການເຂົ້າສູ່ລະບົບອັດຕະໂນມັດມີພຽງແຕ່ສຳລັບປະເພດ "ບັນຊີທ້ອງຖິ່ນ" ເທົ່ານັ້ນ.</translation>
+<translation id="3335654854106476749">ກະລຸນາເພີ່ມລະຫັດຜ່ານເຂົ້າສູ່ລະບົບໃນການຕັ້ງຄ່າ <ph name="BEGIN_LINK" />ຄວາມເປັນສ່ວນຕົວ ແລະ ຄວາມປອດໄພ<ph name="END_LINK" /> ກ່ອນເປີດການເຂົ້າສູ່ລະບົບອັດຕະໂນມັດ.</translation>
+<translation id="5586831602198585601">ມີ JemaOS ເວີຊັນໃໝ່ກວ່າໃຫ້ອັບເດດດຽວນີ້. ແຕ່ວ່າ, ການສະໝັກ JemaOS for You ຂອງທ່ານໝົດອາຍຸແລ້ວ; ທ່ານຕ້ອງມີການສະໝັກທີ່ໃຊ້ງານໄດ້ເພື່ອອັບເດດ JemaOS ຂອງທ່ານ.</translation>
+<translation id="3869860597719956574">ມີ JemaOS ເວີຊັນຫຼັກໃໝ່ໃຫ້ອັບເດດດຽວນີ້. ທ່ານຕ້ອງຈ່າຍຄ່າທຳນຽມຄັ້ງດຽວເພື່ອດຳເນີນການອັບເດດນີ້ຕໍ່.</translation>
+<translation id="6523879681771260760">ກະລຸນາລະບຸເສັ້ນທາງທີ່ຈະເກັບໄຟລ໌ສຳຮອງ</translation>
+<translation id="2036152819788683293">ສ້າງໄຟລ໌ສຳຮອງສຳລັບບັນຊີນີ້ (ເບຕ້າ). <ph name="BEGIN_LINK_LEARN_MORE" />ຮຽນຮູ້ເພີ່ມເຕີມ<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">ສຳຮອງ</translation>
+<translation id="4267347174163690295">ສ້າງໄຟລ໌ສຳຮອງສຳລັບບັນຊີນີ້ (ເບຕ້າ).</translation>
+<translation id="8112950994208888917">ການດຳເນີນການນີ້ສ້າງການສຳຮອງດິດເຕັມສຳລັບບັນຊີນີ້, ເຮັດໃຫ້ງ່າຍຕໍ່ການກູ້ຄືນ JemaOS ຂອງທ່ານໄປສູ່ສະຖານະທີ່ມັນເປັນຕອນສ້າງການສຳຮອງ, ລວມທັງການຕັ້ງຄ່າ, ສ່ວນຂະຫຍາຍບຣາວເຊີທີ່ຕິດຕັ້ງແລ້ວ ແລະ ແອັບລະບົບຍ່ອຍ. ຂຶ້ນກັບແອັບຂອງທ່ານ ແລະ ເນື້ອຫາຂອງໂຟນເດີຫຼັກຂອງທ່ານ, ໄຟລ໌ສຳຮອງອາດໃຫຍ່; ຂໍແນະນຳໃຫ້ເກັບໄຟລ໌ສຳຮອງໄວ້ໃນອຸປະກອນເກັບຂໍ້ມູນພາຍນອກ. ຖ້າທ່ານມີໄດຣຟ໌ USB ແບບພົກພາ, ກະລຸນາເຊື່ອມຕໍ່ມັນດຽວນີ້. <ph name="BEGIN_LINK_LEARN_MORE" />ຮຽນຮູ້ເພີ່ມເຕີມ<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">ກະລຸນາໃສ່ລະຫັດຜ່ານເຂົ້າສູ່ລະບົບສຳລັບບັນຊີນີ້</translation>
+<translation id="8663988871299316062">ກະລຸນາຈື່ລະຫັດຜ່ານນີ້, ເພາະວ່າມັນຈະຖືກຕ້ອງການເມື່ອກູ້ຄືນໄຟລ໌ສຳຮອງນີ້</translation>
+<translation id="6408904153044317846">ເລືອກໄຟລ໌ສຳຮອງທີ່ຈະກູ້ຄືນ</translation>
+<translation id="8062988348127771021">ກູ້ຄືນຂໍ້ມູນ JemaOS ຂອງທ່ານຈາກໄຟລ໌ສຳຮອງ</translation>
+<translation id="7309192418866543730">ໃສ່ລະຫັດຜ່ານສຳຮອງ</translation>
+<translation id="3642408376366598984">ໃສ່ລະຫັດຜ່ານທີ່ໃຊ້ເຂົ້າລະຫັດໄຟລ໌ສຳຮອງນີ້</translation>
+<translation id="7783974937157985523">ລະຫັດຜ່ານສຳຮອງ</translation>
+<translation id="6583780301401541007">ກູ້ຄືນສຳເລັດ</translation>
+<translation id="3514011352559420398">ກູ້ຄືນລົ້ມເຫຼວ</translation>
+<translation id="7535980903266533458">ບັນທຶກການສຳຮອງໄປຍັງອຸປະກອນ ຫຼື ບ່ອນເກັບຂໍ້ມູນພາຍນອກຂອງທ່ານ</translation>
+<translation id="604001903249547235">ການສຳຮອງຟາກ</translation>
+<translation id="8885702701336541611">ອັບໂຫຼດການສຳຮອງໄປຍັງບ່ອນເກັບຂໍ້ມູນຟາກ JemaOS</translation>
+<translation id="3939744430096549862">ສຳຮອງໄປຍັງຟາກ</translation>
+<translation id="619129431573254316">ກູ້ຄືນຈາກໄຟລ໌ສຳຮອງທ້ອງຖິ່ນ</translation>
+<translation id="1859592711955106569">ການກູ້ຄືນຈາກຟາກ</translation>
+<translation id="38222223336741457">ດາວໂຫຼດ ແລະ ກູ້ຄືນຈາກຟາກ JemaOS</translation>
+<translation id="1241089811244416179">ກູ້ຄືນຈາກຟາກ</translation>
+<translation id="652479689372703360">ກຳລັງສຳຮອງ</translation>
+<translation id="3655220146274872918">ການສຳຮອງສຳເລັດ</translation>
+<translation id="4243579853635792694">ການສຳຮອງຂອງທ່ານຖືກສ້າງສຳເລັດແລ້ວ</translation>
+<translation id="4854179463174744546">ເກີດຂໍ້ຜິດພາດໃນລະຫວ່າງຂະບວນການສຳຮອງ</translation>
+<translation id="2410668771600309999">ຂໍ້ມູນຜູ້ໃຊ້ Connect API</translation>
+<translation id="2223892939866251845">ID ຜູ້ໃຊ້</translation>
+<translation id="3850846286480935456">ການວິເຄາະບ່ອນເກັບຂໍ້ມູນສຳຮອງ</translation>
+<translation id="6244494465581273970">ຕ້ອງການ ID ຜູ້ໃຊ້</translation>
+<translation id="9204006549413740506">ອັບເດດລ່າສຸດ</translation>
+<translation id="476642412165431515">ອຸປະກອນຮາດແວ</translation>
+<translation id="3386337985825120901">ບໍ່ມີຂໍ້ມູນສຳຮອງ</translation>
+<translation id="8490990067870590760">ກຳລັງໂຫຼດໄຟລ໌ສຳຮອງ...</translation>
+<translation id="2955409026764742995">ເລືອກໄຟລ໌ສຳຮອງທີ່ຈະກູ້ຄືນ:</translation>
+<translation id="7414629348005657242">-- ເລືອກໄຟລ໌ສຳຮອງ --</translation>
+<translation id="918246516374174381">ບໍ່ພົບໄຟລ໌ສຳຮອງ. ກະລຸນາສ້າງການສຳຮອງກ່ອນ.</translation>
+<translation id="77997252117517973">ໄວໆນີ້</translation>
+<translation id="1930692852800776096">ເພີ່ມພໍຈະນານຸກົມ</translation>
+<translation id="8793060353848771694">ຮູບຫູຟັງຂ້າງຊ້າຍ</translation>
+<translation id="6257440204887306255">ຮູບເຄດສາກໄຟ</translation>
+<translation id="2754700616124958693">ຮູບຫູຟັງຂ້າງຂວາ</translation>
+<translation id="1068676292264983586">ຮູບອຸປະກອນເລີ່ມຕົ້ນ</translation>
+<translation id="6364075396486660405">ປິດການສະແກນໄຟລ໌ມີເດຍອັດຕະໂນມັດສຳລັບພາທິຊັນທັງໝົດເພື່ອເພີ່ມປະສິດທິພາບອາຍຸແບັດເຕີຣີ. <ph name="BEGIN_LINK_LEARN_MORE" />ຮຽນຮູ້ເພີ່ມເຕີມ<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">ທາງເລືອກຄວາມປອດໄພ</translation>
+<translation id="5618366106086725045">ເປີດ "ໂໝດນັກພັດທະນາ" ສຳລັບການຕິດຕັ້ງ <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> ນີ້ ດ້ວຍຄຸນສົມບັດນັກພັດທະນາເພີ່ມເຕີມ. <ph name="BEGIN_LINK_LEARN_MORE" />ຮຽນຮູ້ເພີ່ມເຕີມ<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">ທ່ານຢູ່ໃນ "ໂໝດນັກພັດທະນາ" ແລ້ວ</translation>
+<translation id="6074549317340202195">ເປີດ "ໂໝດນັກພັດທະນາ"</translation>
+<translation id="418781258674176053">ຄຳເຕືອນ! ການເປີດ "ໂໝດນັກພັດທະນາ" ເປັນການດຳເນີນການທີ່ບໍ່ສາມາດຍ້ອນກັບໄດ້. ຖ້າທ່ານຕ້ອງການປິດ "ໂໝດນັກພັດທະນາ", ທ່ານຕ້ອງຕິດຕັ້ງ JemaOS ໃໝ່, ເຊິ່ງຈະລົບຂໍ້ມູນທັງໝົດ. ກະລຸນາສຳຮອງຂໍ້ມູນຂອງທ່ານ ແລະ ດຳເນີນການດ້ວຍຄວາມສ່ຽງຂອງທ່ານເອງ.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    ແພລດຟອມ <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">ດຽວນີ້ຢູ່ອອບລາຍ</translation>
+<translation id="2590678769628709242">ກວດການສະໝັກ JemaOS ຂອງທ່ານທາງອອນລາຍ</translation>
+<translation id="4701836089682883918">ຂໍ້ມູນການສະໝັກ JemaOS</translation>
+<translation id="5891566673089952188">ມີຂໍ້ຜິດພາດໃນການເອົາ ID ອຸປະກອນຂອງທ່ານ</translation>
+<translation id="4685086787606104322">ການສະໝັກສິ້ນສຸດ</translation>
+<translation id="3354919960795782984">ID ອຸປະກອນ</translation>
+<translation id="5758632069869992306">ກວດການສະໝັກຂອງທ່ານທາງອອນລາຍ</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     ແພລດຟອມ <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">ການສະໝັກທົດລອງ</translation>
+<translation id="4362781408813685579">ການສະໝັກທີ່ໃຊ້ງານໄດ້</translation>
+<translation id="1141274201089997510">ການສະໝັກໝົດອາຍຸ</translation>
+<translation id="2553683254139782404">ສະບັບບໍ່ແມ່ນການຄ້າ</translation>
+<translation id="8466048683756385518">ສະບັບລິຂະສິດອົງກອນ (ທົດລອງ)</translation>
+<translation id="2853871047705932424">ສະບັບລິຂະສິດອົງກອນ</translation>
+<translation id="5239675900317881945">ສະບັບລິຂະສິດອົງກອນ (ໝົດອາຍຸ)</translation>
+<translation id="189101945990408398">Intel ຮຸ່ນເກົ່າ</translation>
+<translation id="6816405236809604904">Intel ຮຸ່ນໃໝ່</translation>
+<translation id="6169452478137972655">ກຣາຟິກ AMD</translation>
+<translation id="6183637837838262693">Intel ບາງ</translation>
+<translation id="1270291881045478104">ເປີດ JemaOS AI</translation>
+<translation id="2013780539677437932">ເປີດ ຫຼື ປິດຄຸນສົມບັດທັງໝົດທີ່ກ່ຽວຂ້ອງກັບ JemaOS AI</translation>
+<translation id="3398637633218757480">ເປີດການເອີ້ນດ່ວນ JemaOS AI</translation>
+<translation id="8986197796475507452">ເອີ້ນທາງເລືອກ JemaOS AI ຢ່າງໄວສຳລັບເນື້ອຫາທີ່ເນັ້ນ ໂດຍກົດ Ctrl + C + C</translation>
+<translation id="6407628130593274137">ການຕັ້ງຄ່າ ແລະ ທາງເລືອກອື່ນໆສຳລັບ JemaOS AI</translation>
+<translation id="4005574560653331142">ເພື່ອປ່ຽນ PIN ຫຼື ລະຫັດຜ່ານເຂົ້າສູ່ລະບົບຂອງບັນຊີທ້ອງຖິ່ນນີ້, ໄປທີ່ການຕັ້ງຄ່າ <ph name="BEGIN_LINK" />ຄວາມເປັນສ່ວນຕົວ ແລະ ຄວາມປອດໄພ<ph name="END_LINK" />.</translation>
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">ທ່ານສາມາດ<ph name="LINK_START" />ເຂົ້າສູ່ລະບົບດ້ວຍບັນຊີ JemaOS ທ້ອງຖິ່ນ<ph name="LINK_END" />ໄດ້.</translation>
+<translation id="5291842596976929391">ອີເມວ <ph name="EMAIL_ADDRESS" /> ມີຢູ່ແລ້ວ. ກະລຸນາລອງໃໝ່ດ້ວຍອີເມວອື່ນ.</translation>
+<translation id="4519800823932975782">ສູນຊ່ວຍເຫຼືອ JemaOS</translation>
+<translation id="4737474693231655139">ຊອກຫາບົດຄວາມຊ່ວຍເຫຼືອ ແລະ ຄຳຕອບສຳລັບຄຳຖາມ JemaOS ທົ່ວໄປ</translation>
+</translationbundle>

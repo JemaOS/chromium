@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="bs">
+
+
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">O programu Thot</translation>
+<translation id="5639860668557220477">Preuzmite pomoć za preglednik Thot</translation>
+<translation id="1692689520561928457">O sistemu JemaOS</translation>
+<translation id="8692765844418174375">Verzija JemaOS</translation>
+<translation id="2943260250558374955">Preuzmite pomoć za JemaOS</translation>
+<translation id="713321354492170993">Preglednik oslobađa memoriju iz neaktivnih kartica. To aktivnim karticama i ostalim aplikacijama daje više računarskih resursa i održava preglednik brzim. Vaše neaktivne kartice automatski ponovo postaju aktivne kada se vratite na njih.</translation>
+<translation id="1774190491044887444">Preglednik štedi bateriju ograničavanjem pozadinskih aktivnosti i vizuelnih efekata, kao što su glatko pomicanje i broj kadrova u sekundi videa.</translation>
+<translation id="180121268008059459">Preglednik unaprijed učitava stranice, čime ubrzava pregledavanje i pretraživanje.</translation>
+<translation id="7127093527178692287">Vrati sigurnosnu kopiju (beta)</translation>
+<translation id="4439042171549201806">Da biste vratili JemaOS iz datoteke sigurnosne kopije, sada umetnite prijenosni disk koji sadrži datoteku sigurnosne kopije u svoj JemaOS uređaj i navedite koju datoteku sigurnosne kopije želite vratiti. Imajte na umu da datoteka sigurnosne kopije mora biti u korijenskom direktoriju vašeg prijenosnog diska da bi je ovaj čarobnjak otkrio.</translation>
+<translation id="2955409026764742995">Odaberite datoteku sigurnosne kopije za vraćanje:</translation>
+<translation id="7040434808685140085">Nažalost, odabrana datoteka sigurnosne kopije ne može se prepoznati; odaberite novu.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />Da biste vratili JemaOS iz odabrane datoteke sigurnosne kopije, neophodno je imati tačne podatke o sigurnosnoj kopiji u trenutku njenog stvaranja. U suprotnom će postupak vraćanja biti neuspješan.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />„Naziv računa“ je primarna prijavna akreditiva računa pod kojim je datoteka sigurnosne kopije napravljena. Obično je to adresa e-pošte koju ste koristili za registraciju svog JemaOS/Google računa. Ako je bio lokalni račun, to bi bilo korisničko ime s dodatkom „@jemaos.local“.<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Lozinka je zaporka koju ste zamoljeni unijeti prilikom stvaranja sigurnosne kopije. Obično je to ista lozinka koju koristite za prijavu na JemaOS radnu površinu za ovaj račun.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Naziv računa</translation>
+<translation id="5490570429039308155">Nažalost, unesite ispravan naziv računa</translation>
+<translation id="6657585470893396449">Lozinka</translation>
+<translation id="8200189938001188563">Nažalost, lozinka ne može biti prazna</translation>
+<translation id="3157931365184549694">Vrati</translation>
+<translation id="8556278756526311953">Vraćanje sigurnosne kopije</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Sada radimo na vraćanju vaše datoteke sigurnosne kopije; to može potrajati, pa budite strpljivi.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Imajte na umu da će se korisnički interfejs automatski ponovo pokrenuti kada se postupak vraćanja uspješno dovrši.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Vraćanje sigurnosne kopije nije uspjelo</translation>
+<translation id="5003531399442003695">Za više detalja kliknite na donju vezu da biste vidjeli evidencije. Ako se ova greška ponavlja, obratite se kanalima tehničke podrške JemaOS i dostavite evidencije grešaka.</translation>
+<translation id="6363786367719063276">Pregled evidencija</translation>
+<translation id="8730621377337864115">Gotovo</translation>
+<translation id="975238173507911396">Podaci su uspješno vraćeni</translation>
+<translation id="6276879052695618521">Evidencije vraćanja sigurnosne kopije</translation>
+<translation id="4901207598072637766">JemaOS, pruža <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS i njegove usluge u skladu su s GDPR-om i odredbama evropskog zakonodavstva o zaštiti podataka. Za više informacija pogledajte naša <ph name="BEGIN_LINK_PRIVACY" />Pravila o privatnosti<ph name="END_LINK_PRIVACY" /> i naše <ph name="BEGIN_LINK_TOS" />Uslove korištenja.<ph name="END_LINK_TOS" /></translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, sva prava zadržana.</translation>
+<translation id="370679569376308836">JemaOS je komercijalna ponuda zasnovana na Jema uređaju i njegovoj SaaS usluzi.</translation>
+<translation id="2773644194450163486">JemaOS je omogućen projektom otvorenog koda <ph name="BEGIN_LINK" />Chromium<ph name="END_LINK" />.</translation>
+<translation id="2330680727776977160">Chromium je također omogućen drugim <ph name="BEGIN_LINK_1" />softverom otvorenog koda<ph name="END_LINK_1" /> i <ph name="BEGIN_LINK_2" />dodatnim softverom otvorenog koda<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Dizajnirao i proizveo Jema Technology.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, sva prava zadržana.</translation>
+<translation id="6168072053306020326">Jema Technology je poslovni naziv kompanija Jema Technology LTD i Jema Technology (Beijing) Limited.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD je kompanija registrovana u Engleskoj i Walesu pod brojem 12273803.</translation>
+<translation id="1251589813188467292">Važne informacije o garanciji i servisu uređaja</translation>
+<translation id="4851115775198886021">Serijski broj uređaja:</translation>
+</translationbundle>

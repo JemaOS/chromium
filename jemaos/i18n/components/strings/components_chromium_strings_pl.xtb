@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="pl">
+
+
+
+<!-- jemaos_menus -->
+<translation id="5027700305690795897">JemaOS nie ukończył wstępnej konfiguracji.</translation>
+<translation id="4257170804800372451">JemaOS i Thot powstały dzięki projektowi open source <ph name="BEGIN_LINK_CHROMIUM" />Chromium<ph name="END_LINK_CHROMIUM" /> oraz innemu <ph name="BEGIN_LINK_OSS" />oprogramowaniu open source<ph name="END_LINK_OSS" />.</translation>
+</translationbundle>

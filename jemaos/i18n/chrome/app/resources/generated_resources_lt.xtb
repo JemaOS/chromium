@@ -1,0 +1,207 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<translationbundle lang="lt">
+	<translation id="7386402409475121504">Sukurkite vietinę JemaOS paskyrą</translation>
+	<translation id="3760308806144055927">Prisijunkite prie vietinės JemaOS paskyros</translation>
+	<translation id="3325117507482096812">Įveskite slaptažodį</translation>
+	<translation id="1838206877831947154">Jūsų slaptažodžiai nesutampa</translation>
+	<translation id="2158276988029582286">Sukurkite naują vietinę paskyrą</translation>
+	<translation id="8592849747346274067">Prisijunkite prie esamos paskyros</translation>
+	<translation id="482190417986201746">Įvestas neteisingas vartotojo vardas arba slaptažodis</translation>
+	<translation id="6603987686259425085">Galite <ph name="LINK_START">$1<ex>&amp;gt;a&amp;lt;</ex></ph>prisijungti naudodami vietinę JemaOS paskyrą<ph name="LINK_END">$2<ex>&amp;gt;/a&amp;lt;</ex></ph>.</translation>
+	<translation id="3598802966230712759">El. pašto adresas <ph name="EMAIL_ADDRESS">$1</ph> jau yra. Bandykite dar kartą naudodami kitą el. laišką.</translation>
+	<translation id="7215016743510876720">Naudokite vietinę paskyrą</translation>
+	<translation id="6657635042185516718">Toliau naudokite internetinę paskyrą</translation>
+	<translation id="6867476688065565618">Perjungti į vietinę paskyrą?</translation>
+	<translation id="4840454774882557974">Jei pasirinksite naudoti vietinę paskyrą, naudingos funkcijos apima duomenų ir nuostatų sinchronizavimą keliuose įrenginiuose ir automatinį prisijungimą prie žiniatinklio programų naudojant JemaOS paskyrą.</translation>
+	<translation id="8951507920859729424">Rekomenduojame naudoti internetinę paskyrą, kad galėtumėte maksimaliai išnaudoti JemaOS.</translation>
+	<translation id="479773200536372215">Negalėsite pridėti „Google“ paskyrų, nes trūksta „Google“ API raktų. Norėdami gauti daugiau informacijos, žr. <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph>.</translation>
+	<translation id="1198491307547164157">Negalėsite pridėti JemaOS paskyrų, nes trūksta JemaOS API raktų. Norėdami gauti daugiau informacijos, žr. <ph name="DETAILS_URL">$1<ex>http://www.example.com</ex></ph>.</translation>
+	<translation id="5042404702659901995">Privatumo pareiškimas</translation>
+	<translation id="4907736162587268100">Privatumo pareiškimo turinys</translation>
+	<translation id="5988344732274877691">Prisiregistruokite gauti (labai nedažną, žadėtą) JemaOS naujienlaiškį</translation>
+	<translation id="1706203008474708805">Prisijunkite prie JemaOS naudotojo patirties gerinimo plano</translation>
+	<translation id="1147139514756087229">Prisijunkite naudodami vietinę paskyrą</translation>
+	<translation id="2054784944085654098">Dabar kuriamas atsarginės kopijos failas. Tai gali šiek tiek užtrukti; prašau palaukti…</translation>
+	<translation id="3554401467586751874">Atsarginės kopijos failas sėkmingai sukurtas</translation>
+	<translation id="2349211327705667074">Peržiūrėkite atsarginės kopijos failą</translation>
+	<translation id="6337433855796857931">Nepavyko sukurti atsarginės kopijos</translation>
+	<translation id="3049367131589710124">Peržiūrėkite klaidų žurnalą</translation>
+	<translation id="1079017345574916945">Nuotolinis darbalaukis</translation>
+	<translation id="3064478898280877715">Programėlių parduotuvė</translation>
+	<translation id="2747689477259164256">JemaOS AI</translation>
+	<translation id="5890206344045530832">Montuotojas</translation>
+	<translation id="2173278076276376488">Ši programa padės įdiegti <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> šio įrenginio vidinėje atmintyje.</translation>
+	<translation id="5323182426977498659">Įspėjimas! Ši procedūra yra žalinga ir negali būti atšaukta. Atkreipkite dėmesį, kad mes neprisiimame jokios atsakomybės už galimą jūsų duomenų praradimą ir neteiksime jokios skubios techninės pagalbos, tęskite savo rizika.</translation>
+	<translation id="8517836015601969896">Pilnas disko diegimas</translation>
+	<translation id="7300045760790370189">Įdiekite <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>, kad užimtumėte visą standųjį diską, visi tikslinio standžiojo disko duomenys bus ištrinti.</translation>
+	<translation id="8762511733918256595">Kelių įkrovų diegimas</translation>
+	<translation id="248900698427753678">Įdiekite <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> į esamą standžiojo disko skaidinį, kuriame <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> gali egzistuoti lygiagrečiai su kita OS. Visi duomenys tiksliniame skaidinyje bus ištrinti.</translation>
+	<translation id="8445241586733258838"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> bus įdiegta pasirinktame standžiajame diske; visi duomenys tiksliniame diske bus ištrinti.</translation>
+	<translation id="4039091757234555415">Diskas</translation>
+	<translation id="7783580523889684697">Nėra disko</translation>
+	<translation id="8217653566575018388">Diegimas baigtas</translation>
+	<translation id="8846746259444262774">Diegimas nepavyko</translation>
+	<translation id="7263815009235541549">Diegimas sėkmingai baigtas. Pirmiausia išjunkite įrenginį, tada pašalinkite visas diegimo laikmenas ir vėl įjunkite, kad paleistumėte <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>.</translation>
+	<translation id="3380151284134965398">Oi, kažkas nutiko ir diegimas nebuvo baigtas. Bandykite procesą dar kartą. Jei ta pati klaida kartojasi, susisiekite su JemaOS palaikymo tarnyba aukščiau pateiktu žurnalu.</translation>
+	<translation id="4683944976188707627"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> bus įdiegta pasirinktame standžiojo disko skaidinyje. Pagal dabartinę kelių įkrovos schemą tai galima padaryti tik tuo atveju, jei jūsų įrenginys palaiko UEFI, o standieji diskai suformatuoti naudojant GPT.</translation>
+	<translation id="7831363758161884243">Tikslinė skaidinys bus nuvalytas; taip pat turite nurodyti aktyvų EFI skaidinį (paprastai tai daroma automatiškai), nes diegimo programai reikia keisti sistemos įkrovos konfigūracijas.</translation>
+	<translation id="5670799238446305550">Pasirinkite <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> tikslinį skaidinį</translation>
+	<translation id="3695537760133394753">Pertvara</translation>
+	<translation id="5610519566593708119">Pasirinkite EFI skaidinį</translation>
+	<translation id="3367650349940010965">Pasirinktame diske nėra galimų skaidinių</translation>
+	<translation id="7453223384507098390">Pasirinktame diske nėra EFI skaidinių</translation>
+	<translation id="1854532683465500847">Pasirinkto skaidinio dydis yra mažesnis nei 20 GB, gali nepavykti įdiegti</translation>
+	<translation id="4144613075340468247">Pasirinktas skaidinys buvo prijungtas prie <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> kelių įkrovų, gali nepavykti įdiegti dar kartą</translation>
+	<translation id="5793361052649920836">Kaip norėtumėte paleisti <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> po įdiegimo?</translation>
+	<translation id="4273235330352963866">Įdiekite ir sukonfigūruokite reEFInd už mane (rekomenduojama)</translation>
+	<translation id="1858708492548921044">REFInd yra įkrovos tvarkyklės programa, kuri siūlo gražią grafinę sąsają OS įkrovos parinktims, kai jūsų kompiuteris paleidžiamas, galėsite pasirinkti norimą OS, kurią norite įkelti. Daugiau informacijos apie REFInd rasite jos pagrindiniame puslapyje.</translation>
+	<translation id="3861924051442564602">Pridėkite man UEFI įkrovos meniu parinktį</translation>
+	<translation id="8622370666798589804">Kai kompiuteris paleidžiamas, galite patekti į UEFI įkrovos parinkčių meniu (greičiausiai paspausdami spartųjį klavišą), ši parinktis prideda <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> kaip to meniu įrašą. (Palaiko tik kai kuriuos BIOS ir UEFI programinės įrangos modelius).</translation>
+	<translation id="1569398690544416170">Nieko čia nedarykite, aš pats sukonfigūruosiu</translation>
+	<translation id="3554866444001249532">Šis diegimo scenarijus įdės tik būtinus .efi failus <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> į EFI skaidinį. Jums reikės sukonfigūruoti, kaip jį paleisti patiems.</translation>
+	<translation id="7492832751164189534">Priversti mesti</translation>
+	<translation id="5159534860632584026">Diegimo procesas buvo nutrauktas</translation>
+	<translation id="8686749782014838344">Nepavyko gauti disko informacijos</translation>
+	<translation id="5688543378771259173">Diegimas nutraukiamas...</translation>
+	<translation id="5350452134936384991">Įdiegti į USB</translation>
+	<translation id="8008470485414925603">Įdiekite <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> į USB diską; visi duomenys tiksliniame USB diske bus ištrinti.</translation>
+	<translation id="1270668145107456127"><ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> bus įdiegta pasirinktame USB diske; visi duomenys tiksliniame diske bus ištrinti.</translation>
+	<translation id="5725593226060700263">Nėra USB disko</translation>
+	<translation id="4357040841587078287">Aptikome, kad naudojate šią JemaOS kopiją iš atsisiųsto vaizdo failo. Norėdami pasinaudoti visapusiškiausiomis palaikymo funkcijomis (įskaitant naujinimus belaidžiu būdu), kurias gali pasiūlyti JemaOS, primygtinai rekomenduojame paleisti funkciją „Įdiegėjas“, kad atliktumėte viso disko JemaOS diegimą į atskirą saugojimo įrenginį.</translation>
+	<translation id="1246398339704431302">Galite <ph name="LINK_BEGIN">&amp;lt;span id="continue-anyway"&amp;gt;</ph>vis tiek toliau naudoti šią JemaOS kopiją<ph name="LINK_END">&amp;lt;/span&amp;gt;</ph>, diegimo procesas gali būti vykdomas vėlesniame sistemos etape, tačiau visi jūsų duomenys bus ištrinti iš šio puslapio įdiegus ir jūs.</translation>
+	<translation id="3654532222088291133">Užuot įvedę JemaOS paskyros slaptažodį, kad prisijungtumėte, galite sukurti <ph name="DEVICE_TYPE">$1<ex>Chromebook</ex></ph> slaptažodį šiam įrenginiui</translation>
+	<translation id="8377684629839541977">Naudokite JemaOS paskyros slaptažodį</translation>
+
+<!-- os_settings_strings.grdp (JemaOS) -->
+<translation id="2195238615593678398">Automatiškai nuolat atnaujinti <ph name="DEVICE_OS" /></translation>
+<translation id="2347352406101856238"><ph name="DEVICE_OS" /> atnaujinimas įjungtas</translation>
+<translation id="185834232609012804"><ph name="DEVICE_OS" /> atnaujinimas išjungtas</translation>
+<translation id="6224376838276776927"><ph name="DEVICE_OS" /> <ph name="JEMAOS_MAJOR_VERSION" /> (<ph name="PRODUCT_CHANNEL" />) Platforma <ph name="JEMAOS_PLATFORM_VERSION" /> <ph name="PRODUCT_VERSION_BITS" /></translation>
+<translation id="3197730452537982411">Nuotolinis darbalaukis</translation>
+<translation id="6898090158927982244">Jūsų Linux yra naujausias</translation>
+<translation id="4886703929102211360">Linux (beta) komponentui pasiekiamas kritinis naujinys. Primygtinai rekomenduojama jį įdiegti kuo greičiau, kitaip Linux (beta) gali nustoti veikti.</translation>
+<translation id="6694016202036959050"><ph name="DEVICE_OS" /> nustatymai</translation>
+<translation id="8362858344151826493">JemaOS paskyra, atsarginė kopija, įvairūs</translation>
+<translation id="9150429437595727962">Wi-Fi nustatymai</translation>
+<translation id="4938972461544498524">Jutiklinio kilimėlio nustatymai</translation>
+<translation id="1210024513248363065">Nuotolinės paslaugos</translation>
+<translation id="2878862288885588535">Nuotolinės diagnostikos paslauga</translation>
+<translation id="7409197984340676806">Nuotolinės diagnostikos paslauga leidžia oficialiems JemaOS palaikymo atstovams nustatyti sistemos problemas. Šiuo metu nuotolinės diagnostikos paslaugą gali inicijuoti tik oficialūs JemaOS palaikymo atstovai.</translation>
+<translation id="1791028023086176332">Prašome pranešti šį numerį oficialiems JemaOS palaikymo atstovams</translation>
+<translation id="6279304275399437025">Paleidžiama nuotolinės diagnostikos paslauga...</translation>
+<translation id="1501882165699826662">Sustabdykite nuotolinės diagnostikos paslaugą ir bandykite dar kartą</translation>
+<translation id="3100283258447375201">Daugiau informacijos</translation>
+<translation id="4070039109671307724">Įvairūs</translation>
+<translation id="7326893024940073254">Mygtukas "Paleisti iš naujo"</translation>
+<translation id="3002423764319968103">Rodyti mygtuką "Paleisti iš naujo" sistemos meniu</translation>
+<translation id="6243454903512423518">Mygtukas "Pasukti ekraną"</translation>
+<translation id="6491049336868978729">Dabar nesate planšetinio kompiuterio režime, todėl mygtukas "Pasukti ekraną" paslėptas</translation>
+<translation id="5496012402277579695">Rodyti mygtuką "Pasukti ekraną" sistemos meniu</translation>
+<translation id="5882838977344999606">Planšetinio / nešiojamojo kompiuterio režimo perjungiklis</translation>
+<translation id="472164133625585606">Rodyti planšetinio / nešiojamojo kompiuterio režimo perjungiklį sistemos meniu</translation>
+<translation id="1851103550468466960">Įjungti Widevine</translation>
+<translation id="4058176713282795846">Įjunkite Widevine, kad galėtumėte transliuoti apsaugotą mokamą turinį. <ph name="BEGIN_LINK_LEARN_MORE" />Sužinoti daugiau<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="8990695698551687522">Pasirinkite "libwidevine.so"</translation>
+<translation id="4838463656205005584">Nepavyko įjungti Widevine...</translation>
+<translation id="2164041826798266548">Nepavyko įdiegti Widevine CDM modulio. Patikrinkite ryšį ir bandykite dar kartą.</translation>
+<translation id="4106982328079440606">JemaOS paskyros nustatymai</translation>
+<translation id="6468776556018764845">Eksperimentinės funkcijos</translation>
+<translation id="3487615413425326553">Apeiti patikimos platformos modulio (TPM) patikras</translation>
+<translation id="4817176087932811573">Kai kurios funkcijos gali neveikti dėl nesuderinamo TPM lusto jūsų įrenginyje; kaip sprendimą galite apeiti TPM patikras.</translation>
+<translation id="3356003366173774486">Automatinis prisijungimas</translation>
+<translation id="6218459410891191693">Leisti dabartinei paskyrai automatiškai prisijungti prie darbalaukio paleidus įrenginį iš naujo</translation>
+<translation id="6620839363422062843">Šiai paskyrai įjungti negalima; automatinis prisijungimas šiame įrenginyje jau aktyvus kitoms paskyroms</translation>
+<translation id="6734500226490446035">Šiai paskyrai įjungti negalima; inicijuojant šios paskyros failų sistemas įvyko nežinoma klaida. Bandykite paleisti iš naujo arba sukurti naują paskyrą</translation>
+<translation id="5464880042146818691">Šiai paskyrai įjungti negalima; automatinio prisijungimo parinktis prieinama tik "Vietinės paskyros" tipui.</translation>
+<translation id="3335654854106476749">Prieš įjungdami automatinį prisijungimą, pridėkite prisijungimo slaptažodį nustatymuose <ph name="BEGIN_LINK" />Privatumas ir sauga<ph name="END_LINK" />.</translation>
+<translation id="5586831602198585601">Dabar galima atnaujinti į naujesnę JemaOS versiją. Tačiau jūsų prenumerata JemaOS for You baigėsi; norint atnaujinti JemaOS reikalinga aktyvi prenumerata.</translation>
+<translation id="3869860597719956574">Dabar galima atnaujinti į naują pagrindinę JemaOS versiją. Norėdami tęsti šį naujinimą, turite sumokėti vieną kartą.</translation>
+<translation id="6523879681771260760">Nurodykite kelią, kur saugoti atsarginės kopijos failą</translation>
+<translation id="2036152819788683293">Sukurti šios paskyros atsarginės kopijos failą (beta). <ph name="BEGIN_LINK_LEARN_MORE" />Sužinoti daugiau<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2850124913210091882">Kurti atsarginę kopiją</translation>
+<translation id="4267347174163690295">Sukurti šios paskyros atsarginės kopijos failą (beta).</translation>
+<translation id="8112950994208888917">Ši operacija sukuria visą šios paskyros disko atsarginę kopiją, kad JemaOS būtų lengva atkurti į būseną, kuri buvo kuriant atsarginę kopiją, įskaitant nustatymus, įdiegtus naršyklės plėtinius ir posistemės programas. Priklausomai nuo jūsų programų ir pagrindinio aplanko turinio, atsarginės kopijos failas gali būti didelis; rekomenduojama jį saugoti išorinėje laikmenoje. Jei turite nešiojamąjį USB diską, prijunkite jį dabar. <ph name="BEGIN_LINK_LEARN_MORE" />Sužinoti daugiau<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="4522627203213317581">Įveskite šios paskyros prisijungimo slaptažodį</translation>
+<translation id="8663988871299316062">Įsiminkite šį slaptažodį, nes jo prireiks atkuriant šį atsarginės kopijos failą</translation>
+<translation id="6408904153044317846">Pasirinkite atkurtiną atsarginės kopijos failą</translation>
+<translation id="8062988348127771021">Atkurti JemaOS duomenis iš atsarginės kopijos failo</translation>
+<translation id="7309192418866543730">Įveskite atsarginės kopijos slaptažodį</translation>
+<translation id="3642408376366598984">Įveskite slaptažodį, kuriuo užšifruotas šis atsarginės kopijos failas</translation>
+<translation id="7783974937157985523">Atsarginės kopijos slaptažodis</translation>
+<translation id="6583780301401541007">Atkūrimas sėkmingas</translation>
+<translation id="3514011352559420398">Atkurti nepavyko</translation>
+<translation id="7535980903266533458">Išsaugoti atsarginę kopiją įrenginyje arba išorinėje laikmenoje</translation>
+<translation id="604001903249547235">Atsarginė kopija debesyje</translation>
+<translation id="8885702701336541611">Įkelti atsarginę kopiją į JemaOS debesies saugyklą</translation>
+<translation id="3939744430096549862">Kurti atsarginę kopiją debesyje</translation>
+<translation id="619129431573254316">Atkurti iš vietinio atsarginės kopijos failo</translation>
+<translation id="1859592711955106569">Atkūrimas iš debesies</translation>
+<translation id="38222223336741457">Atsisiųsti ir atkurti iš JemaOS debesies</translation>
+<translation id="1241089811244416179">Atkurti iš debesies</translation>
+<translation id="652479689372703360">Kuriama atsarginė kopija</translation>
+<translation id="3655220146274872918">Atsarginė kopija sukurta</translation>
+<translation id="4243579853635792694">Jūsų atsarginė kopija sėkmingai sukurta</translation>
+<translation id="4854179463174744546">Kuriant atsarginę kopiją įvyko klaida</translation>
+<translation id="2410668771600309999">Connect API naudotojo informacija</translation>
+<translation id="2223892939866251845">Naudotojo ID</translation>
+<translation id="3850846286480935456">Atsarginių kopijų saugyklos analizė</translation>
+<translation id="6244494465581273970">Reikalingas naudotojo ID</translation>
+<translation id="9204006549413740506">Paskutinį kartą atnaujinta</translation>
+<translation id="476642412165431515">Aparatinės įrangos įrenginiai</translation>
+<translation id="3386337985825120901">Atsarginių kopijų duomenų nėra</translation>
+<translation id="8490990067870590760">Įkeliami atsarginės kopijos failai...</translation>
+<translation id="2955409026764742995">Pasirinkite atkurtiną atsarginės kopijos failą:</translation>
+<translation id="7414629348005657242">-- Pasirinkite atsarginės kopijos failą --</translation>
+<translation id="918246516374174381">Atsarginės kopijos failų nerasta. Pirmiausia sukurkite atsarginę kopiją.</translation>
+<translation id="77997252117517973">Netrukus</translation>
+<translation id="1930692852800776096">Pridėti žodyną</translation>
+<translation id="8793060353848771694">Kairiosios ausinės vaizdas</translation>
+<translation id="6257440204887306255">Įkrovimo dėklo vaizdas</translation>
+<translation id="2754700616124958693">Dešiniosios ausinės vaizdas</translation>
+<translation id="1068676292264983586">Numatytojo įrenginio vaizdas</translation>
+<translation id="6364075396486660405">Išjungti automatinį medijos failų nuskaitymą visuose skaidiniuose, kad būtų optimizuotas akumuliatoriaus veikimo laikas. <ph name="BEGIN_LINK_LEARN_MORE" />Sužinoti daugiau<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="2237927770036822831">Saugos parinktys</translation>
+<translation id="5618366106086725045">Įjungti "Kūrėjo režimą" šiam <ph name="IDS_SHORT_PRODUCT_OS_NAME" /> diegimui su daugiau kūrėjo funkcijų. <ph name="BEGIN_LINK_LEARN_MORE" />Sužinoti daugiau<ph name="END_LINK_LEARN_MORE" /></translation>
+<translation id="5103485339909346204">Jau esate "Kūrėjo režime"</translation>
+<translation id="6074549317340202195">Įjungti "Kūrėjo režimą"</translation>
+<translation id="418781258674176053">Įspėjimas! "Kūrėjo režimo" įjungimas yra negrįžtama operacija. Jei norėsite išjungti "Kūrėjo režimą", teks iš naujo įdiegti JemaOS, o tai ištrins visus duomenis. Sukurkite duomenų atsarginę kopiją ir tęskite savo rizika.</translation>
+<translation id="616170487430168568"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />
+    <ph name="LINE_BREAK1" />
+    Platforma <ph name="JEMAOS_PLATFORM_VERSION" />
+    <ph name="LINE_BREAK2" />
+    Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="7938594894617528435">Šiuo metu neprisijungę</translation>
+<translation id="2590678769628709242">Patikrinkite savo JemaOS prenumeratą internete</translation>
+<translation id="4701836089682883918">JemaOS prenumeratos informacija</translation>
+<translation id="5891566673089952188">Gaunant įrenginio ID įvyko klaida</translation>
+<translation id="4685086787606104322">Prenumeratos pabaiga</translation>
+<translation id="3354919960795782984">Įrenginio ID</translation>
+<translation id="5758632069869992306">Patikrinkite prenumeratą internete</translation>
+<translation id="2664883181340330759"><ph name="DEVICE_OS" /> <ph name="DEVICE_VARIANT" />, <ph name="JEMAOS_MAJOR_VERSION" />, <ph name="JEMAOS_LICENSE_STATE_DESC" />
+     <ph name="LINE_BREAK1" />
+     Platforma <ph name="JEMAOS_PLATFORM_VERSION" />
+     <ph name="LINE_BREAK2" />
+     Chromium <ph name="PRODUCT_VERSION" /></translation>
+<translation id="2896503748067813182">Bandomoji prenumerata</translation>
+<translation id="4362781408813685579">Aktyvi prenumerata</translation>
+<translation id="1141274201089997510">Prenumerata baigėsi</translation>
+<translation id="2553683254139782404">Nekomercinis leidimas</translation>
+<translation id="8466048683756385518">Įmonės licencijuota versija (bandomoji)</translation>
+<translation id="2853871047705932424">Įmonės licencijuota versija</translation>
+<translation id="5239675900317881945">Įmonės licencijuota versija (baigėsi)</translation>
+<translation id="189101945990408398">Senesnysis Intel</translation>
+<translation id="6816405236809604904">Naujasis Intel</translation>
+<translation id="6169452478137972655">AMD grafika</translation>
+<translation id="6183637837838262693">Intel Slim</translation>
+<translation id="1270291881045478104">Įjungti JemaOS AI</translation>
+<translation id="2013780539677437932">Įjungti arba išjungti visas su JemaOS AI susijusias funkcijas</translation>
+<translation id="3398637633218757480">Įjungti JemaOS AI spartųjį iškvietimą</translation>
+<translation id="8986197796475507452">Greitai iškvieskite JemaOS AI parinktis pažymėtam turiniui paspausdami Ctrl + C + C</translation>
+<translation id="6407628130593274137">Kiti JemaOS AI nustatymai ir parinktys</translation>
+<translation id="4005574560653331142">Norėdami pakeisti šios vietinės paskyros PIN kodą arba prisijungimo slaptažodį, eikite į nustatymus <ph name="BEGIN_LINK" />Privatumas ir sauga<ph name="END_LINK" />.</translation>
+<!-- login_strings (JemaOS) -->
+<translation id="6419913024856619425">Galite <ph name="LINK_START" />prisijungti naudodami vietinę JemaOS paskyrą<ph name="LINK_END" />.</translation>
+<translation id="5291842596976929391">El. paštas <ph name="EMAIL_ADDRESS" /> jau egzistuoja. Bandykite dar kartą su kitu el. paštu.</translation>
+<translation id="4519800823932975782">JemaOS pagalbos centras</translation>
+<translation id="4737474693231655139">Raskite pagalbos straipsnius ir atsakymus į dažnus JemaOS klausimus</translation>
+</translationbundle>

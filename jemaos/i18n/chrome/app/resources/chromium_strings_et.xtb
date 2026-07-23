@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!DOCTYPE translationbundle>
+<translationbundle lang="et">
+
+<!-- jemaos_menus -->
+<translation id="6953055153591205035">Teave Thoti kohta</translation>
+<translation id="5639860668557220477">Abi Thoti brauseri kasutamisel</translation>
+<translation id="1692689520561928457">Teave JemaOS-i kohta</translation>
+<translation id="8692765844418174375">JemaOS-i versioon</translation>
+<translation id="2943260250558374955">Abi JemaOS-i kasutamisel</translation>
+<translation id="713321354492170993">Brauser vabastab mälu mitteaktiivsetelt kaartidelt. See annab aktiivsetele kaartidele ja teistele rakendustele rohkem arvutusressursse ning hoiab brauseri kiirena. Teie mitteaktiivsed kaardid muutuvad nende juurde naasmisel automaatselt uuesti aktiivseks.</translation>
+<translation id="1774190491044887444">Brauser säästab akut, piirates taustategevust ja visuaalseid efekte, näiteks sujuvat kerimist ja video kaadrisagedust.</translation>
+<translation id="180121268008059459">Brauser laeb lehed ette, muutes sirvimise ja otsimise kiiremaks.</translation>
+<translation id="7127093527178692287">Taasta varukoopia (beeta)</translation>
+<translation id="4439042171549201806">JemaOS-i taastamiseks varukoopiafailist sisesta kohe oma JemaOS-i seadmesse varukoopiafaili sisaldav eemaldatav ketas ja määra, millist varukoopiafaili soovid taastada. Pane tähele, et varukoopiafail peab asuma eemaldatava ketta juurkaustas, et see viisardi poolt tuvastataks.</translation>
+<translation id="2955409026764742995">Vali taastatav varukoopiafail:</translation>
+<translation id="7040434808685140085">Vabandust, valitud varukoopiafaili ei saa tuvastada; palun vali uus.</translation>
+<translation id="6487486280704458238"><ph name="BEGIN_PARAGRAPH1" />JemaOS-i taastamiseks valitud varukoopiafailist on oluline omada täpset teavet varukoopia loomise aja kohta. Vastasel juhul taastamisprotsess nurjub.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />"Kontonimi" on konto esmane sisselogimismandaat, mille all sinu varukoopiafail loodi. Tavaliselt on see e-posti aadress, mida kasutasid oma JemaOS-i/Google'i konto registreerimisel. Kui tegu oleks kohaliku kontoga, oleks see kasutajanimi, millele on lisatud "@jemaos.local".<ph name="END_PARAGRAPH2" />
+    <ph name="BEGIN_PARAGRAPH3" />Parool on salasõna, mida paluti sisestada varukoopia loomisel. Tavaliselt on see sama parool, mida kasutasid selle konto JemaOS-i töölauale sisselogimiseks.<ph name="END_PARAGRAPH3" /></translation>
+<translation id="3067168166931605141">Konto nimi</translation>
+<translation id="5490570429039308155">Vabandust, palun sisesta õige kontonimi</translation>
+<translation id="6657585470893396449">Parool</translation>
+<translation id="8200189938001188563">Vabandust, parool ei tohi olla tühi</translation>
+<translation id="3157931365184549694">Taasta</translation>
+<translation id="8556278756526311953">Varukoopia taastamine</translation>
+<translation id="6407461260359848947"><ph name="BEGIN_PARAGRAPH1" />Töötame praegu sinu varukoopiafaili taastamise kallal; see võib võtta aega, seega palun ole kannatlik.<ph name="END_PARAGRAPH1" />
+    <ph name="BEGIN_PARAGRAPH2" />Pane tähele, et kasutajaliides taaskäivitub automaatselt, kui taastamisprotsess edukalt lõpeb.<ph name="END_PARAGRAPH2" /></translation>
+<translation id="8250446925353310209">Varukoopia taastamine ebaõnnestus</translation>
+<translation id="5003531399442003695">Lisateabe saamiseks klõpsa allolevat linki, et logisid vaadata. Kui see viga püsib, võta ühendust JemaOS-i tehnilise toe kanalitega ja esita vealogid.</translation>
+<translation id="6363786367719063276">Vaata logisid</translation>
+<translation id="8730621377337864115">Valmis</translation>
+<translation id="975238173507911396">Andmete taastamine õnnestus</translation>
+<translation id="6276879052695618521">Varukoopia taastamise logid</translation>
+<translation id="4901207598072637766">JemaOS, pakkuja <ph name="BEGIN_LINK" />https://jematechnology.fr<ph name="END_LINK" /></translation>
+<translation id="7894910504474624324">JemaOS ja selle teenused on kooskõlas GDPR-i ja Euroopa andmekaitseõiguse sätetega. Lisateavet leiad meie <ph name="BEGIN_LINK_PRIVACY" />privaatsuspoliitikast<ph name="END_LINK_PRIVACY" /> ja <ph name="BEGIN_LINK_TOS" />teenusetingimustest.<ph name="END_LINK_TOS" /></translation>
+<translation id="142388786713899398"><ph name="YEAR" />, Jema Technology, kõik õigused kaitstud.</translation>
+<translation id="370679569376308836">JemaOS on kommertspakkumine, mis põhineb Jema seadmel ja selle SaaS-il.</translation>
+<translation id="2773644194450163486">JemaOS on võimalik tänu <ph name="BEGIN_LINK" />Chromiumi<ph name="END_LINK" /> avatud lähtekoodiga projektile.</translation>
+<translation id="2330680727776977160">Chromium on samuti võimalik tänu muule <ph name="BEGIN_LINK_1" />avatud lähtekoodiga tarkvarale<ph name="END_LINK_1" /> ja <ph name="BEGIN_LINK_2" />täiendavale avatud lähtekoodiga tarkvarale<ph name="END_LINK_2" />.</translation>
+<translation id="1419954813084261088">Kujundatud ja toodetud Jema Technology poolt.</translation>
+<translation id="5260524299337879315">©<ph name="YEAR" />, Jema Technology LTD, kõik õigused kaitstud.</translation>
+<translation id="6168072053306020326">Jema Technology on ettevõtete Jema Technology LTD ja Jema Technology (Beijing) Limited kaubanimi.
+        <ph name="LINE_BREAK" />
+        Jema Technology LTD on Inglismaal ja Walesis registreeritud ettevõte registreerimisnumbriga 12273803.</translation>
+<translation id="1251589813188467292">Oluline teave seadme garantii ja teeninduse kohta</translation>
+<translation id="4851115775198886021">Seadme SN:</translation>
+</translationbundle>

@@ -498,6 +498,7 @@ source_set("web_applications") {
     "//components/permissions:permissions",
     "//components/policy/core/browser",
     "//components/pref_registry",
+    "//components/prefs",
     "//components/resources:components_resources_grit",
     "//components/services/app_service",
     "//components/site_engagement/content",
@@ -553,6 +554,10 @@ source_set("web_applications") {
     }
 
     deps += [ "//chrome/browser/resources:preinstalled_web_apps_resources" ]
+  }
+
+  if (is_chromeos) {
+    deps += [ "//jemaos/prefs" ]
   }
 
   if (is_mac) {

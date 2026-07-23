@@ -12,11 +12,16 @@
 #include "base/command_line.h"
 #include "base/feature_list.h"
 #include "base/metrics/field_trial_params.h"
+#include "base/strings/string_util.h"
 #include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "build/buildflag.h"
 #include "chrome/browser/web_applications/preinstalled_app_install_features.h"
 #include "chrome/common/chrome_switches.h"
+#if BUILDFLAG(IS_CHROMEOS)
+#include "components/prefs/pref_service.h"
+#include "jemaos/prefs/jemaos_pref_names.h"
+#endif  // BUILDFLAG(IS_CHROMEOS)
 
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
 #include "chrome/browser/web_applications/preinstalled_web_apps/gmail.h"
@@ -76,11 +81,99 @@
 #include "chrome/browser/web_applications/preinstalled_web_apps/google_meet.h"
 #include "chrome/browser/web_applications/preinstalled_web_apps/jema_youtube.h"
 
+#if BUILDFLAG(IS_CHROMEOS)
+#include "chrome/browser/ash/profiles/profile_helper.h"
+#include "chrome/browser/profiles/profile.h"
+#include "components/account_id/account_id.h"
+#include "components/user_manager/user.h"
+#endif  // BUILDFLAG(IS_CHROMEOS)
+
 namespace web_app {
 namespace {
 
 std::vector<ExternalInstallOptions>* g_preinstalled_app_data_for_testing =
     nullptr;
+
+#if BUILDFLAG(IS_CHROMEOS)
+// JemaOS: returns true for Jema local (Flint) accounts. Local accounts have no
+// Jema subscription/license: they must not receive the preinstalled premium
+// Jema PWAs (OEM folder) that online Jema accounts get at first login.
+bool IsJemaLocalAccount(Profile& profile) {
+  // Primary check: local Jema accounts always use the @jemaos.local domain.
+  // This is available as soon as the profile exists and does not depend on
+  // the ProfileHelper user association timing during profile startup.
+  if (base::EndsWith(profile.GetProfileUserName(), "@jemaos.local",
+                     base::CompareCase::INSENSITIVE_ASCII)) {
+    return true;
+  }
+  // A known, non-local email means an online (Jema or Google) account: older
+  // builds mislabeled online Jema accounts with the local "ft_id_"/"flint_id_"
+  // prefixes and the kFlintAccount type; those must NOT be treated as local.
+  if (!profile.GetProfileUserName().empty()) {
+    return false;
+  }
+  // Email unknown yet (early profile startup): fall back to type/prefix.
+  ash::ProfileHelper* profile_helper = ash::ProfileHelper::Get();
+  if (!profile_helper) {
+    return false;
+  }
+  const user_manager::User* user = profile_helper->GetUserByProfile(&profile);
+  if (!user) {
+    return false;
+  }
+  if (user->IsFlintAccountUser()) {
+    return true;
+  }
+  // Flint accounts are stored as GOOGLE accounts with the "ft_id_" gaia id
+  // prefix (cryptohome compatibility); detect them by prefix as well.
+  const AccountId& account_id = user->GetAccountId();
+  return account_id.GetAccountType() == AccountType::GOOGLE &&
+         (account_id.GetGaiaId().starts_with("ft_id_") ||
+          account_id.GetGaiaId().starts_with("flint_id_"));
+}
+
+// JemaOS: returns true for Jema online accounts (the subscription-based
+// tiers: Freemium, Pro, Pro+). Google accounts and other account types
+// return false.
+bool IsJemaOnlineAccount(Profile& profile) {
+  if (IsJemaLocalAccount(profile)) {
+    return false;
+  }
+  ash::ProfileHelper* profile_helper = ash::ProfileHelper::Get();
+  if (!profile_helper) {
+    return false;
+  }
+  const user_manager::User* user = profile_helper->GetUserByProfile(&profile);
+  if (!user) {
+    return false;
+  }
+  if (user->IsJemaAccountUser()) {
+    return true;
+  }
+  // Jema online accounts may be stored as GOOGLE accounts with the
+  // "jema_id_" gaia id prefix (cryptohome compatibility). Older builds
+  // mislabeled online Jema accounts with the local "ft_id_"/"flint_id_"
+  // prefixes; count those as online too (their email is not @jemaos.local,
+  // so IsJemaLocalAccount above already returned false for them).
+  const AccountId& account_id = user->GetAccountId();
+  return account_id.GetAccountType() == AccountType::GOOGLE &&
+         (account_id.GetGaiaId().starts_with("jema_id_") ||
+          account_id.GetGaiaId().starts_with("ft_id_") ||
+          account_id.GetGaiaId().starts_with("flint_id_"));
+}
+
+// JemaOS: returns true when the premium OEM PWAs (Jema apps bundle) may be
+// installed for this profile. Only Jema online accounts with an active
+// Pro/Pro+ subscription qualify; Freemium accounts get the root bundle plus
+// QuickText and Galerie only. The subscription state is cached in a profile
+// pref by UserSessionManager (fail-closed default: false).
+bool MayInstallPremiumOemApps(Profile& profile) {
+  if (!IsJemaOnlineAccount(profile)) {
+    return true;
+  }
+  return profile.GetPrefs()->GetBoolean(jemaos::prefs::kJemaSubscriptionActive);
+}
+#endif  // BUILDFLAG(IS_CHROMEOS)
 
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
@@ -108,18 +201,23 @@ bool IsGoogleInternalAccount() {
 
 std::vector<ExternalInstallOptions> GetChromeBrandedApps(
     Profile& profile,
-    const std::optional<DeviceInfo>& device_info) {
+    const std::optional<DeviceInfo>& device_info,
+    bool include_premium_oem) {
   // JemaOS: We replace Google's default apps with our own selection.
   // This avoids conflicts and ensures our configuration is used.
-  return {
-      // Jema Apps (OEM Folder)
-      GetConfigForJemaNotes(),
-      GetConfigForAnima(),
-      GetConfigForOsivibe(),
-      GetConfigForSetSound(),
-      GetConfigForJemaChess(),
-      GetConfigForNephtys(),
-      GetConfigForJemaPDF(),
+  std::vector<ExternalInstallOptions> apps;
+  if (include_premium_oem) {
+    // Jema Apps (OEM Folder) - requires an active Pro/Pro+ subscription.
+    apps.push_back(GetConfigForJemaNotes());
+    apps.push_back(GetConfigForAnima());
+    apps.push_back(GetConfigForOsivibe());
+    apps.push_back(GetConfigForSetSound());
+    apps.push_back(GetConfigForJemaChess());
+    apps.push_back(GetConfigForNephtys());
+    apps.push_back(GetConfigForJemaPDF());
+  }
+  apps.insert(apps.end(), {
+      // QuickText remains available for every tier (including Freemium).
       GetConfigForQuickText(),
 
       // Root Apps
@@ -145,7 +243,8 @@ std::vector<ExternalInstallOptions> GetChromeBrandedApps(
       GetConfigForGoogleDocs(),
       GetConfigForGoogleSheets(),
       GetConfigForGoogleMeet(),
-  };
+  });
+  return apps;
 }
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
@@ -177,28 +276,49 @@ std::vector<ExternalInstallOptions> GetPreinstalledWebApps(
   if (PreinstalledWebAppsDisabled())
     return {};
 
+#if BUILDFLAG(IS_CHROMEOS)
+  // JemaOS: local (Flint) accounts have no Jema subscription: never install
+  // the premium Jema PWAs (OEM folder) nor the first-login app bundle that
+  // online Jema accounts receive.
+  if (IsJemaLocalAccount(profile))
+    return {};
+
+  // JemaOS: Freemium Jema online accounts (no active Pro/Pro+ subscription)
+  // receive the root bundle plus QuickText/Galerie, but not the premium OEM
+  // Jema PWAs.
+  const bool include_premium_oem = MayInstallPremiumOemApps(profile);
+#else
+  const bool include_premium_oem = true;
+#endif  // BUILDFLAG(IS_CHROMEOS)
+
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
 #if BUILDFLAG(IS_CHROMEOS)
   // TODO(crbug.com/40854011): replace with config in admin console.
   if (IsGoogleInternalAccount()) {
     std::vector<ExternalInstallOptions> apps =
-        GetChromeBrandedApps(profile, device_info);
+        GetChromeBrandedApps(profile, device_info, include_premium_oem);
     apps.push_back(GetConfigForMessagesDogfood());
     return apps;
   }
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
-  return GetChromeBrandedApps(profile, device_info);
+  return GetChromeBrandedApps(profile, device_info, include_premium_oem);
 #else
-  return {
-      // Jema Apps (OEM Folder)
-      GetConfigForJemaNotes(),
-      GetConfigForAnima(),
-      GetConfigForOsivibe(),
-      GetConfigForSetSound(),
-      GetConfigForJemaChess(),
-      GetConfigForNephtys(),
-      GetConfigForJemaPDF(),
+  std::vector<ExternalInstallOptions> apps;
+#if BUILDFLAG(IS_CHROMEOS)
+  if (include_premium_oem) {
+    // Jema Apps (OEM Folder) - requires an active Pro/Pro+ subscription.
+    apps.push_back(GetConfigForJemaNotes());
+    apps.push_back(GetConfigForAnima());
+    apps.push_back(GetConfigForOsivibe());
+    apps.push_back(GetConfigForSetSound());
+    apps.push_back(GetConfigForJemaChess());
+    apps.push_back(GetConfigForNephtys());
+    apps.push_back(GetConfigForJemaPDF());
+  }
+#endif  // BUILDFLAG(IS_CHROMEOS)
+  apps.insert(apps.end(), {
+      // QuickText remains available for every tier (including Freemium).
       GetConfigForQuickText(),
 
       // Root Apps
@@ -225,7 +345,8 @@ std::vector<ExternalInstallOptions> GetPreinstalledWebApps(
       GetConfigForGoogleSheets(),
       GetConfigForGoogleMeet(),
       GetConfigForJemaYouTube(),
-  };
+  });
+  return apps;
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 }
 

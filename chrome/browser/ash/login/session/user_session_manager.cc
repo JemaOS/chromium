@@ -6,6 +6,7 @@
 
 #include <stddef.h>
 
+#include <algorithm>
 #include <map>
 #include <memory>
 #include <set>
@@ -20,6 +21,7 @@
 #include "ash/metrics/login_unlock_throughput_recorder.h"
 #include "ash/shell.h"
 #include "ash/wm/window_util.h"
+#include "base/base64.h"
 #include "base/base_paths.h"
 #include "base/check_op.h"
 #include "base/command_line.h"
@@ -30,6 +32,7 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/hash/sha1.h"
+#include "base/json/json_reader.h"
 #include "base/location.h"
 #include "base/logging.h"
 #include "base/memory/ptr_util.h"
@@ -38,6 +41,8 @@
 #include "base/path_service.h"
 #include "base/scoped_observation.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/string_split.h"
+#include "base/strings/string_util.h"
 #include "base/syslog_logging.h"
 #include "base/system/sys_info.h"
 #include "base/task/single_thread_task_runner.h"
@@ -123,6 +128,7 @@
 #include "chrome/browser/ui/ash/login/login_display_host.h"
 #include "chrome/browser/ui/ash/system/system_tray_client_impl.h"
 #include "chrome/browser/ui/startup/startup_browser_creator.h"
+#include "chrome/browser/ui/webui/ash/login/jema_local_signin_screen_handler.h"
 #include "chrome/common/channel_info.h"
 #include "chrome/common/chrome_constants.h"
 #include "chrome/common/chrome_features.h"
@@ -158,6 +164,7 @@
 #include "components/flags_ui/flags_ui_metrics.h"
 #include "components/flags_ui/pref_service_flags_storage.h"
 #include "components/language/core/browser/pref_names.h"
+#include "components/os_crypt/sync/os_crypt.h"
 #include "components/password_manager/core/browser/password_manager_metrics_util.h"
 #include "components/password_manager/core/browser/password_store/password_store_interface.h"
 #include "components/policy/core/common/cloud/cloud_policy_constants.h"
@@ -189,14 +196,19 @@
 #include "content/public/browser/network_service_instance.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/common/content_switches.h"
-#include "chrome/browser/ui/webui/ash/login/jema_local_signin_screen_handler.h"
+#include "jemaos/prefs/jemaos_pref_names.h"
+#include "net/base/load_flags.h"
 #include "net/cookies/canonical_cookie.h"
 #include "net/cookies/cookie_access_result.h"
 #include "net/cookies/cookie_constants.h"
 #include "net/cookies/cookie_inclusion_status.h"
 #include "net/cookies/cookie_options.h"
-#include "services/network/public/mojom/cookie_manager.mojom.h"
+#include "net/traffic_annotation/network_traffic_annotation.h"
 #include "rlz/buildflags/buildflags.h"
+#include "services/network/public/cpp/resource_request.h"
+#include "services/network/public/cpp/simple_url_loader.h"
+#include "services/network/public/mojom/cookie_manager.mojom.h"
+#include "services/network/public/mojom/url_response_head.mojom.h"
 #include "third_party/cros_system_api/switches/chrome_switches.h"
 #include "ui/aura/window.h"
 #include "ui/base/ime/ash/input_method_descriptor.h"
@@ -204,10 +216,10 @@
 #include "ui/base/ime/ash/input_method_util.h"
 #include "url/gurl.h"
 //---***JEMAOS BEGIN***---
-#include "jemaos/switches/account/toggle/account_type_toggle.h"
-#include "jemaos/prefs/jemaos_prefs.h"
-#include "components/omnibox/browser/omnibox_prefs.h"
 #include "components/embedder_support/pref_names.h"
+#include "components/omnibox/browser/omnibox_prefs.h"
+#include "jemaos/prefs/jemaos_prefs.h"
+#include "jemaos/switches/account/toggle/account_type_toggle.h"
 //---***JEMAOS END***---
 
 #undef ENABLED_VLOG_LEVEL
@@ -277,8 +289,9 @@ base::TimeDelta GetActivityTimeBeforeOnboardingSurvey() {
     return kActivityTimeBeforeOnboardingSurvey;
   }
 
-  if (seconds <= 0)
+  if (seconds <= 0) {
     return kActivityTimeBeforeOnboardingSurvey;
+  }
 
   return base::Seconds(seconds);
 }
@@ -384,16 +397,19 @@ void InitLocaleAndInputMethodsForNewUser(
 bool CanPerformEarlyRestart() {
   const ExistingUserController* controller =
       ExistingUserController::current_controller();
-  if (!controller)
+  if (!controller) {
     return true;
+  }
 
   // Early restart is possible only if OAuth token is up to date.
 
-  if (controller->password_changed())
+  if (controller->password_changed()) {
     return false;
+  }
 
-  if (controller->auth_mode() != LoginPerformer::AuthorizationMode::kInternal)
+  if (controller->auth_mode() != LoginPerformer::AuthorizationMode::kInternal) {
     return false;
+  }
 
   return true;
 }
@@ -424,9 +440,9 @@ bool IsRunningTest() {
 
 bool IsOnlineSignin(const UserContext& user_context) {
   return user_context.GetAuthFlow() == UserContext::AUTH_FLOW_GAIA_WITH_SAML ||
-  //---***JEMAOS BEGIN***---
+         //---***JEMAOS BEGIN***---
          user_context.GetAuthFlow() == UserContext::AUTH_FLOW_JEMA_ONLINE ||
-  //---***JEMAOS END***---
+         //---***JEMAOS END***---
          user_context.GetAuthFlow() == UserContext::AUTH_FLOW_GAIA_WITHOUT_SAML;
 }
 
@@ -457,7 +473,8 @@ policy::MinimumVersionPolicyHandler* GetMinimumVersionPolicyHandler() {
 void OnPrepareTpmDeviceFinished(bool tpm_fallback_not_necessary) {
   BootTimesRecorder::Get()->AddLoginTimeMarker("TPMOwn-End", false);
   if (tpm_fallback_not_necessary) {
-    jemaos::prefs::SetNotNecessaryForceTpmFallback(g_browser_process->local_state());
+    jemaos::prefs::SetNotNecessaryForceTpmFallback(
+        g_browser_process->local_state());
   }
 }
 
@@ -500,8 +517,9 @@ bool IsHwDataUsageDeviceSettingSet() {
 bool IsRevenUpdatedToFlex() {
   CHECK(switches::IsRevenBranding());
   PrefService* local_state = g_browser_process->local_state();
-  if (local_state->GetBoolean(prefs::kOobeRevenUpdatedToFlex))
+  if (local_state->GetBoolean(prefs::kOobeRevenUpdatedToFlex)) {
     return true;
+  }
 
   // If it is a first login after update from CloudReady this field in the
   // device settings service won't be set.
@@ -669,10 +687,12 @@ class UserSessionManager::DeviceAccountGaiaTokenObserver
 
   // account_manager::AccountManager::Observer overrides:
   void OnTokenUpserted(const account_manager::Account& account) override {
-    if (account.key.account_type() != account_manager::AccountType::kGaia)
+    if (account.key.account_type() != account_manager::AccountType::kGaia) {
       return;
-    if (account.key.id() != account_id_.GetGaiaId())
+    }
+    if (account.key.id() != account_id_.GetGaiaId()) {
       return;
+    }
 
     callback_.Run(account_id_);
   }
@@ -746,8 +766,9 @@ scoped_refptr<Authenticator> UserSessionManager::CreateAuthenticator(
     AuthStatusConsumer* consumer) {
   // Screen locker needs new Authenticator instance each time.
   if (ScreenLocker::default_screen_locker()) {
-    if (authenticator_.get())
+    if (authenticator_.get()) {
       authenticator_->SetConsumer(nullptr);
+    }
     authenticator_.reset();
   }
 
@@ -788,12 +809,14 @@ void UserSessionManager::StartSession(
   start_session_type_ = start_session_type;
 
   VLOG(1) << "Starting user session.";
-  jemaos::switches::ToggleJemaAccountFlagByAccountId(user_context.GetAccountId());
+  jemaos::switches::ToggleJemaAccountFlagByAccountId(
+      user_context.GetAccountId());
   PreStartSession(start_session_type);
   CreateUserSession(user_context, has_auth_cookies);
 
-  if (!has_active_session)
+  if (!has_active_session) {
     StartCrosSession();
+  }
 
   user_manager::KnownUser known_user(g_browser_process->local_state());
   // Note: Using `user_context_` here instead of `user_context`.
@@ -831,8 +854,9 @@ void UserSessionManager::RestoreAuthenticationSession(Profile* user_profile) {
   const bool account_id_valid =
       identity_manager &&
       !identity_manager->GetPrimaryAccountId(ConsentLevel::kSignin).empty();
-  if (!account_id_valid)
+  if (!account_id_valid) {
     LOG(ERROR) << "No account is associated with sign-in manager on restore.";
+  }
 
   DCHECK(user);
   if (network_connection_tracker_ &&
@@ -875,7 +899,8 @@ void UserSessionManager::SetFirstLoginPrefs(
 
   if (profile->IsJemaProfile()) {
     // profile->GetPrefs()->SetBoolean(omnibox::kDocumentSuggestEnabled, false);
-    profile->GetPrefs()->SetBoolean(embedder_support::kAlternateErrorPagesEnabled, false);
+    profile->GetPrefs()->SetBoolean(
+        embedder_support::kAlternateErrorPagesEnabled, false);
   }
 
   // Turn on the feature of the low battery sound for all users on the device
@@ -909,8 +934,9 @@ bool UserSessionManager::RespectLocalePreference(
     locale_util::SwitchLanguageCallback callback) const {
   // TODO(alemate): http://crbug.com/288941 : Respect preferred language list in
   // the Google user profile.
-  if (g_browser_process == nullptr)
+  if (g_browser_process == nullptr) {
     return false;
+  }
 
   user_manager::UserManager* user_manager = user_manager::UserManager::Get();
   if (!user || (user_manager->IsUserLoggedIn() &&
@@ -920,12 +946,14 @@ bool UserSessionManager::RespectLocalePreference(
 
   // In case of multi-profiles session we don't apply profile locale
   // because it is unsafe.
-  if (user_manager->GetLoggedInUsers().size() != 1)
+  if (user_manager->GetLoggedInUsers().size() != 1) {
     return false;
+  }
 
   PrefService* prefs = profile->GetPrefs();
-  if (prefs == nullptr)
+  if (prefs == nullptr) {
     return false;
+  }
 
   std::string pref_locale;
   const std::string pref_app_locale =
@@ -944,25 +972,27 @@ bool UserSessionManager::RespectLocalePreference(
     pref_locale = local_state_locale;
   }
 
-  if (pref_locale.empty())
+  if (pref_locale.empty()) {
     pref_locale = pref_bkup_locale;
+  }
 
   const std::string* account_locale = nullptr;
   if (pref_locale.empty() && user->has_gaia_account() &&
       prefs->GetList(::prefs::kAllowedLanguages).empty()) {
-    if (user->GetAccountLocale() == nullptr)
+    if (user->GetAccountLocale() == nullptr) {
       return false;  // wait until Account profile is loaded.
+    }
     account_locale = user->GetAccountLocale();
     pref_locale = *account_locale;
   }
   const std::string global_app_locale =
       g_browser_process->GetApplicationLocale();
-  if (pref_locale.empty())
+  if (pref_locale.empty()) {
     pref_locale = global_app_locale;
+  }
   DCHECK(!pref_locale.empty());
-  VLOG(1) << "RespectLocalePreference: "
-          << "app_locale='" << pref_app_locale << "', "
-          << "bkup_locale='" << pref_bkup_locale << "', "
+  VLOG(1) << "RespectLocalePreference: " << "app_locale='" << pref_app_locale
+          << "', " << "bkup_locale='" << pref_bkup_locale << "', "
           << (account_locale != nullptr
                   ? (std::string("account_locale='") + (*account_locale) +
                      "'. ")
@@ -1019,18 +1049,21 @@ bool UserSessionManager::RestartToApplyPerSessionFlagsIfNeed(
     return false;
   }
 
-  if (early_restart && !CanPerformEarlyRestart())
+  if (early_restart && !CanPerformEarlyRestart()) {
     return false;
+  }
 
   // We can't really restart if we've already restarted as a part of
   // user session restore after crash of in case when flags were changed inside
   // user session.
-  if (base::CommandLine::ForCurrentProcess()->HasSwitch(switches::kLoginUser))
+  if (base::CommandLine::ForCurrentProcess()->HasSwitch(switches::kLoginUser)) {
     return false;
+  }
 
   // Don't restart browser if it is not the first profile in the session.
-  if (user_manager::UserManager::Get()->GetLoggedInUsers().size() != 1)
+  if (user_manager::UserManager::Get()->GetLoggedInUsers().size() != 1) {
     return false;
+  }
 
   // Compare feature flags configured for the device vs. user. Restart is only
   // required when there's a difference.
@@ -1048,7 +1081,8 @@ bool UserSessionManager::RestartToApplyPerSessionFlagsIfNeed(
   LOG(WARNING) << "Restarting to apply per-session flags...";
 
   update.UpdateSessionManager();
-  AppendAccountSwitchesIfNeed(user_manager::UserManager::Get()->GetActiveUser()->GetAccountId());
+  AppendAccountSwitchesIfNeed(
+      user_manager::UserManager::Get()->GetActiveUser()->GetAccountId());
   attempt_restart_closure_.Run();
   return true;
 }
@@ -1152,8 +1186,9 @@ void UserSessionManager::OnConnectionChanged(
 
   // Need to iterate over all users and their OAuth2 session state.
   for (const user_manager::User* user : user_manager->GetLoggedInUsers()) {
-    if (!user->is_profile_created())
+    if (!user->is_profile_created()) {
       continue;
+    }
 
     Profile* user_profile = ProfileHelper::Get()->GetProfileByUser(user);
     DCHECK(user_profile);
@@ -1210,7 +1245,8 @@ void UserSessionManager::CreateUserSession(const UserContext& user_context,
   StoreUserContextDataBeforeProfileIsCreated();
   session_manager::SessionManager::Get()->CreateSession(
       user_context_.GetAccountId(), user_context_.GetUserIDHash(),
-      user_context.GetUserType() == user_manager::UserType::kChild || user_context.GetUserType() == user_manager::UserType::kJemaChild);
+      user_context.GetUserType() == user_manager::UserType::kChild ||
+          user_context.GetUserType() == user_manager::UserType::kJemaChild);
 }
 
 void UserSessionManager::PreStartSession(StartSessionType start_session_type) {
@@ -1431,8 +1467,9 @@ void UserSessionManager::InitProfilePreferences(
       used_extended_account_info = true;
 
       // Use a fake gaia id for tests that do not have it.
-      if (IsRunningTest() && gaia_id.empty())
+      if (IsRunningTest() && gaia_id.empty()) {
         gaia_id = "fake_gaia_id_" + user_context.GetAccountId().GetUserEmail();
+      }
 
       // Update http://crbug.com/1454286 if the following line CHECKs.
       CHECK(!gaia_id.empty());
@@ -1552,9 +1589,11 @@ void UserSessionManager::InitProfilePreferences(
     }
 
     user = user_manager->FindUser(user_context.GetAccountId());
-    bool is_child = user->GetType() == user_manager::UserType::kChild || user->GetType() == user_manager::UserType::kJemaChild;
+    bool is_child = user->GetType() == user_manager::UserType::kChild ||
+                    user->GetType() == user_manager::UserType::kJemaChild;
     DCHECK(is_child ==
-           (user_context.GetUserType() == user_manager::UserType::kChild || user_context.GetUserType() == user_manager::UserType::kJemaChild));
+           (user_context.GetUserType() == user_manager::UserType::kChild ||
+            user_context.GetUserType() == user_manager::UserType::kJemaChild));
 
     signin::Tribool is_under_advanced_protection = signin::Tribool::kUnknown;
     if (IsOnlineSignin(user_context)) {
@@ -1614,8 +1653,9 @@ void UserSessionManager::UserProfileInitialized(Profile* profile,
                                                 const AccountId& account_id) {
   TRACE_EVENT0("login", "UserSessionManager::UserProfileInitialized");
   // Check whether this `profile` was already initialized.
-  if (user_profile_initialized_called_.contains(profile))
+  if (user_profile_initialized_called_.contains(profile)) {
     return;
+  }
   user_profile_initialized_called_.insert(profile);
 
   BootTimesRecorder* btl = BootTimesRecorder::Get();
@@ -1654,10 +1694,10 @@ void UserSessionManager::UserProfileInitialized(Profile* profile,
 
     } else if (!in_session_password_change_feature_enabled ||
                user_context_.GetAuthFlow() ==
-//---***JEMAOS BEGIN***---
+                   //---***JEMAOS BEGIN***---
                    UserContext::AUTH_FLOW_JEMA_ONLINE ||
-							 user_context_.GetAuthFlow() ==
-//---***JEMAOS END***---
+               user_context_.GetAuthFlow() ==
+                   //---***JEMAOS END***---
                    UserContext::AUTH_FLOW_GAIA_WITHOUT_SAML) {
       // These attributes are no longer relevant and should be deleted if
       // either a) the in-session password change feature is no longer enabled
@@ -1747,8 +1787,9 @@ void UserSessionManager::FinalizePrepareProfile(Profile* profile) {
 
     OfflineSigninLimiter* offline_signin_limiter =
         OfflineSigninLimiterFactory::GetForProfile(profile);
-    if (offline_signin_limiter)
+    if (offline_signin_limiter) {
       offline_signin_limiter->SignedIn(auth_flow);
+    }
   }
 
   profile->OnLogin();
@@ -1809,7 +1850,8 @@ void UserSessionManager::FinalizePrepareProfile(Profile* profile) {
 
     VLOG(1) << "Clearing all secrets";
     user_context_.ClearSecrets();
-    if (user->GetType() == user_manager::UserType::kChild || user->GetType() == user_manager::UserType::kJemaChild) {
+    if (user->GetType() == user_manager::UserType::kChild ||
+        user->GetType() == user_manager::UserType::kJemaChild) {
       VLOG(1) << "Waiting for child policy refresh before showing session UI";
       DCHECK(child_policy_observer_);
       child_policy_observer_->NotifyWhenPolicyReady(
@@ -1842,8 +1884,9 @@ void UserSessionManager::InitializeBrowser(Profile* profile) {
   // killed during shutdown in tests -- see http://crosbug.com/18269.  Replace
   // this 'if' statement with a CHECK(delegate_) once the underlying issue is
   // resolved.
-  if (delegate_)
+  if (delegate_) {
     delegate_->OnProfilePrepared(profile, browser_launched);
+  }
 
   if (ProfileHelper::IsPrimaryProfile(profile) &&
       OnboardingUserActivityCounter::ShouldStart(profile->GetPrefs())) {
@@ -1884,16 +1927,18 @@ bool UserSessionManager::MaybeStartNewUserOnboarding(Profile* profile) {
   // Don't specify start URLs if the administrator has configured the
   // start URLs via policy.
   if (!SessionStartupPref::TypeIsManaged(prefs)) {
-    if (child_service->IsChildAccountStatusKnown())
+    if (child_service->IsChildAccountStatusKnown()) {
       MaybeLaunchHelpAppForFirstRun(profile);
-    else
+    } else {
       waiting_for_child_account_status_ = true;
+    }
   }
 
   // Mark the device as registered., i.e. the second part of OOBE as
   // completed.
-  if (!StartupUtils::IsDeviceRegistered())
+  if (!StartupUtils::IsDeviceRegistered()) {
     StartupUtils::MarkDeviceRegistered(base::OnceClosure());
+  }
 
   if (LoginDisplayHost::default_host() &&
       LoginDisplayHost::default_host()->GetSigninUI()) {
@@ -2095,8 +2140,18 @@ void UserSessionManager::OnUserProfileLoaded(Profile* profile,
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE,
       base::BindOnce(&UserSessionManager::InjectJemaOSTokenCookie,
-                     weak_factory_.GetWeakPtr(),
-                     base::Unretained(profile)));
+                     weak_factory_.GetWeakPtr(), base::Unretained(profile)));
+
+  // JEMAOS: Start the token lifecycle timer so the cookie stays fresh and the
+  // access token is renewed before it expires server-side.
+  StartJemaOSTokenLifecycleTimer();
+
+  // JEMAOS: Cache the subscription state (Pro vs Freemium) for this profile;
+  // it gates premium PWA preinstallation and cloud backup/restore.
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&UserSessionManager::FetchJemaOSSubscriptionState,
+                     weak_factory_.GetWeakPtr(), base::Unretained(profile)));
 
   // TODO(hidehiko): the condition looks redundant. We can merge them into
   // AuthErrorObserver::ShouldObserve.
@@ -2144,6 +2199,26 @@ void UserSessionManager::InjectJemaOSTokenCookie(Profile* profile) {
     LOG(ERROR) << "[JEMAOS] InjectJemaOSTokenCookie: profile is null";
     return;
   }
+  //---***JEMAOS BEGIN***---
+  // The stored token belongs to ONE Jema online account. Never inject it
+  // into another profile (e.g. a local account session, or a different
+  // online account on multi-account devices): the subscription cookie would
+  // then grant that profile access to the Pro PWAs (SubscriptionGuard reads
+  // this cookie) and leak the credential across accounts.
+  std::string token_email;
+  if (g_browser_process) {
+    token_email = g_browser_process->local_state()->GetString(
+        jemaos::prefs::kJemaOsAuthEmail);
+  }
+  if (token_email.empty() ||
+      !base::EqualsCaseInsensitiveASCII(profile->GetProfileUserName(),
+                                        token_email)) {
+    LOG(WARNING) << "[JEMAOS] Not injecting token cookie into profile "
+                 << profile->GetProfileUserName()
+                 << " (token belongs to another account)";
+    return;
+  }
+  //---***JEMAOS END***---
 
   auto* storage_partition = profile->GetDefaultStoragePartition();
   if (!storage_partition) {
@@ -2159,20 +2234,22 @@ void UserSessionManager::InjectJemaOSTokenCookie(Profile* profile) {
   LOG(INFO) << "[JEMAOS] Injecting SAML access token cookie for PWA apps";
 
   const GURL kJemaOsUrl("https://jemaos.com");
+  // Long-lived cookie: the lifecycle timer re-injects a fresh value regularly
+  // and renews the underlying access token before it expires server-side.
   const std::string cookie_value =
       "jemaos_access_token=" + token +
-      "; Path=/; Domain=.jemaos.com; Secure; SameSite=Lax; Max-Age=86400";
+      "; Path=/; Domain=.jemaos.com; Secure; SameSite=Lax; Max-Age=604800";
 
   net::CookieInclusionStatus status;
-  auto cookie = net::CanonicalCookie::Create(
-      kJemaOsUrl, cookie_value, base::Time::Now(),
-      /*server_time=*/base::Time(),
-      /*cookie_partition_key=*/std::nullopt,
-      net::CookieSourceType::kOther,
-      &status);
+  auto cookie =
+      net::CanonicalCookie::Create(kJemaOsUrl, cookie_value, base::Time::Now(),
+                                   /*server_time=*/base::Time(),
+                                   /*cookie_partition_key=*/std::nullopt,
+                                   net::CookieSourceType::kOther, &status);
 
   if (!cookie) {
-    LOG(ERROR) << "[JEMAOS] Failed to create cookie: " << status.GetDebugString();
+    LOG(ERROR) << "[JEMAOS] Failed to create cookie: "
+               << status.GetDebugString();
     return;
   }
 
@@ -2184,10 +2261,363 @@ void UserSessionManager::InjectJemaOSTokenCookie(Profile* profile) {
       }));
 }
 
+namespace {
+
+// JemaOS Connect API used to renew subscription access tokens.
+constexpr char kJemaOsConnectApiBase[] = "https://test-connect-api.jematech.fr";
+constexpr char kJemaOsTokenRefreshPath[] = "/v1/connect/os/token/refresh";
+constexpr base::TimeDelta kJemaOsTokenCheckInterval = base::Minutes(15);
+// Refresh proactively when this much lifetime remains (JWT exp).
+constexpr base::TimeDelta kJemaOsRefreshMargin = base::Minutes(30);
+// Safety net for opaque tokens without an exp claim.
+constexpr base::TimeDelta kJemaOsOpaqueTokenMaxAge = base::Hours(6);
+
+bool Base64UrlDecodeToString(std::string_view input, std::string* out) {
+  std::string b64(input);
+  std::replace(b64.begin(), b64.end(), '-', '+');
+  std::replace(b64.begin(), b64.end(), '_', '/');
+  while (b64.size() % 4) {
+    b64.push_back('=');
+  }
+  return base::Base64Decode(b64, out, base::Base64DecodePolicy::kForgiving);
+}
+
+// Returns the expiry time of a JWT access token, or an invalid base::Time if
+// the token is opaque or has no exp claim.
+base::Time ExtractJwtExpiryTime(const std::string& token) {
+  const std::vector<std::string_view> parts = base::SplitStringPiece(
+      token, ".", base::KEEP_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  if (parts.size() < 2) {
+    return base::Time();
+  }
+  std::string payload;
+  if (!Base64UrlDecodeToString(parts[1], &payload)) {
+    return base::Time();
+  }
+  std::optional<base::Value> json = base::JSONReader::Read(payload);
+  if (!json || !json->is_dict()) {
+    return base::Time();
+  }
+  const auto exp = json->GetDict().FindDouble("exp");
+  if (!exp) {
+    return base::Time();
+  }
+  return base::Time::FromDeltaSinceWindowsEpoch(
+      base::Seconds(static_cast<int64_t>(*exp)));
+}
+
+}  // namespace
+
+void UserSessionManager::StartJemaOSTokenLifecycleTimer() {
+  if (jemaos_token_timer_.IsRunning()) {
+    return;
+  }
+  jemaos_token_timer_.Start(
+      FROM_HERE, kJemaOsTokenCheckInterval,
+      base::BindRepeating(&UserSessionManager::MaybeRefreshAndInjectJemaOSToken,
+                          weak_factory_.GetWeakPtr()));
+  // Run one check immediately so a nearly-expired token is renewed now.
+  MaybeRefreshAndInjectJemaOSToken();
+}
+
+void UserSessionManager::MaybeRefreshAndInjectJemaOSToken() {
+  const std::string token = GetJemaOSAccessToken();
+  if (token.empty()) {
+    // No stored credentials: nothing to renew (fresh login pending).
+    return;
+  }
+  Profile* profile = ProfileManager::GetActiveUserProfile();
+  if (!profile) {
+    return;
+  }
+
+  const std::string refresh_token = GetJemaOSRefreshToken();
+  bool should_refresh = false;
+  if (!refresh_token.empty()) {
+    const base::Time expiry = ExtractJwtExpiryTime(token);
+    if (expiry.is_null()) {
+      // Opaque token: refresh periodically as a safety net.
+      if (g_browser_process) {
+        const int64_t issued_at = g_browser_process->local_state()->GetInt64(
+            jemaos::prefs::kJemaOsAuthIssuedAt);
+        if (issued_at == 0 ||
+            base::Time::Now() - base::Time::FromDeltaSinceWindowsEpoch(
+                                    base::Seconds(issued_at)) >
+                kJemaOsOpaqueTokenMaxAge) {
+          should_refresh = true;
+        }
+      }
+    } else if (base::Time::Now() > expiry - kJemaOsRefreshMargin) {
+      should_refresh = true;
+    }
+  }
+
+  if (should_refresh && !jemaos_token_refresh_in_flight_) {
+    RefreshJemaOSToken();
+    return;
+  }
+  InjectJemaOSTokenCookie(profile);
+  // Keep the cached subscription state fresh on the same cadence; upgrades
+  // from Freemium to Pro take effect without waiting for the next login.
+  FetchJemaOSSubscriptionState(profile);
+}
+
+void UserSessionManager::RefreshJemaOSToken() {
+  const std::string refresh_token = GetJemaOSRefreshToken();
+  Profile* profile = ProfileManager::GetActiveUserProfile();
+  if (refresh_token.empty() || !profile) {
+    jemaos_token_refresh_in_flight_ = false;
+    if (profile) {
+      InjectJemaOSTokenCookie(profile);
+    }
+    return;
+  }
+  jemaos_token_refresh_in_flight_ = true;
+
+  std::string email;
+  if (g_browser_process) {
+    email = g_browser_process->local_state()->GetString(
+        jemaos::prefs::kJemaOsAuthEmail);
+  }
+
+  const GURL url(std::string(kJemaOsConnectApiBase) + kJemaOsTokenRefreshPath);
+  const net::NetworkTrafficAnnotationTag annotation =
+      net::DefineNetworkTrafficAnnotation("jemaos_token_refresh", R"(
+        semantics {
+          sender: "JemaOS subscription token manager"
+          description: "Renews the JemaOS subscription access token so PWA apps"
+            " keep working without forcing a new login."
+          trigger: "Periodic timer or token near expiry."
+          data: "The stored JemaOS refresh token and account email."
+          destination: OTHER
+        }
+        policy {
+          cookies_allowed: NO
+          setting: "Tied to the user's JemaOS account session."
+        })");
+
+  auto resource_request = std::make_unique<network::ResourceRequest>();
+  resource_request->url = url;
+  resource_request->method = "POST";
+  resource_request->credentials_mode = network::mojom::CredentialsMode::kOmit;
+  resource_request->headers.SetHeader(net::HttpRequestHeaders::kAccept,
+                                      "application/json");
+
+  const std::string body = std::string("{\"refreshToken\": \"") +
+                           refresh_token + "\", \"email\": \"" + email + "\"}";
+
+  auto loader =
+      network::SimpleURLLoader::Create(std::move(resource_request), annotation);
+  loader->SetAllowHttpErrorResults(true);
+  loader->AttachStringForUpload(body, "application/json");
+  auto* loader_ptr = loader.get();
+  loader_ptr->DownloadToString(
+      profile->GetDefaultStoragePartition()
+          ->GetURLLoaderFactoryForBrowserProcess()
+          .get(),
+      base::BindOnce(&UserSessionManager::OnJemaOSTokenRefreshed,
+                     weak_factory_.GetWeakPtr(), std::move(loader)),
+      256 * 1024);
+}
+
+void UserSessionManager::OnJemaOSTokenRefreshed(
+    std::unique_ptr<network::SimpleURLLoader> loader,
+    std::unique_ptr<std::string> response_body) {
+  jemaos_token_refresh_in_flight_ = false;
+  Profile* profile = ProfileManager::GetActiveUserProfile();
+
+  int status = 0;
+  if (loader->ResponseInfo() && loader->ResponseInfo()->headers) {
+    status = loader->ResponseInfo()->headers->response_code();
+  }
+
+  if (status == 401 || status == 403) {
+    // Refresh token revoked or expired: clear credentials so apps show the
+    // upgrade/login screen instead of failing silently.
+    LOG(WARNING) << "[JEMAOS] Refresh token rejected (" << status
+                 << "), clearing stored auth tokens";
+    ClearJemaOSAuthTokens();
+    return;
+  }
+
+  if (status < 200 || status >= 300 || !response_body) {
+    LOG(WARNING) << "[JEMAOS] Token refresh failed (status " << status
+                 << "), keeping current token";
+    if (profile) {
+      InjectJemaOSTokenCookie(profile);
+    }
+    return;
+  }
+
+  std::optional<base::Value> json = base::JSONReader::Read(*response_body);
+  if (!json || !json->is_dict()) {
+    LOG(WARNING) << "[JEMAOS] Token refresh returned invalid JSON";
+    if (profile) {
+      InjectJemaOSTokenCookie(profile);
+    }
+    return;
+  }
+
+  const base::Value::Dict& dict = json->GetDict();
+  const std::string* new_access = dict.FindString("accessToken");
+  if (!new_access) {
+    new_access = dict.FindString("access_token");
+  }
+  const std::string* new_refresh = dict.FindString("refreshToken");
+  if (!new_refresh) {
+    new_refresh = dict.FindString("refresh_token");
+  }
+
+  if (!new_access || new_access->empty()) {
+    LOG(WARNING) << "[JEMAOS] Token refresh response had no accessToken";
+    if (profile) {
+      InjectJemaOSTokenCookie(profile);
+    }
+    return;
+  }
+
+  std::string email;
+  if (g_browser_process) {
+    email = g_browser_process->local_state()->GetString(
+        jemaos::prefs::kJemaOsAuthEmail);
+  }
+  StoreJemaOSAuthTokens(*new_access, new_refresh ? *new_refresh : std::string(),
+                        email);
+  LOG(INFO) << "[JEMAOS] Access token renewed successfully";
+  if (profile) {
+    InjectJemaOSTokenCookie(profile);
+  }
+}
+
+void UserSessionManager::FetchJemaOSSubscriptionState(Profile* profile) {
+  if (!profile) {
+    return;
+  }
+  const std::string token = GetJemaOSAccessToken();
+  if (token.empty()) {
+    return;
+  }
+  // The stored token is global (local state): only use it when it belongs to
+  // the account of this profile, i.e. a Jema online account. Local accounts
+  // (@jemaos.local) and other accounts keep the default (no subscription).
+  std::string token_email;
+  if (g_browser_process) {
+    token_email = g_browser_process->local_state()->GetString(
+        jemaos::prefs::kJemaOsAuthEmail);
+  }
+  if (token_email.empty() ||
+      !base::EqualsCaseInsensitiveASCII(profile->GetProfileUserName(),
+                                        token_email)) {
+    return;
+  }
+
+  const GURL url(std::string(kJemaOsConnectApiBase) +
+                 "/v1/connect/os/subscription");
+  const net::NetworkTrafficAnnotationTag annotation =
+      net::DefineNetworkTrafficAnnotation("jemaos_subscription_check", R"(
+        semantics {
+          sender: "JemaOS subscription state manager"
+          description: "Checks whether the Jema online account has an active"
+            " Pro subscription to gate premium PWAs and cloud backup."
+          trigger: "User profile load or periodic token lifecycle timer."
+          data: "The stored JemaOS access token."
+          destination: OTHER
+        }
+        policy {
+          cookies_allowed: NO
+          setting: "Tied to the user's JemaOS account session."
+        })");
+
+  auto resource_request = std::make_unique<network::ResourceRequest>();
+  resource_request->url = url;
+  resource_request->method = "POST";
+  resource_request->credentials_mode = network::mojom::CredentialsMode::kOmit;
+  resource_request->headers.SetHeader(net::HttpRequestHeaders::kAccept,
+                                      "application/json");
+  // Same API key the PWAs send from their SubscriptionGuard.
+  resource_request->headers.SetHeader(
+      "x-api-key", "e58492a3-b452-4197-9f4a-deb7915b9446");
+  resource_request->headers.SetHeader(net::HttpRequestHeaders::kAuthorization,
+                                      "Bearer " + token);
+
+  auto* storage_partition = profile->GetDefaultStoragePartition();
+  if (!storage_partition) {
+    return;
+  }
+  scoped_refptr<network::SharedURLLoaderFactory> loader_factory =
+      storage_partition->GetURLLoaderFactoryForBrowserProcess();
+  if (!loader_factory) {
+    // The factory is not ready this early in the session startup; the
+    // lifecycle timer will retry on its next tick.
+    LOG(WARNING) << "[JEMAOS] Subscription check skipped: no URL loader "
+                    "factory yet";
+    return;
+  }
+
+  auto loader =
+      network::SimpleURLLoader::Create(std::move(resource_request), annotation);
+  loader->SetAllowHttpErrorResults(true);
+  loader->AttachStringForUpload("{}", "application/json");
+  auto* loader_ptr = loader.get();
+  loader_ptr->DownloadToString(
+      loader_factory.get(),
+      base::BindOnce(&UserSessionManager::OnJemaOSSubscriptionFetched,
+                     weak_factory_.GetWeakPtr(), std::move(loader)),
+      64 * 1024);
+}
+
+void UserSessionManager::OnJemaOSSubscriptionFetched(
+    std::unique_ptr<network::SimpleURLLoader> loader,
+    std::unique_ptr<std::string> response_body) {
+  // Resolve the profile lazily: the profile the request was started for may
+  // be gone if the session ended while the request was in flight.
+  Profile* profile = ProfileManager::GetActiveUserProfile();
+  if (!profile || !response_body) {
+    return;
+  }
+  // Only write the state if the active profile still belongs to the account
+  // the token was issued for (multi-account sessions).
+  std::string token_email;
+  if (g_browser_process) {
+    token_email = g_browser_process->local_state()->GetString(
+        jemaos::prefs::kJemaOsAuthEmail);
+  }
+  if (token_email.empty() ||
+      !base::EqualsCaseInsensitiveASCII(profile->GetProfileUserName(),
+                                        token_email)) {
+    return;
+  }
+  int status = 0;
+  if (loader->ResponseInfo() && loader->ResponseInfo()->headers) {
+    status = loader->ResponseInfo()->headers->response_code();
+  }
+  if (status < 200 || status >= 300) {
+    // Keep the last known state on transient errors (fail-closed: the pref
+    // defaults to false).
+    LOG(WARNING) << "[JEMAOS] Subscription check failed (status " << status
+                 << "), keeping previous state";
+    return;
+  }
+
+  std::optional<base::Value> json = base::JSONReader::Read(*response_body);
+  if (!json || !json->is_dict()) {
+    LOG(WARNING) << "[JEMAOS] Subscription check returned invalid JSON";
+    return;
+  }
+  const base::Value::Dict& dict = json->GetDict();
+  const bool active = dict.FindBool("hasSubscription").value_or(false);
+  profile->GetPrefs()->SetBoolean(jemaos::prefs::kJemaSubscriptionActive,
+                                  active);
+  LOG(INFO) << "[JEMAOS] Subscription state for "
+            << profile->GetProfileUserName() << ": "
+            << (active ? "active (Pro)" : "none (Freemium)");
+}
+
 void UserSessionManager::StartTetherServiceIfPossible(Profile* profile) {
   auto* tether_service = tether::TetherService::Get(profile);
-  if (tether_service)
+  if (tether_service) {
     tether_service->StartTetherIfPossible();
+  }
 }
 
 void UserSessionManager::ShowNotificationsIfNeeded(Profile* profile) {
@@ -2244,8 +2674,9 @@ void UserSessionManager::OnRestoreActiveSessions(
 
   user_manager::KnownUser known_user(g_browser_process->local_state());
   for (auto& [cryptohome_id, user_id_hash] : sessions.value()) {
-    if (active_cryptohome_id.id() == cryptohome_id)
+    if (active_cryptohome_id.id() == cryptohome_id) {
       continue;
+    }
 
     const AccountId account_id(known_user.GetAccountIdByCryptohomeId(
         user_manager::CryptohomeId(cryptohome_id)));
@@ -2259,8 +2690,9 @@ void UserSessionManager::RestorePendingUserSessions() {
     // '>1' ignores "restart on signin" because of browser flags difference.
     // In this case, last_session_active_account_id_ can carry account_id
     // from the previous browser session.
-    if (user_manager::UserManager::Get()->GetLoggedInUsers().size() > 1)
+    if (user_manager::UserManager::Get()->GetLoggedInUsers().size() > 1) {
       user_manager::UserManager::Get()->SwitchToLastActiveUser();
+    }
 
     NotifyPendingUserSessionsRestoreFinished();
     return;
@@ -2296,8 +2728,7 @@ void UserSessionManager::RestorePendingUserSessions() {
       user_type = user_manager::UserType::kJemaAccount;
     }
     UserContext user_context =
-        user ? UserContext(*user)
-             : UserContext(user_type, account_id);
+        user ? UserContext(*user) : UserContext(user_type, account_id);
     user_context.SetUserIDHash(user_id_hash);
     user_context.SetIsUsingOAuth(false);
 
@@ -2317,8 +2748,9 @@ void UserSessionManager::NotifyPendingUserSessionsRestoreFinished() {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
   user_sessions_restored_ = true;
   user_sessions_restore_in_progress_ = false;
-  for (auto& observer : session_state_observer_list_)
+  for (auto& observer : session_state_observer_list_) {
     observer.PendingUserSessionsRestoreFinished();
+  }
 }
 
 void UserSessionManager::OnChildPolicyReady(
@@ -2338,13 +2770,15 @@ void UserSessionManager::OnChildPolicyReady(
 void UserSessionManager::ActiveUserChanged(user_manager::User* active_user) {
   Profile* profile = ProfileHelper::Get()->GetProfileByUser(active_user);
   // If profile has not yet been initialized, delay initialization of IME.
-  if (!profile)
+  if (!profile) {
     return;
+  }
 
   auto* manager = input_method::InputMethodManager::Get();
   // `manager` might not be available in some unit tests.
-  if (!manager)
+  if (!manager) {
     return;
+  }
   manager->SetState(
       GetDefaultIMEState(ProfileHelper::Get()->GetProfileByUser(active_user)));
   manager->MaybeNotifyImeMenuActivationChanged();
@@ -2357,8 +2791,9 @@ UserSessionManager::GetDefaultIMEState(Profile* profile) {
   if (!state.get()) {
     // Profile can be NULL in tests.
     state = input_method::InputMethodManager::Get()->CreateNewState(profile);
-    if (ProfileHelper::Get()->IsSigninProfile(profile))
+    if (ProfileHelper::Get()->IsSigninProfile(profile)) {
       state->SetUIStyle(input_method::InputMethodManager::UIStyle::kLogin);
+    }
 
     default_ime_states_[profile] = state;
   }
@@ -2366,8 +2801,9 @@ UserSessionManager::GetDefaultIMEState(Profile* profile) {
 }
 
 void UserSessionManager::CheckEolInfo(Profile* profile) {
-  if (!EolNotification::ShouldShowEolNotification())
+  if (!EolNotification::ShouldShowEolNotification()) {
     return;
+  }
 
   std::map<Profile*, std::unique_ptr<EolNotification>, ProfileCompare>::iterator
       iter = eol_notification_handler_.find(profile);
@@ -2388,8 +2824,9 @@ void UserSessionManager::DoBrowserLaunchInternal(Profile* profile,
                                                  bool locale_pref_checked) {
   TRACE_EVENT0("login", "UserSessionManager::DoBrowserLaunchInternal");
   if (browser_shutdown::IsTryingToQuit() ||
-      chrome::IsSendingStopRequestToSessionManager())
+      chrome::IsSendingStopRequestToSessionManager()) {
     return;
+  }
 
   if (!locale_pref_checked) {
     RespectLocalePreferenceWrapper(
@@ -2403,8 +2840,9 @@ void UserSessionManager::DoBrowserLaunchInternal(Profile* profile,
   jemaos::prefs::ClearRebootMarkPrefs(g_browser_process->local_state());
   jemaos::prefs::ClearOneShotProfilePrefs(profile->GetPrefs());
 
-  if (RestartToApplyPerSessionFlagsIfNeed(profile, false))
+  if (RestartToApplyPerSessionFlagsIfNeed(profile, false)) {
     return;
+  }
 
   if (LoginDisplayHost::default_host()) {
     SystemTrayClientImpl::Get()->SetPrimaryTrayVisible(/*visible=*/true);
@@ -2499,8 +2937,9 @@ void UserSessionManager::RespectLocalePreferenceWrapper(
     Profile* profile,
     base::OnceClosure callback) {
   if (browser_shutdown::IsTryingToQuit() ||
-      chrome::IsSendingStopRequestToSessionManager())
+      chrome::IsSendingStopRequestToSessionManager()) {
     return;
+  }
 
   const user_manager::User* const user =
       ProfileHelper::Get()->GetUserByProfile(profile);
@@ -2577,14 +3016,16 @@ void UserSessionManager::InjectAuthenticatorBuilder(
 
 void UserSessionManager::OnTokenHandleObtained(const AccountId& account_id,
                                                bool success) {
-  if (!success)
+  if (!success) {
     LOG(ERROR) << "OAuth2 token handle fetch failed.";
+  }
   token_handle_fetcher_.reset();
 }
 
 bool UserSessionManager::TokenHandlesEnabled() {
-  if (!should_obtain_handles_)
+  if (!should_obtain_handles_) {
     return false;
+  }
   bool show_names_on_signin = true;
   auto* cros_settings = CrosSettings::Get();
   cros_settings->GetBoolean(kAccountsPrefShowUserNamesOnSignIn,
@@ -2633,13 +3074,16 @@ void UserSessionManager::SetSwitchesForUser(
       all_switches);
 }
 
-void UserSessionManager::AppendAccountSwitchesIfNeed(const AccountId& account_id) {
+void UserSessionManager::AppendAccountSwitchesIfNeed(
+    const AccountId& account_id) {
   std::vector<std::string> switches;
-  jemaos::switches::AppendAccountSwitchesIfNeed(user_manager::UserManager::Get()->GetActiveUser()->GetAccountId(), &switches);
+  jemaos::switches::AppendAccountSwitchesIfNeed(
+      user_manager::UserManager::Get()->GetActiveUser()->GetAccountId(),
+      &switches);
   if (switches.size() > 0) {
-    SetSwitchesForUser(user_manager::UserManager::Get()->GetActiveUser()->GetAccountId(),
-                       CommandLineSwitchesType::kSessionControl,
-                       switches);
+    SetSwitchesForUser(
+        user_manager::UserManager::Get()->GetActiveUser()->GetAccountId(),
+        CommandLineSwitchesType::kSessionControl, switches);
   }
 }
 
@@ -2652,8 +3096,9 @@ void UserSessionManager::MaybeShowU2FNotification() {
 
 void UserSessionManager::MaybeShowHelpAppReleaseNotesNotification(
     Profile* profile) {
-  if (!ProfileHelper::IsPrimaryProfile(profile))
+  if (!ProfileHelper::IsPrimaryProfile(profile)) {
     return;
+  }
   GetHelpAppNotificationController(profile)
       ->MaybeShowReleaseNotesNotification();
 }
@@ -2670,17 +3115,20 @@ UserSessionManager::GetUserSessionManagerAsWeakPtr() {
 }
 
 void UserSessionManager::CreateTokenUtilIfMissing() {
-  if (!token_handle_util_.get())
+  if (!token_handle_util_.get()) {
     token_handle_util_ = std::make_unique<TokenHandleUtil>();
+  }
 }
 
 void UserSessionManager::UpdateTokenHandleIfRequired(
     Profile* const profile,
     const AccountId& account_id) {
-  if (!token_handle_util_->ShouldObtainHandle(account_id))
+  if (!token_handle_util_->ShouldObtainHandle(account_id)) {
     return;
-  if (token_handle_fetcher_.get())
+  }
+  if (token_handle_fetcher_.get()) {
     return;
+  }
 
   UpdateTokenHandle(profile, account_id);
 }
@@ -2704,14 +3152,16 @@ bool UserSessionManager::IsFullRestoreEnabled(Profile* profile) {
 void UserSessionManager::OnUserEligibleForOnboardingSurvey(Profile* profile) {
   onboarding_user_activity_counter_.reset();
 
-  if (profile != ProfileManager::GetActiveUserProfile())
+  if (profile != ProfileManager::GetActiveUserProfile()) {
     return;
+  }
 
   DCHECK(!session_manager::SessionManager::Get()->IsUserSessionBlocked());
 
   // Do not run more than one HATS survey.
-  if (hats_notification_controller_)
+  if (hats_notification_controller_) {
     return;
+  }
 
   if (!HatsNotificationController::ShouldShowSurveyToProfile(
           profile, kHatsOnboardingSurvey)) {

@@ -24,6 +24,7 @@
 #include "base/observer_list.h"
 #include "base/scoped_observation_traits.h"
 #include "base/time/time.h"
+#include "base/timer/timer.h"
 #include "chrome/browser/ash/base/locale_util.h"
 #include "chrome/browser/ash/child_accounts/child_policy_observer.h"
 #include "chrome/browser/ash/hats/hats_notification_controller.h"
@@ -47,6 +48,10 @@ class GURL;
 class PrefRegistrySimple;
 class PrefService;
 class Profile;
+
+namespace network {
+class SimpleURLLoader;
+}  // namespace network
 
 namespace user_manager {
 class User;
@@ -216,6 +221,24 @@ class UserSessionManager
   // JEMAOS: Inject the SAML access token as a cookie on .jemaos.com so PWA
   // apps can verify subscriptions. Reads token from GetJemaOSAccessToken().
   void InjectJemaOSTokenCookie(Profile* profile);
+
+  // JEMAOS: Periodically re-injects the subscription cookie and renews the
+  // access token through the refresh endpoint before it expires server-side.
+  void MaybeRefreshAndInjectJemaOSToken();
+  void RefreshJemaOSToken();
+  void OnJemaOSTokenRefreshed(std::unique_ptr<network::SimpleURLLoader> loader,
+                              std::unique_ptr<std::string> response_body);
+  void StartJemaOSTokenLifecycleTimer();
+
+  // JEMAOS: Queries /v1/connect/os/subscription with the stored access token
+  // and caches the result in the profile pref
+  // jemaos::prefs::kJemaSubscriptionActive. Only runs when the stored token
+  // belongs to the account of |profile| (Jema online accounts); the result
+  // gates premium PWA preinstallation and cloud backup/restore.
+  void FetchJemaOSSubscriptionState(Profile* profile);
+  void OnJemaOSSubscriptionFetched(
+      std::unique_ptr<network::SimpleURLLoader> loader,
+      std::unique_ptr<std::string> response_body);
 
   // Start the Tether service if it is ready.
   void StartTetherServiceIfPossible(Profile* profile);
@@ -634,6 +657,10 @@ class UserSessionManager
   // Whether `metrics::BeginFirstWebContentsProfiling()` has been called. Should
   // only be called once per program lifetime.
   bool has_recorded_first_web_contents_metrics_ = false;
+
+  // JEMAOS: Keeps the subscription cookie fresh and renews the access token.
+  base::RepeatingTimer jemaos_token_timer_;
+  bool jemaos_token_refresh_in_flight_ = false;
 
   base::WeakPtrFactory<UserSessionManager> weak_factory_{this};
 };

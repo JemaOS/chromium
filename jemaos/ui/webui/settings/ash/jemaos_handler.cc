@@ -10,6 +10,7 @@
 
 #include <algorithm>
 
+#include "base/base64.h"
 #include "base/logging.h"
 #include "base/notreached.h"
 #include "base/values.h"
@@ -30,6 +31,7 @@
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/jemaos_shell_client.h"
 #include "base/json/json_reader.h"
+#include "base/strings/string_util.h"
 #include "content/public/browser/browser_thread.h"
 #include "ui/shell_dialogs/selected_file_info.h"
 #include "chrome/browser/ui/chrome_select_file_policy.h"
@@ -78,10 +80,32 @@ bool CreateArcMediaAutoScanIndicatorFile() {
 // SAFE VERSION: Only backs up and restores MyFiles folder contents
 // Never touches browser profile, auth files, or system directories
 const char kRestoreScriptPath[] = "/tmp/jemaos-backup-script.sh";
+// Installed copy shipped in the OS image by the jemaos-utils package. Prefer
+// it over the embedded fallback written to /tmp.
+const char kInstalledBackupScriptPath[] =
+    "/usr/share/jemaos-backup/jemaos-backup.sh";
+// Unified full-snapshot script. Keep in sync with
+// jemaos_handler_backup_task_manager.cc (kJemaOSBackupScript) and
+// overlays/project-jemaos/chromeos-base/jemaos-utils/files/scripts/jemaos-backup.sh
 const char kRestoreScript[] = R"SCRIPT(#!/bin/bash
+# JemaOS unified backup/restore script (full environment snapshot).
+#
+# backup:  snapshots the whole user profile: user files, browser settings
+#          (Preferences, Secure Preferences, Local State), shelf pins,
+#          launcher state, installed PWA web apps, bookmarks, history,
+#          favicons, wallpaper, dark/light mode, language prefs, plus a
+#          best-effort capture of brightness and volume.
+# restore: applies the snapshot and restarts the session. Chrome must NOT
+#          be running while the files are swapped, otherwise it overwrites
+#          the restored files with its in-memory state at shutdown (which is
+#          why previous versions "only restored files"). The script freezes
+#          Chrome (SIGSTOP), swaps the files in, then kills Chrome (SIGKILL)
+#          so no shutdown flush can happen; session_manager immediately
+#          respawns Chrome, which reads the restored profile from disk.
+
 LOGFILE="/tmp/jemaos-backup.log"
 echo "=== $(date) ===" >> "$LOGFILE"
-echo "Script version: MyFiles-only v2 (safe)" >> "$LOGFILE"
+echo "Script version: unified snapshot v3" >> "$LOGFILE"
 echo "Args: $@" >> "$LOGFILE"
 
 EMAIL=""
@@ -112,248 +136,203 @@ echo "Cmd=$COMMAND, Email=$EMAIL, Target=$TARGET" >> "$LOGFILE"
 
 [ -z "$TARGET" ] && echo "Error: No target" && exit 1
 
-# MyFiles is the main user files directory in ChromeOS
-MYFILES_PATH="$PROFILE_PATH/MyFiles"
+# --- Best-effort capture / re-apply of system state -------------------------
 
-# Fallback to Downloads if MyFiles doesn't exist
-if [ ! -d "$MYFILES_PATH" ]; then
-  MYFILES_PATH="$PROFILE_PATH/Downloads"
-fi
+read_brightness_percent() {
+  # $1: output file
+  local b cur max
+  for b in /sys/class/backlight/*; do
+    if [ -f "$b/brightness" ] && [ -f "$b/max_brightness" ]; then
+      cur=$(cat "$b/brightness" 2>/dev/null)
+      max=$(cat "$b/max_brightness" 2>/dev/null)
+      if [ -n "$cur" ] && [ -n "$max" ] && [ "$max" -gt 0 ] 2>/dev/null; then
+        echo $(( cur * 100 / max )) > "$1"
+      fi
+      return 0
+    fi
+  done
+  return 0
+}
 
-echo "Using files path: $MYFILES_PATH" >> "$LOGFILE"
+read_volume_percent() {
+  # $1: output file
+  if command -v cras_test_client >/dev/null 2>&1; then
+    local vol
+    vol=$(cras_test_client --dump_server_state 2>/dev/null \
+        | grep -i "output volume" | head -1 | grep -o "[0-9]\+" | head -1)
+    [ -n "$vol" ] && echo "$vol" > "$1"
+  fi
+  return 0
+}
+
+apply_brightness_percent() {
+  # $1: percent (0-100). Never fails the restore.
+  local pct="$1"
+  [ -z "$pct" ] && return 0
+  local b max
+  for b in /sys/class/backlight/*; do
+    if [ -f "$b/brightness" ] && [ -f "$b/max_brightness" ]; then
+      max=$(cat "$b/max_brightness" 2>/dev/null)
+      if [ -n "$max" ] && [ "$max" -gt 0 ] 2>/dev/null; then
+        echo $(( pct * max / 100 )) > "$b/brightness" 2>/dev/null || true
+      fi
+      return 0
+    fi
+  done
+  # Fall back to powerd over D-Bus (callable as chronos).
+  dbus-send --system --type=method_call \
+    --dest=org.chromium.PowerManager /org/chromium/PowerManager \
+    org.chromium.PowerManager.SetScreenBrightnessPercent \
+    "double:${pct}.0" int32:0 >/dev/null 2>&1 || true
+  return 0
+}
+
+apply_volume_percent() {
+  # $1: volume (0-100). Never fails the restore.
+  local vol="$1"
+  [ -z "$vol" ] && return 0
+  if command -v cras_test_client >/dev/null 2>&1; then
+    cras_test_client --output_volume "$vol" >/dev/null 2>&1 || true
+  fi
+  return 0
+}
+
+# --- backup ------------------------------------------------------------------
 
 if [ "$COMMAND" = "backup" ]; then
-  [ ! -d "$MYFILES_PATH" ] && echo "Error: MyFiles folder not found" && exit 1
+  [ ! -d "$PROFILE_PATH" ] && echo "Error: Profile not found" && exit 1
   mkdir -p "$(dirname "$TARGET")" 2>> "$LOGFILE"
-  
+
   TEMP_DIR="/tmp/jemaos_backup_$$"
-  mkdir -p "$TEMP_DIR"
-  echo -e "User: $EMAIL\nDate: $(date)\nSource: MyFiles\nVersion: 2" > "$TEMP_DIR/backup_info.txt"
-  
-  # Only exclude cache files, no need for auth excludes since we only backup MyFiles
+  mkdir -p "$TEMP_DIR/system_state"
+  echo -e "User: $EMAIL\nDate: $(date)\nSource: full-profile\nVersion: 3" \
+    > "$TEMP_DIR/backup_info.txt"
+
+  # Best-effort system state capture for a true snapshot.
+  read_brightness_percent "$TEMP_DIR/system_state/brightness_percent"
+  read_volume_percent "$TEMP_DIR/system_state/volume_percent"
+
   EXCLUDES=(
     --exclude='.cache/*'
     --exclude='*/Cache/*'
+    --exclude='*/GPUCache/*'
     --exclude='*.bak'
+    --exclude='*/backup/*.bak'
     --exclude='.Trash*'
     --exclude='*.tmp'
     --exclude='*.temp'
+    --exclude='.jemaos_restore_staging*'
   )
-  
-  echo "Backing up MyFiles folder only..." >> "$LOGFILE"
-  
+
+  # Manifest so the archive content is explicit and verifiable.
+  {
+    echo '{'
+    echo "  \"user\": \"$EMAIL\","
+    echo "  \"date\": \"$(date -Iseconds)\","
+    echo "  \"version\": 3,"
+    echo '  "included": ['
+    echo '    "user_files",'
+    echo '    "browser_settings",'
+    echo '    "shelf_pins",'
+    echo '    "launcher_state",'
+    echo '    "installed_pwa_apps",'
+    echo '    "bookmarks",'
+    echo '    "history",'
+    echo '    "favicons",'
+    echo '    "wallpaper",'
+    echo '    "dark_light_mode",'
+    echo '    "language_prefs",'
+    echo '    "brightness",'
+    echo '    "volume"'
+    echo '  ]'
+    echo '}'
+  } > "$TEMP_DIR/manifest.json"
+
   if [ -n "$KEY" ]; then
-    tar -czf - "${EXCLUDES[@]}" -C "$MYFILES_PATH" . -C "$TEMP_DIR" backup_info.txt 2>> "$LOGFILE" \
-      | openssl enc -aes-256-cbc -salt -pbkdf2 -pass pass:"$KEY" > "$TARGET" 2>> "$LOGFILE"
+    tar -czf - "${EXCLUDES[@]}" -C "$PROFILE_PATH" . \
+        -C "$TEMP_DIR" backup_info.txt manifest.json system_state \
+        2>> "$LOGFILE" \
+      | openssl enc -aes-256-cbc -salt -pbkdf2 -pass pass:"$KEY" \
+        > "$TARGET" 2>> "$LOGFILE"
   else
-    tar -czf "$TARGET" "${EXCLUDES[@]}" -C "$MYFILES_PATH" . -C "$TEMP_DIR" backup_info.txt 2>> "$LOGFILE"
+    tar -czf "$TARGET" "${EXCLUDES[@]}" -C "$PROFILE_PATH" . \
+        -C "$TEMP_DIR" backup_info.txt manifest.json system_state \
+        2>> "$LOGFILE"
   fi
   rm -rf "$TEMP_DIR"
-  
+
   if [ -f "$TARGET" ] && [ -s "$TARGET" ]; then
-    SIZE=$(du -h "$TARGET" | cut -f1)
-    echo "Backup completed: $SIZE" >> "$LOGFILE"
-    echo "Backup completed: $TARGET ($SIZE)"
+    echo "Backup completed: $(du -h "$TARGET" | cut -f1)" >> "$LOGFILE"
+    echo "Backup completed: $TARGET"
     exit 0
   fi
   echo "Backup failed" >> "$LOGFILE"
   exit 1
 
+# --- restore -----------------------------------------------------------------
+
 elif [ "$COMMAND" = "restore" ]; then
   [ ! -f "$TARGET" ] && echo "Error: File not found: $TARGET" && exit 1
-  
-  TEMP_DIR="/tmp/jemaos_restore_$$"
-  mkdir -p "$TEMP_DIR"
-  
-  echo "Extracting backup to temp directory..." >> "$LOGFILE"
-  
+
+  # Stage 1: decrypt + extract into a staging area on the stateful partition
+  # (NOT /tmp, which is a small tmpfs), while Chrome is still running.
+  STAGING="/home/chronos/.jemaos_restore_staging_$$"
+  rm -rf /home/chronos/.jemaos_restore_staging_* 2>/dev/null || true
+  mkdir -p "$STAGING"
+
+  echo "Extracting backup to staging directory..." >> "$LOGFILE"
   if [ -n "$KEY" ]; then
-    openssl enc -aes-256-cbc -d -salt -pbkdf2 -pass pass:"$KEY" -in "$TARGET" 2>> "$LOGFILE" \
-      | tar -xzf - -C "$TEMP_DIR" 2>> "$LOGFILE" || { echo "Decrypt failed"; rm -rf "$TEMP_DIR"; exit 1; }
+    openssl enc -aes-256-cbc -d -salt -pbkdf2 -pass pass:"$KEY" \
+        -in "$TARGET" 2>> "$LOGFILE" \
+      | tar -xzf - -C "$STAGING" 2>> "$LOGFILE" \
+      || { echo "Decrypt failed"; rm -rf "$STAGING"; exit 1; }
   else
-    tar -xzf "$TARGET" -C "$TEMP_DIR" 2>> "$LOGFILE" || { echo "Extract failed"; rm -rf "$TEMP_DIR"; exit 1; }
+    tar -xzf "$TARGET" -C "$STAGING" 2>> "$LOGFILE" \
+      || { echo "Extract failed"; rm -rf "$STAGING"; exit 1; }
   fi
-  
-  # Check if this is an old full-profile backup that contains MyFiles folder
-  # If so, we should restore from MyFiles subfolder, not the root
-  if [ -d "$TEMP_DIR/MyFiles" ]; then
-    echo "Detected old full-profile backup with MyFiles folder inside" >> "$LOGFILE"
-    echo "Will restore from MyFiles subfolder only" >> "$LOGFILE"
-    
-    # Move MyFiles content to a safe location
-    MYFILES_CONTENT="/tmp/jemaos_myfiles_content_$$"
-    mkdir -p "$MYFILES_CONTENT"
-    cp -a "$TEMP_DIR/MyFiles"/. "$MYFILES_CONTENT"/ 2>> "$LOGFILE"
-    
-    # Clear temp dir and use only MyFiles content
-    rm -rf "$TEMP_DIR"
-    mkdir -p "$TEMP_DIR"
-    cp -a "$MYFILES_CONTENT"/. "$TEMP_DIR"/ 2>> "$LOGFILE"
-    rm -rf "$MYFILES_CONTENT"
-    
-    echo "Extracted MyFiles content for restore" >> "$LOGFILE"
+
+  # Backward compatibility: "v2" backups contain only the MyFiles content
+  # (no manifest.json, no Preferences, no MyFiles directory at the root).
+  RESTORE_ROOT="$PROFILE_PATH"
+  if [ ! -f "$STAGING/manifest.json" ] && \
+     [ ! -f "$STAGING/Preferences" ] && \
+     [ ! -d "$STAGING/MyFiles" ]; then
+    echo "Detected v2 MyFiles-only backup; restoring into MyFiles" >> "$LOGFILE"
+    RESTORE_ROOT="$PROFILE_PATH/MyFiles"
+    mkdir -p "$RESTORE_ROOT"
   fi
-  
-  # COMPREHENSIVE CLEANUP: Remove ALL system/browser files
-  echo "Safety check: removing ALL system/browser files from backup..." >> "$LOGFILE"
-  
-  # Remove ALL directories that are not typical user folders
-  # Keep ONLY: Downloads, Documents, Pictures, Music, Videos, and user-created folders
-  # Remove everything that looks like a system/browser folder
-  
-  # Known system directories (extensive list)
-  SYSTEM_DIRS=(
-    # Hidden directories
-    ".pki" ".config" ".local" ".cache" ".shadow" ".dmrc" ".android"
-    # Browser/Chrome directories
-    "GCache" "Cache" "cache" "Code Cache" "code_cache" "CodeCache"
-    "GPUCache" "gpu_cache" "GpuCache"
-    "DawnGraphiteCache" "DawnWebGPUCache" "dawn_cache"
-    "app_service" "app_service_storage" "AppServiceStorage"
-    "Application Cache" "application_cache"
-    "blob_storage" "BlobStorage"
-    "databases" "Databases"
-    "Extensions" "extensions" "Extension Scripts" "extension_scripts"
-    "Extension State" "extension_state"
-    "Extension Rules" "extension_rules"
-    "Feature Engagement Tracker" "feature_engagement"
-    "File System" "file_system"
-    "GCM Store" "gcm_store"
-    "IndexedDB" "indexeddb"
-    "Local Extension Settings" "local_extension_settings"
-    "Local Storage" "local_storage" "LocalStorage"
-    "Login Data" "login_data"
-    "Network" "network"
-    "Network Action Predictor" "network_action_predictor"
-    "optimization_guide" "OptimizationGuide"
-    "Platform Notifications" "platform_notifications"
-    "Safe Browsing" "safe_browsing"
-    "Service Worker" "service_worker" "ServiceWorker"
-    "Session Storage" "session_storage" "SessionStorage"
-    "Sessions" "sessions"
-    "Shortcuts" "shortcuts"
-    "Site Characteristics Database" "site_characteristics"
-    "Storage" "storage"
-    "Sync Data" "sync_data" "SyncData"
-    "TransportSecurity" "transport_security"
-    "Trust Tokens" "trust_tokens"
-    "Visited Links" "visited_links"
-    "Web Data" "web_data" "WebData"
-    "WebRTC Logs" "webrtc_logs"
-    "component_updater" "ComponentUpdater"
-    "data_reduction_proxy" "DataReductionProxy"
-    "Default" "Profile" "Guest Profile" "System Profile"
-    "cros-components" "cros_components"
-    "log" "LOG" "logs"
-    "shared_proto_db" "SharedProtoDb"
-    "Site Engagement" "site_engagement"
-    "Top Sites" "top_sites"
-    "History" "Thumbnails" "Favicons"
-    "Bookmarks" "Preferences" "Secure Preferences"
-    "Cookies" "cookies"
-    "Affiliation Database" "affiliation_database"
-    "AutofillStrikeDatabase" "autofill"
-    "BudgetDatabase" "budget_database"
-    "Download Service" "download_service"
-    "heavy_ad_intervention" "HeavyAdIntervention"
-    "media_device_salts" "MediaDeviceSalts"
-    "Pepper Data" "pepper_data"
-    "previews_opt_out" "PreviewsOptOut"
-    "QuotaManager" "quota_manager"
-    "Reporting and NEL" "reporting_nel"
-    "SmartScreenState" "smartscreen"
-    "VideoDecodeStats" "video_decode_stats"
-    "webdata"
-    "ZxcvbnData" "zxcvbn_data"
-    # ChromeOS specific system folders
-    "autobrightness" "birch" "commerce_subscriptions" "commerce_subscription"
-    "discounts_db" "launcher_ranking" "app_launch_automation"
-    "user" "crash" "crosvm.sock" "shill" "session_manager" "flimflam"
-    "segmentation_platform" "optimization_guide_model_store"
-    "optimization_guide_prediction_model_downloads"
-    "component_crl" "FileTypePolicies" "OriginTrials" "SSLErrorAssistant"
-    "SafetyTips" "Subresource Filter" "TrustTokenKeyCommitments"
-    "first_party_sets" "PrivacySandboxAttestations"
-    "CertificateRevocation" "CRLSet" "MEIPreload" "OnDeviceHeadModel"
-    "pnacl" "recovery_component" "widevine"
-    "MyFiles"
-    # Common temp/system patterns
-    "tmp" "temp" "README" "backup_info.txt"
-  )
-  
-  # Remove each system directory
-  for dir in "${SYSTEM_DIRS[@]}"; do
-    if [ -e "$TEMP_DIR/$dir" ]; then
-      echo "Removing system dir: $dir" >> "$LOGFILE"
-      rm -rf "$TEMP_DIR/$dir" 2>/dev/null
-    fi
-  done
-  
-  # Remove ALL hidden directories and files
-  find "$TEMP_DIR" -maxdepth 1 -name ".*" -exec rm -rf {} + 2>/dev/null
-  
-  # Remove specific file patterns
-  find "$TEMP_DIR" -name "*.keyring" -delete 2>/dev/null
-  find "$TEMP_DIR" -name "Cookies*" -delete 2>/dev/null
-  find "$TEMP_DIR" -name "Login Data*" -delete 2>/dev/null
-  find "$TEMP_DIR" -name "Web Data*" -delete 2>/dev/null
-  find "$TEMP_DIR" -name "Preferences" -delete 2>/dev/null
-  find "$TEMP_DIR" -name "Secure Preferences" -delete 2>/dev/null
-  find "$TEMP_DIR" -name "*.log" -delete 2>/dev/null
-  find "$TEMP_DIR" -name "*.ldb" -delete 2>/dev/null
-  find "$TEMP_DIR" -name "*.leveldb" -delete 2>/dev/null
-  find "$TEMP_DIR" -name "LOCK" -delete 2>/dev/null
-  find "$TEMP_DIR" -name "MANIFEST*" -delete 2>/dev/null
-  find "$TEMP_DIR" -name "CURRENT" -delete 2>/dev/null
-  find "$TEMP_DIR" -name "LOG*" -type f -delete 2>/dev/null
-  find "$TEMP_DIR" -name "*.sqlite*" -delete 2>/dev/null
-  find "$TEMP_DIR" -name "*.db" -delete 2>/dev/null
-  find "$TEMP_DIR" -name "*.db-*" -delete 2>/dev/null
-  find "$TEMP_DIR" -name "Singleton*" -delete 2>/dev/null
-  find "$TEMP_DIR" -name "backup_info.txt" -delete 2>/dev/null
-  find "$TEMP_DIR" -name "*.crx" -delete 2>/dev/null
-  find "$TEMP_DIR" -name "*.pem" -delete 2>/dev/null
-  
-  # Ensure MyFiles directory exists
-  mkdir -p "$MYFILES_PATH" 2>> "$LOGFILE"
-  
-  echo "Restoring ONLY user files to MyFiles folder: $MYFILES_PATH" >> "$LOGFILE"
-  echo "Remaining items after cleanup:" >> "$LOGFILE"
-  ls -la "$TEMP_DIR" >> "$LOGFILE" 2>&1
-  
-  # Count files to restore
-  FILE_COUNT=$(find "$TEMP_DIR" -type f 2>/dev/null | wc -l)
-  DIR_COUNT=$(find "$TEMP_DIR" -mindepth 1 -type d 2>/dev/null | wc -l)
-  echo "Files to restore: $FILE_COUNT, Directories: $DIR_COUNT" >> "$LOGFILE"
-  
-  # Only restore if there's something to restore
-  if [ "$FILE_COUNT" -eq 0 ] && [ "$DIR_COUNT" -eq 0 ]; then
-    echo "No user files found in backup after cleanup" >> "$LOGFILE"
-    rm -rf "$TEMP_DIR"
-    echo "Restore completed but no user files were found in backup."
-    exit 0
-  fi
-  
-  # Copy remaining files (should only be user files) to MyFiles
-  for item in "$TEMP_DIR"/*; do
-    if [ -e "$item" ]; then
-      basename=$(basename "$item")
-      echo "Restoring to MyFiles: $basename" >> "$LOGFILE"
-      cp -a "$item" "$MYFILES_PATH/" 2>> "$LOGFILE"
-    fi
-  done
-  
-  # Fix ownership only for MyFiles directory (not profile root!)
-  if id chronos &>/dev/null; then
-    echo "Fixing ownership for MyFiles only..." >> "$LOGFILE"
-    chown -R chronos:chronos "$MYFILES_PATH" 2>> "$LOGFILE"
-  fi
-  
-  rm -rf "$TEMP_DIR"
-  
-  RESTORED_COUNT=$(find "$MYFILES_PATH" -type f 2>/dev/null | wc -l)
-  echo "Restore completed! Files in MyFiles: $RESTORED_COUNT" >> "$LOGFILE"
-  echo "Restore completed! Your files are in MyFiles folder."
+
+  # Stage 2: freeze Chrome so it cannot rewrite its in-memory settings over
+  # the restored files while we swap them in.
+  echo "Freezing Chrome..." >> "$LOGFILE"
+  killall -STOP chrome 2>> "$LOGFILE" || true
+
+  # Swap the restored content into the profile (merge; staging metadata is
+  # not written back).
+  (cd "$STAGING" && tar -cf - \
+      --exclude='./backup_info.txt' --exclude='./manifest.json' \
+      --exclude='./system_state' .) 2>> "$LOGFILE" \
+    | tar -xf - -C "$RESTORE_ROOT" 2>> "$LOGFILE"
+
+  # Best-effort re-apply of system state.
+  [ -f "$STAGING/system_state/brightness_percent" ] && \
+    apply_brightness_percent \
+      "$(cat "$STAGING/system_state/brightness_percent" 2>/dev/null)"
+  [ -f "$STAGING/system_state/volume_percent" ] && \
+    apply_volume_percent \
+      "$(cat "$STAGING/system_state/volume_percent" 2>/dev/null)"
+
+  sync
+  rm -rf "$STAGING"
+
+  # Kill Chrome without giving it a chance to flush: session_manager
+  # immediately respawns it and the new instance reads the restored profile.
+  echo "Killing Chrome without shutdown flush; session will restart" \
+    >> "$LOGFILE"
+  killall -9 chrome 2>> "$LOGFILE" || true
+
+  echo "Restore completed" >> "$LOGFILE"
+  echo "Restore completed"
   exit 0
 else
   echo "Usage: backup|restore --email EMAIL --key KEY --target PATH"
@@ -361,17 +340,24 @@ else
 fi
 )SCRIPT";
 
-bool EnsureRestoreScriptExists() {
+// Returns the backup/restore script to use: the image-installed copy when
+// present, otherwise the embedded fallback (written to /tmp). Returns an
+// empty string on failure.
+std::string GetBackupRestoreScriptPath() {
+  if (base::PathExists(base::FilePath(kInstalledBackupScriptPath))) {
+    return kInstalledBackupScriptPath;
+  }
   base::FilePath script_path(kRestoreScriptPath);
   // Always write the script to ensure latest version is used
   // This overwrites any cached old version
   if (!base::WriteFile(script_path, kRestoreScript)) {
     LOG(ERROR) << "Failed to create restore script";
-    return false;
+    return std::string();
   }
   chmod(kRestoreScriptPath, 0755);
-  return true;
+  return kRestoreScriptPath;
 }
+
 
 }  // namespace
 
@@ -510,6 +496,11 @@ void JemaOsHandler::RegisterMessages() {
   web_ui()->RegisterMessageCallback(
       "jemaosCloudListBackupFiles",
       base::BindRepeating(&JemaOsHandler::HandleJemaOSCloudListBackupFiles,
+                          base::Unretained(this)));
+
+  web_ui()->RegisterMessageCallback(
+      "getJemaCloudBackupAvailable",
+      base::BindRepeating(&JemaOsHandler::HandleGetJemaCloudBackupAvailable,
                           base::Unretained(this)));
 
   web_ui()->RegisterMessageCallback(
@@ -1640,26 +1631,35 @@ void JemaOsHandler::HandleJemaOSRestoreStarted(const base::Value::List& args) {
   std::string filePath = args[2].GetString();
 
   LOG(INFO) << "Restore started for: " << email << " from file: " << filePath;
-  
-  // Ensure restore script exists (creates from embedded script if missing)
-  if (!EnsureRestoreScriptExists()) {
+
+  // Resolve the backup/restore script (image-installed copy, or embedded
+  // fallback written to /tmp).
+  const std::string script_path = GetBackupRestoreScriptPath();
+  if (script_path.empty()) {
     LOG(ERROR) << "Failed to ensure restore script exists";
     FireWebUIListener("jemaos-restore-task-finished",
         base::Value(false), base::Value("Restore failed: Could not create restore script"));
     return;
   }
-  
+
   // Generate key from email and password (same as backup)
   std::string key = email + ":" + password;
   std::string hex_encoded_hash = base::HexEncode(
       base::SHA1Hash(base::as_byte_span(key)));
   hex_encoded_hash.resize(16);
   std::string restore_key = base::ToLowerASCII(hex_encoded_hash);
-  
-  // Build restore command using the embedded script
+
+  // Build restore command. The script freezes Chrome, swaps in the restored
+  // files, then kills Chrome without a shutdown flush; session_manager
+  // respawns Chrome on the restored profile. On success this callback will
+  // most likely never run because the browser is killed by the script.
+  // The target path is base64-encoded so paths with spaces survive (the
+  // script decodes it).
+  const std::string encoded_filepath = base::Base64Encode(filePath);
   std::string command = base::StringPrintf(
       "/bin/bash %s restore --email %s --key %s --target %s",
-      kRestoreScriptPath, email.c_str(), restore_key.c_str(), filePath.c_str());
+      script_path.c_str(), email.c_str(), restore_key.c_str(),
+      encoded_filepath.c_str());
   
   // Execute restore using shell client
   auto* shell_client = JemaOSShellClient::Get();
@@ -1685,7 +1685,7 @@ void JemaOsHandler::OnRestoreCompleted(std::optional<ShellState> state) {
     message = "Restore failed: " + state->result;
   } else {
     success = true;
-    message = "Restore completed successfully! Please restart your device to apply changes.";
+    message = "Restore completed successfully! Your session will restart to apply the snapshot.";
   }
   
   LOG(INFO) << "Restore completed: success=" << success << ", message=" << message;
@@ -1698,15 +1698,77 @@ const char kCloudBackupApiBaseUrl[] = "https://test-connect-api.jematech.fr";
 const char kCloudBackupApiPath[] = "/v1/connect/upload/signed-url-private";
 
 // Cloud Backup implementation
+bool JemaOsHandler::IsCloudBackupAvailableForProfile() {
+  const user_manager::User* user =
+      ProfileHelper::Get()->GetUserByProfile(profile_);
+  if (!user) {
+    return false;
+  }
+  const AccountId& account_id = user->GetAccountId();
+  const std::string& email = account_id.GetUserEmail();
+  // Local (Flint) accounts never have cloud backup. The @jemaos.local domain
+  // is the primary signal: older builds mislabeled online Jema accounts with
+  // the local "ft_id_"/"flint_id_" prefixes and the kFlintAccount type, so
+  // type/prefix are only used as fallback when the email is not known yet.
+  const bool is_jema_local =
+      base::EndsWith(email, "@jemaos.local",
+                     base::CompareCase::INSENSITIVE_ASCII) ||
+      (email.empty() &&
+       (user->IsFlintAccountUser() ||
+        (account_id.GetAccountType() == AccountType::GOOGLE &&
+         (account_id.GetGaiaId().starts_with("ft_id_") ||
+          account_id.GetGaiaId().starts_with("flint_id_")))));
+  if (is_jema_local) {
+    return false;
+  }
+  // Jema online accounts need an active Pro/Pro+ subscription (Freemium is
+  // excluded). The state is cached in a profile pref by UserSessionManager.
+  // Older builds stored online accounts with the local prefixes; count them
+  // as online here too.
+  const bool is_jema_online =
+      user->IsJemaAccountUser() ||
+      (account_id.GetAccountType() == AccountType::GOOGLE &&
+       (account_id.GetGaiaId().starts_with("jema_id_") ||
+        account_id.GetGaiaId().starts_with("ft_id_") ||
+        account_id.GetGaiaId().starts_with("flint_id_")));
+  if (is_jema_online) {
+    return profile_->GetPrefs()->GetBoolean(
+        jemaos::prefs::kJemaSubscriptionActive);
+  }
+  // Other account types (e.g. Google): keep the previous behavior.
+  return true;
+}
+
+void JemaOsHandler::HandleGetJemaCloudBackupAvailable(
+    const base::Value::List& args) {
+  AllowJavascript();
+
+  DCHECK(args.size());
+  std::string callback_id = args[0].GetString();
+  ResolveJavascriptCallback(base::Value(callback_id),
+                            base::Value(IsCloudBackupAvailableForProfile()));
+}
+
 void JemaOsHandler::HandleJemaOSCloudBackupStarted(const base::Value::List& args) {
   DCHECK_EQ(args.size(), 2u);
   std::string email = args[0].GetString();
   std::string password = args[1].GetString();
 
   LOG(INFO) << "Cloud backup started for: " << email;
-  
-  // Ensure backup script exists
-  if (!EnsureRestoreScriptExists()) {
+
+  // Cloud backup requires a Jema online account with an active Pro/Pro+
+  // subscription (never available for local or Freemium accounts).
+  if (!IsCloudBackupAvailableForProfile()) {
+    LOG(WARNING) << "Cloud backup denied: no active Pro subscription";
+    FireWebUIListener("jemaos-cloud-backup-task-finished",
+        base::Value(false), base::Value("Cloud backup requires a JemaOS Pro subscription"));
+    return;
+  }
+
+  // Resolve the backup/restore script (image-installed copy, or embedded
+  // fallback written to /tmp).
+  const std::string script_path = GetBackupRestoreScriptPath();
+  if (script_path.empty()) {
     LOG(ERROR) << "Failed to ensure backup script exists";
     FireWebUIListener("jemaos-cloud-backup-task-finished",
         base::Value(false), base::Value("Cloud backup failed: Could not create backup script"));
@@ -1742,7 +1804,7 @@ void JemaOsHandler::HandleJemaOSCloudBackupStarted(const base::Value::List& args
   // First create local backup to temp file
   std::string command = base::StringPrintf(
       "/bin/bash %s backup --email %s --key %s --target %s",
-      kRestoreScriptPath, email.c_str(), backup_key.c_str(), temp_file.c_str());
+      script_path.c_str(), email.c_str(), backup_key.c_str(), temp_file.c_str());
   
   auto* shell_client = JemaOSShellClient::Get();
   if (!shell_client) {
@@ -2103,7 +2165,17 @@ void JemaOsHandler::HandleJemaOSCloudRestoreStarted(const base::Value::List& arg
   DCHECK_GE(args.size(), 2u);
   std::string email = args[0].GetString();
   std::string password = args[1].GetString();
-  
+
+  // Cloud restore requires a Jema online account with an active Pro/Pro+
+  // subscription (never available for local or Freemium accounts).
+  if (!IsCloudBackupAvailableForProfile()) {
+    LOG(WARNING) << "Cloud restore denied: no active Pro subscription";
+    FireWebUIListener("jemaos-cloud-restore-task-finished",
+        base::Value(false), base::Value("Cloud restore requires a JemaOS Pro subscription"));
+    return;
+  }
+
+
   // Get fileKey from third argument (full path from the file list API)
   std::string file_key;
   if (args.size() >= 3 && args[2].is_string() && !args[2].GetString().empty()) {
@@ -2268,26 +2340,30 @@ void JemaOsHandler::OnCloudRestoreDownloadCompleted(std::optional<ShellState> st
   }
   
   LOG(INFO) << "Backup downloaded, starting restore...";
-  
-  // Ensure restore script exists
-  if (!EnsureRestoreScriptExists()) {
+
+  // Resolve the backup/restore script (image-installed copy, or embedded
+  // fallback written to /tmp).
+  const std::string script_path = GetBackupRestoreScriptPath();
+  if (script_path.empty()) {
     base::DeleteFile(base::FilePath(cloud_restore_temp_file_));
     FireWebUIListener("jemaos-cloud-restore-task-finished",
         base::Value(false), base::Value("Cloud restore failed: Could not create restore script"));
     return;
   }
-  
+
   // Generate key from email and password
   std::string key = cloud_backup_email_ + ":" + cloud_restore_password_;
   std::string hex_encoded_hash = base::HexEncode(
       base::SHA1Hash(base::as_byte_span(key)));
   hex_encoded_hash.resize(16);
   std::string restore_key = base::ToLowerASCII(hex_encoded_hash);
-  
-  // Run restore
+
+  // Run restore. The script freezes Chrome, swaps in the restored files,
+  // then kills Chrome without a shutdown flush; session_manager respawns
+  // Chrome on the restored profile.
   std::string command = base::StringPrintf(
       "/bin/bash %s restore --email %s --key %s --target %s",
-      kRestoreScriptPath, cloud_backup_email_.c_str(), restore_key.c_str(), 
+      script_path.c_str(), cloud_backup_email_.c_str(), restore_key.c_str(),
       cloud_restore_temp_file_.c_str());
   
   auto* shell_client = JemaOSShellClient::Get();
@@ -2309,7 +2385,7 @@ void JemaOsHandler::OnCloudRestoreCompleted(std::optional<ShellState> state) {
     message = "Cloud restore failed: " + state->result;
   } else {
     success = true;
-    message = "Cloud restore completed successfully! Please restart your device.";
+    message = "Cloud restore completed successfully! Your session will restart to apply the snapshot.";
   }
   
   LOG(INFO) << "Cloud restore completed: success=" << success;

@@ -190,6 +190,14 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
         type: Boolean,
         value: false,
       },
+      isLocalAccount_: {
+        type: Boolean,
+        value: false,
+      },
+      cloudFeaturesAvailable_: {
+        type: Boolean,
+        value: false,
+      },
       cloudRestoreRunning_: {
         type: Boolean,
         value: false,
@@ -267,6 +275,8 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
   private restoreSuccess_: boolean;
   private restoreMessage_: string;
   private cloudBackupRunning_: boolean;
+  private isLocalAccount_: boolean;
+  private cloudFeaturesAvailable_: boolean;
   private cloudRestoreRunning_: boolean;
   private showCloudBackupResultDialog_: boolean;
   private cloudBackupSuccess_: boolean;
@@ -327,6 +337,12 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
 
     this.checkLibwidevineStatus_();
     this.checkBackupSupported_();
+
+    // Cloud backup/restore availability depends on the account tier
+    // (local and Freemium accounts are excluded by the backend).
+    sendWithPromise('getJemaCloudBackupAvailable').then((available) => {
+      this.cloudFeaturesAvailable_ = !!available;
+    });
 
     // Fetch user_id when component is ready
     setTimeout(() => {
@@ -520,6 +536,9 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
       chrome.usersPrivate.getCurrentUser().then((user) => {
         this.backupEmail_ = user && user.email;
         if (this.backupEmail_) {
+          // Local Jema accounts (@jemaos.local) have no access to cloud
+          // backup/restore; these features require an online Jema account.
+          this.isLocalAccount_ = this.backupEmail_.endsWith('@jemaos.local');
           this.showBackup_ = true;
           this.getJemaosBackupState_();
         } else {
@@ -708,11 +727,13 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
 
   // Cloud Backup handlers
   cloudBackupDisabled_() {
-    return this.cloudBackupRunning_ || !this.authFactorHasPassword;
+    return this.cloudBackupRunning_ || !this.authFactorHasPassword ||
+        this.isLocalAccount_ || !this.cloudFeaturesAvailable_;
   }
 
   cloudRestoreDisabled_() {
-    return this.cloudRestoreRunning_ || !this.authFactorHasPassword;
+    return this.cloudRestoreRunning_ || !this.authFactorHasPassword ||
+        this.isLocalAccount_ || !this.cloudFeaturesAvailable_;
   }
 
   onCloudBackupClick_() {

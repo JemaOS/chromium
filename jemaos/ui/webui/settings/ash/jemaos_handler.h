@@ -105,6 +105,13 @@ class JemaOsHandler :
   void HandleJemaOSCloudBackupStarted(const base::Value::List& args);
   void HandleJemaOSCloudRestoreStarted(const base::Value::List& args);
   void HandleJemaOSCloudListBackupFiles(const base::Value::List& args);
+  void HandleGetJemaCloudBackupAvailable(const base::Value::List& args);
+
+  // Returns true when cloud backup/restore may be used from this profile:
+  // false for local (Flint) accounts and for Jema online accounts without an
+  // active Pro/Pro+ subscription (Freemium). Other account types (e.g.
+  // Google) keep the previous behavior.
+  bool IsCloudBackupAvailableForProfile();
   void OnCloudBackupLocalCompleted(std::optional<ShellState> state);
   void OnCloudBackupPresignedUrlReceived(std::optional<ShellState> state);
   void OnCloudBackupUploadCompleted(std::optional<ShellState> state);

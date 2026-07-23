@@ -45,8 +45,4 @@
   <message name="IDS_ASH_LOGIN_ERROR_RECOVER_USER_PWD_JEMAOS" desc="Message to let the user know what to do when the user couldn't sign in because password is invalid for the 2nd time">
     If you forgot your password or changed your JemaOS Account password recently, try recovering this user.
   </message>
-  <!-- JemaOS online account network requirement (pod login) -->
-  <message name="IDS_ASH_JEMAOS_ONLINE_ACCOUNT_NETWORK_REQUIRED_ERROR" desc="Error message shown on the login pod when a JemaOS online account is selected but no internet connection is available.">
-    Internet connection required for JemaOS online account. Please connect to WiFi or Ethernet to continue.
-  </message>
 </grit-part>

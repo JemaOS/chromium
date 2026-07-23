@@ -1179,18 +1179,10 @@ void LoginAuthUserView::AuthenticateWithApi(const std::u16string& password) {
                          << (response_body ? body : "<null>");
 
             if (!response_body) {
-              //---***JEMAOS BEGIN***---
-              // The blocked-user API is unreachable (device offline, server
-              // down). A JemaOS online account is a SaaS account: it REQUIRES
-              // an internet connection to sign in. Show the network-required
-              // error in red instead of allowing an offline login; a clear
-              // "blocked" API response below still denies the login.
-              LOG(WARNING) << "Blocked-user API unreachable; online account "
-                              "requires internet, showing error.";
+              LOG(WARNING) << "Authentication failed: No response from server.";
               self->ShowAuthError(l10n_util::GetStringUTF16(
-                  IDS_ASH_JEMAOS_ONLINE_ACCOUNT_NETWORK_REQUIRED_ERROR));
+                  IDS_ASH_LOGIN_ERROR_SERVER_NO_RESPONSE));
               return;
-              //---***JEMAOS END***---
             }
 
             bool api_allows_login = false;

@@ -1160,7 +1160,18 @@ void UserSessionManager::OnSessionRestoreStateChanged(
   // Important piece such as policy code might be broken because of this and
   // subject to an exploit. See http://crbug.com/677312.
   if (IsOnlineSignin(user_context_) &&
-      state == OAuth2LoginManager::SESSION_RESTORE_FAILED) {
+      state == OAuth2LoginManager::SESSION_RESTORE_FAILED &&
+      //---***JEMAOS BEGIN***---
+      // Jema online accounts authenticate with a local password and the Jema
+      // API, not a Google OAuth2 token: the OAuth2 session restore can never
+      // succeed for them (their stored token is a Jema credential, not an
+      // OAuth2 refresh token), and terminating the session kicked every
+      // online login back to the login panel (black screen). Let the session
+      // live; the OAuth2 token state is simply marked invalid, which is
+      // harmless for Jema services.
+      user_context_.GetAuthFlow() != UserContext::AUTH_FLOW_JEMA_ONLINE
+      //---***JEMAOS END***---
+      ) {
     SYSLOG(ERROR)
         << "Session restore failed for online sign-in, terminating session.";
     chrome::AttemptUserExit();

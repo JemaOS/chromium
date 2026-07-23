@@ -59,15 +59,13 @@ int GetJemaOSSupervisedUserSettingsSyncInterval() {
 }
 
 bool IsPolicyManagedByJema() {
-  //---***JEMAOS BEGIN***---
-  // The Jema device-management backend is not deployed yet. Treating every
-  // Jema account as DM-managed makes user cloud policy mandatory, and the
-  // session is killed (chrome::AttemptUserExit) when the missing server
-  // can't serve it: every online login ended in a black screen back to the
-  // login panel. Only honor the explicit switch until the backend exists.
+  // Jema accounts are enterprise-managed through the Jema SaaS (the device
+  // management flow works when the DM backend is reachable). The login
+  // black screen was caused by the OAuth2 session-restore termination, not
+  // by the DM policy path — keep the original behavior.
   return base::CommandLine::ForCurrentProcess()->HasSwitch(
-      kPolicyManagedByJema);
-  //---***JEMAOS END***---
+             kPolicyManagedByJema) ||
+         IsJemaAccountEnabled();
 }
 
 bool IsJemaDMServerUrl(const std::string& url) {

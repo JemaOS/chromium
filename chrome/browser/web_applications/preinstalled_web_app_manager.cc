@@ -701,6 +701,10 @@ void PreinstalledWebAppManager::SetSkipStartupSynchronizeForTesting(  // IN-TEST
   skip_startup_for_testing_ = skip_startup;  // IN-TEST
 }
 
+void PreinstalledWebAppManager::SynchronizeNow(SynchronizeCallback callback) {
+  LoadAndSynchronize(std::move(callback));
+}
+
 void PreinstalledWebAppManager::LoadAndSynchronizeForTesting(
     SynchronizeCallback callback) {
   LoadAndSynchronize(std::move(callback));

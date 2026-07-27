@@ -129,6 +129,8 @@
 #include "chrome/browser/ui/ash/system/system_tray_client_impl.h"
 #include "chrome/browser/ui/startup/startup_browser_creator.h"
 #include "chrome/browser/ui/webui/ash/login/jema_local_signin_screen_handler.h"
+#include "chrome/browser/web_applications/preinstalled_web_app_manager.h"
+#include "chrome/browser/web_applications/web_app_provider.h"
 #include "chrome/common/channel_info.h"
 #include "chrome/common/chrome_constants.h"
 #include "chrome/common/chrome_features.h"
@@ -2617,11 +2619,27 @@ void UserSessionManager::OnJemaOSSubscriptionFetched(
   }
   const base::Value::Dict& dict = json->GetDict();
   const bool active = dict.FindBool("hasSubscription").value_or(false);
+  const bool previous =
+      profile->GetPrefs()->GetBoolean(jemaos::prefs::kJemaSubscriptionActive);
   profile->GetPrefs()->SetBoolean(jemaos::prefs::kJemaSubscriptionActive,
                                   active);
   LOG(INFO) << "[JEMAOS] Subscription state for "
             << profile->GetProfileUserName() << ": "
             << (active ? "active (Pro)" : "none (Freemium)");
+
+  // JEMAOS: the startup preinstall pass usually runs before this response
+  // arrives, with the fail-closed default (no subscription). If the account
+  // turns out to have an active Pro/Pro+ subscription, re-run the preinstall
+  // synchronize now so the premium OEM PWAs get installed during this first
+  // session instead of only at the next login.
+  if (active && !previous) {
+    if (auto* provider = web_app::WebAppProvider::GetForWebApps(profile)) {
+      LOG(INFO) << "[JEMAOS] Re-running preinstalled web apps synchronize "
+                   "for the premium OEM bundle";
+      provider->preinstalled_web_app_manager().SynchronizeNow(
+          base::DoNothing());
+    }
+  }
 }
 
 void UserSessionManager::StartTetherServiceIfPossible(Profile* profile) {

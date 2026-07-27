@@ -103,6 +103,11 @@ class PreinstalledWebAppManager {
   // installed apps.
   void Start(base::OnceClosure on_init_complete);
 
+  // JemaOS: re-runs the load+synchronize pass outside of startup. Used when
+  // the Jema subscription state (which gates the premium OEM PWAs) becomes
+  // known only after the startup pass has already run.
+  void SynchronizeNow(SynchronizeCallback callback);
+
   void LoadAndSynchronizeForTesting(SynchronizeCallback callback);
 
   void LoadForTesting(ConsumeInstallOptions callback);

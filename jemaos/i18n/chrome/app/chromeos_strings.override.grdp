@@ -789,4 +789,16 @@
     </message>
   </if>
 
+  <!-- === OneDrive / Files app === -->
+  <if expr="lang == 'fr' or lang == 'fr-CA'">
+    <message name="IDS_CONNECT_TO_ONEDRIVE_BODY_TEXT" desc="Explanation text for a dialog which allows the user to connect Files app and Microsoft OneDrive storage.">
+      Associez OneDrive à l'appli Fichiers pour gérer vos documents stockés depuis votre PC Jema. Vous devez vous connecter avec votre compte Microsoft.
+    </message>
+  </if>
+  <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <message name="IDS_CONNECT_TO_ONEDRIVE_BODY_TEXT" desc="Explanation text for a dialog which allows the user to connect Files app and Microsoft OneDrive storage.">
+      Connect OneDrive to the Files app to manage your stored documents from your Jema PC. You'll need to sign in with your Microsoft account.
+    </message>
+  </if>
+
 </grit-part>

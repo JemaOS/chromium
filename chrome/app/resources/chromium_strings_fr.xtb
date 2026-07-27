@@ -364,7 +364,7 @@ Les autorisations que vous avez déjà accordées aux sites Web et aux applis pe
 <translation id="6063093106622310249">&amp;Ouvrir dans Chromium</translation>
 <translation id="6069027071882229820">Copier en tant qu'image</translation>
 <translation id="6072279588547424923">L'extension <ph name="EXTENSION_NAME" /> a été ajoutée à Chromium</translation>
-<translation id="6072463441809498330">Rendre Chromium plus rapide</translation>
+<translation id="7970259471725930346">Rendre Thot plus rapide</translation>
 <translation id="608006075545470555">Ajouter un profil professionnel à ce navigateur</translation>
 <translation id="6096348254544841612">Personnalisez et contrôlez Chromium. Une mise à jour est disponible.</translation>
 <translation id="6107893135096467929">Activée • Chromium ne peut pas vérifier d'où vient cette extension</translation>
@@ -508,7 +508,7 @@ Chromium ne peut pas récupérer vos paramètres.</translation>
 <translation id="77283119132245232">Fournit des services de traçage système pour <ph name="BROWSER_NAME" />. Si ce service est désactivé, les traces de performances créées par le navigateur n'incluent pas les événements système tels que les changements de contexte et les threads prêts.</translation>
 <translation id="7745317241717453663">Cette action aura pour effet de supprimer vos données de navigation de cet appareil. Pour récupérer vos données ultérieurement, connectez-vous à Chromium en tant que <ph name="USER_EMAIL" />.</translation>
 <translation id="7747138024166251722">Le programme d'installation n'a pas pu créer de répertoire temporaire. Vérifiez que le disque a suffisamment d'espace libre et que vous disposez des autorisations nécessaires pour installer le logiciel.</translation>
-<translation id="7786760609782648049">Rendre Chromium plus rapide</translation>
+<translation id="6589039814560705048">Rendre Thot plus rapide</translation>
 <translation id="7790626492778995050"><ph name="PAGE_TITLE" /> – Chromium Canary</translation>
 <translation id="7803986347287457849">Faites en sorte qu'il soit plus difficile pour les personnes ayant accès à votre trafic Internet de voir quels sites vous consultez. Chromium utilise une connexion sécurisée pour rechercher l'adresse IP d'un site dans le système de noms de domaine (DNS).</translation>
 <translation id="7810005234485217901">Vous pouvez épingler la recherche dans des images pour y accéder facilement</translation>

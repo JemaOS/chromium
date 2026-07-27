@@ -2633,12 +2633,12 @@ Permissions you've already given to websites and apps may apply to this account.
       <if expr="not is_android">
         <if expr="use_titlecase">
           <message name="IDS_MEMORY_SAVER_MODE_PROMO_TITLE" desc="In Title Case: The title for the Memory Saver mode in-product promo bubble">
-            Make Chromium Faster
+            Make Thot Faster
           </message>
         </if>
         <if expr="not use_titlecase">
           <message name="IDS_MEMORY_SAVER_MODE_PROMO_TITLE" desc="The title for the Memory Saver mode in-product promo bubble">
-            Make Chromium faster
+            Make Thot faster
           </message>
         </if>
       </if>

@@ -68,7 +68,7 @@ const char kJemaOSToggleArcMediaAutoScanLearnMoreURL[] = "https://jematechnology
 const char kJemaOSDevModeTransitionLearnMoreURL[] = "https://jematechnology.fr/?ospath=docs/knowledge-base/getting-started/developer-mode";
 
 #if BUILDFLAG(JEMAOS_DEVICE)
-const char kJemaOSProductWarrantyDefaultURL[] = "https://jematechnology.fr"; // https://sn.jematabduo.cn
+const char kJemaOSProductWarrantyDefaultURL[] = "https://jematechnology.fr";
 #endif
 
 #else
@@ -141,7 +141,6 @@ const char kJemaOSTelegramGroupURL[] = "https://telegram.jematechnology.fr";
 
 #if BUILDFLAG(JEMAOS_DEVICE)
 const char kJemaOSProductWarrantyDefaultURL[] = "https://jematechnology.fr"; // https://warrenty.jematechnology.fr
-// const char kJemaOSProductWarrantyDefaultURL[] = "https://sn.jematabduo.com";
 #endif
 
 #endif

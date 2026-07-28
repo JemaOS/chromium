@@ -70,6 +70,7 @@ static_library("settings") {
     "//ash/webui/common:trusted_types_util",
     "//ash/webui/personalization_app",
     "//build:branding_buildflags",
+    "//chrome/app/theme:theme_resources",
     "//chrome/browser:browser_process",
     "//chrome/browser/ash/app_restore",
     "//chrome/browser/ash/arc",

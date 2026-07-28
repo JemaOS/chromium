@@ -75,6 +75,26 @@ bool CreateArcMediaAutoScanIndicatorFile() {
   return base::WriteFile(base::FilePath(kJemaOSArcMediaAutoScanIndicatorFile), "");
 }
 
+// D-Bus reply timeouts for shell daemon SyncExec calls. The default D-Bus
+// timeout (~25s) is too short for long operations: the client reports a
+// failure while the daemon keeps running the command in the background,
+// which caused intermittent cloud backup/restore failures depending on the
+// backup size and network speed.
+constexpr int kShellApiCallTimeoutMs = 60 * 1000;  // small JSON API calls
+constexpr int kShellTransferTimeoutMs =
+    15 * 60 * 1000;  // backup file download / upload
+constexpr int kShellBackupRestoreTimeoutMs =
+    15 * 60 * 1000;  // backup / restore script execution
+
+// Shows (or updates) the shared backup/restore notification for the cloud
+// backup and restore flows, which don't go through BackupTaskManager's task
+// tracking. `title_id` is a generated_resources message ID.
+void ShowBackupRestoreNotification(BackupTaskManager::TaskState state,
+                                   int title_id) {
+  BackupTaskManager::GetInstance()->ShowSimpleNotification(
+      state, l10n_util::GetStringUTF16(title_id), std::u16string());
+}
+
 
 // Embedded backup/restore script for restore operations
 // SAFE VERSION: Only backs up and restores MyFiles folder contents
@@ -1660,7 +1680,7 @@ void JemaOsHandler::HandleJemaOSRestoreStarted(const base::Value::List& args) {
       "/bin/bash %s restore --email %s --key %s --target %s",
       script_path.c_str(), email.c_str(), restore_key.c_str(),
       encoded_filepath.c_str());
-  
+
   // Execute restore using shell client
   auto* shell_client = JemaOSShellClient::Get();
   if (!shell_client) {
@@ -1669,8 +1689,14 @@ void JemaOsHandler::HandleJemaOSRestoreStarted(const base::Value::List& args) {
         base::Value(false), base::Value("Restore failed: System service not available"));
     return;
   }
-  
-  shell_client->SyncExec(command,
+
+  // Show the progress notification: the restore can take a while and the
+  // session restarts automatically on success.
+  ShowBackupRestoreNotification(
+      BackupTaskManager::TaskState::kRunning,
+      IDS_JEMAOS_RESTORE_NOTIFICATION_RUNNING_TITLE);
+
+  shell_client->SyncExecWithTimeout(command, kShellBackupRestoreTimeoutMs,
       base::BindOnce(&JemaOsHandler::OnRestoreCompleted,
                      weak_ptr_factory_.GetWeakPtr()));
 }
@@ -1678,7 +1704,7 @@ void JemaOsHandler::HandleJemaOSRestoreStarted(const base::Value::List& args) {
 void JemaOsHandler::OnRestoreCompleted(std::optional<ShellState> state) {
   bool success = false;
   std::string message;
-  
+
   if (!state) {
     message = "Restore failed: No response from system";
   } else if (state->code != 0) {
@@ -1687,7 +1713,13 @@ void JemaOsHandler::OnRestoreCompleted(std::optional<ShellState> state) {
     success = true;
     message = "Restore completed successfully! Your session will restart to apply the snapshot.";
   }
-  
+
+  if (!success) {
+    ShowBackupRestoreNotification(
+        BackupTaskManager::TaskState::kFailed,
+        IDS_JEMAOS_RESTORE_NOTIFICATION_FAILED_TITLE);
+  }
+
   LOG(INFO) << "Restore completed: success=" << success << ", message=" << message;
   FireWebUIListener("jemaos-restore-task-finished",
       base::Value(success), base::Value(message));
@@ -1805,7 +1837,7 @@ void JemaOsHandler::HandleJemaOSCloudBackupStarted(const base::Value::List& args
   std::string command = base::StringPrintf(
       "/bin/bash %s backup --email %s --key %s --target %s",
       script_path.c_str(), email.c_str(), backup_key.c_str(), temp_file.c_str());
-  
+
   auto* shell_client = JemaOSShellClient::Get();
   if (!shell_client) {
     LOG(ERROR) << "Shell client not available for cloud backup";
@@ -1813,8 +1845,16 @@ void JemaOsHandler::HandleJemaOSCloudBackupStarted(const base::Value::List& args
         base::Value(false), base::Value("Cloud backup failed: System service not available"));
     return;
   }
-  
-  shell_client->SyncExec(command,
+
+  // Show the progress notification for the whole cloud backup operation.
+  ShowBackupRestoreNotification(
+      BackupTaskManager::TaskState::kRunning,
+      IDS_JEMAOS_CLOUD_BACKUP_NOTIFICATION_RUNNING_TITLE);
+
+  // The tar+encrypt of the whole profile can take minutes: use a long D-Bus
+  // timeout, otherwise the client reports a spurious failure while the
+  // daemon keeps running the backup in the background.
+  shell_client->SyncExecWithTimeout(command, kShellBackupRestoreTimeoutMs,
       base::BindOnce(&JemaOsHandler::OnCloudBackupLocalCompleted,
                      weak_ptr_factory_.GetWeakPtr()));
 }
@@ -1823,93 +1863,108 @@ void JemaOsHandler::OnCloudBackupLocalCompleted(std::optional<ShellState> state)
   if (!state || state->code != 0) {
     std::string error_msg = state ? state->result : "No response";
     LOG(ERROR) << "Cloud backup local step failed: " << error_msg;
+    ShowBackupRestoreNotification(
+        BackupTaskManager::TaskState::kFailed,
+        IDS_JEMAOS_BACKUP_NOTIFICATION_FAILED_TITLE);
     FireWebUIListener("jemaos-cloud-backup-task-finished",
         base::Value(false), base::Value("Cloud backup failed: " + error_msg));
     return;
   }
-  
+
   LOG(INFO) << "Local backup created, getting pre-signed URL...";
-  
+
   // Call API to get pre-signed URL
   // fileName: just the filename (API will handle the path)
   std::string api_url = std::string(kCloudBackupApiBaseUrl) + kCloudBackupApiPath;
   std::string json_body = base::StringPrintf(
       "{\"fileName\": \"%s\", \"email_id\": \"%s\"}",
       cloud_backup_filename_.c_str(), cloud_backup_email_.c_str());
-  
+
   LOG(INFO) << "Requesting upload URL for: " << cloud_backup_filename_;
   LOG(INFO) << "API URL: " << api_url;
   LOG(INFO) << "JSON body: " << json_body;
-  
+
   // Write a shell script to execute curl - avoids all escaping issues
-  std::string script_file = "/tmp/jemaos_cloud_curl.sh";
-  std::string script_content = 
+  std::string script_file = "/tmp/jemaos_cloud_backup_get_upload_url.sh";
+  std::string script_content =
       "#!/bin/bash\n"
-      "curl -s -L -X POST \"" + api_url + "\" \\\n"
+      "curl -f -s -S -L --retry 2 --connect-timeout 20 -X POST \"" + api_url + "\" \\\n"
       "  -H 'Content-Type: application/json' \\\n"
       "  -d '" + json_body + "'\n";
   base::WriteFile(base::FilePath(script_file), script_content);
   chmod(script_file.c_str(), 0755);
-  
+
   std::string command = "/bin/bash " + script_file;
-  
+
   LOG(INFO) << "Executing curl via script: " << script_file;
-  
+
   auto* shell_client = JemaOSShellClient::Get();
   if (!shell_client) {
     LOG(ERROR) << "Shell client not available for API call";
+    ShowBackupRestoreNotification(
+        BackupTaskManager::TaskState::kFailed,
+        IDS_JEMAOS_BACKUP_NOTIFICATION_FAILED_TITLE);
     FireWebUIListener("jemaos-cloud-backup-task-finished",
         base::Value(false), base::Value("Cloud backup failed: System service not available"));
     return;
   }
-  
-  shell_client->SyncExec(command,
+
+  shell_client->SyncExecWithTimeout(command, kShellApiCallTimeoutMs,
       base::BindOnce(&JemaOsHandler::OnCloudBackupPresignedUrlReceived,
                      weak_ptr_factory_.GetWeakPtr()));
 }
 
 void JemaOsHandler::OnCloudBackupPresignedUrlReceived(std::optional<ShellState> state) {
-  
+
   if (!state) {
     LOG(ERROR) << "Failed to get pre-signed URL: No response";
     base::DeleteFile(base::FilePath(cloud_backup_temp_file_));
+    ShowBackupRestoreNotification(
+        BackupTaskManager::TaskState::kFailed,
+        IDS_JEMAOS_BACKUP_NOTIFICATION_FAILED_TITLE);
     FireWebUIListener("jemaos-cloud-backup-task-finished",
         base::Value(false), base::Value("Cloud backup failed: Could not get upload URL (no response)"));
     return;
   }
-  
+
   LOG(INFO) << "Curl exit code: " << state->code;
   LOG(INFO) << "Curl output: " << state->result;
-  
+
   if (state->code != 0) {
     std::string error_msg = state->result;
     LOG(ERROR) << "Failed to get pre-signed URL, curl exit code: " << state->code << ", output: " << error_msg;
     base::DeleteFile(base::FilePath(cloud_backup_temp_file_));
+    ShowBackupRestoreNotification(
+        BackupTaskManager::TaskState::kFailed,
+        IDS_JEMAOS_BACKUP_NOTIFICATION_FAILED_TITLE);
     FireWebUIListener("jemaos-cloud-backup-task-finished",
         base::Value(false), base::Value("Cloud backup failed: Could not get upload URL (curl error " + std::to_string(state->code) + ")"));
     return;
   }
-  
+
   // Parse the response to extract the upload URL
   // Response format: {"success":true,"data":{"uploadUrl":"https://...","fileKey":"...","expiresIn":900},"message":"..."}
   // Note: response may have HTTP status code appended at the end due to -w flag
   std::string response = state->result;
   LOG(INFO) << "API Response: " << response;
-  
+
   // Check for success
   if (response.find("\"success\":true") == std::string::npos &&
       response.find("\"success\": true") == std::string::npos) {
     LOG(ERROR) << "API returned error response";
     base::DeleteFile(base::FilePath(cloud_backup_temp_file_));
+    ShowBackupRestoreNotification(
+        BackupTaskManager::TaskState::kFailed,
+        IDS_JEMAOS_BACKUP_NOTIFICATION_FAILED_TITLE);
     FireWebUIListener("jemaos-cloud-backup-task-finished",
         base::Value(false), base::Value("Cloud backup failed: API error"));
     return;
   }
-  
+
   // Extract uploadUrl from data object
   std::string upload_url;
   size_t url_pos = response.find("\"uploadUrl\"");
-  
+
   if (url_pos != std::string::npos) {
     size_t colon_pos = response.find(':', url_pos);
     size_t quote_start = response.find('"', colon_pos);
@@ -1918,35 +1973,40 @@ void JemaOsHandler::OnCloudBackupPresignedUrlReceived(std::optional<ShellState> 
       upload_url = response.substr(quote_start + 1, quote_end - quote_start - 1);
     }
   }
-  
+
   if (upload_url.empty()) {
     LOG(ERROR) << "Could not parse uploadUrl from response";
     base::DeleteFile(base::FilePath(cloud_backup_temp_file_));
+    ShowBackupRestoreNotification(
+        BackupTaskManager::TaskState::kFailed,
+        IDS_JEMAOS_BACKUP_NOTIFICATION_FAILED_TITLE);
     FireWebUIListener("jemaos-cloud-backup-task-finished",
         base::Value(false), base::Value("Cloud backup failed: Invalid API response"));
     return;
   }
-  
+
   LOG(INFO) << "Got pre-signed URL, uploading backup...";
   LOG(INFO) << "Upload URL length: " << upload_url.length();
-  
-  // Write a shell script to execute curl upload - avoids all escaping issues
-  std::string script_file = "/tmp/jemaos_cloud_upload.sh";
-  std::string script_content = 
+
+  // Write a shell script to execute curl upload - avoids all escaping issues.
+  // -f makes curl fail on HTTP errors instead of silently "succeeding".
+  std::string script_file = "/tmp/jemaos_cloud_backup_upload.sh";
+  std::string script_content =
       "#!/bin/bash\n"
-      "curl -s -X PUT \\\n"
+      "curl -f -s -S --retry 2 --connect-timeout 20 -X PUT \\\n"
       "  -H 'Content-Type: application/octet-stream' \\\n"
       "  -T \"" + cloud_backup_temp_file_ + "\" \\\n"
       "  \"" + upload_url + "\"\n";
   base::WriteFile(base::FilePath(script_file), script_content);
   chmod(script_file.c_str(), 0755);
-  
+
   std::string command = "/bin/bash " + script_file;
-  
+
   LOG(INFO) << "Executing upload via script: " << script_file;
-  
+
   auto* shell_client = JemaOSShellClient::Get();
-  shell_client->SyncExec(command,
+  // The upload of a large backup can take minutes on a slow network.
+  shell_client->SyncExecWithTimeout(command, kShellTransferTimeoutMs,
       base::BindOnce(&JemaOsHandler::OnCloudBackupUploadCompleted,
                      weak_ptr_factory_.GetWeakPtr()));
 }
@@ -1954,29 +2014,38 @@ void JemaOsHandler::OnCloudBackupPresignedUrlReceived(std::optional<ShellState> 
 void JemaOsHandler::OnCloudBackupUploadCompleted(std::optional<ShellState> state) {
   // Clean up temp files regardless of result
   base::DeleteFile(base::FilePath(cloud_backup_temp_file_));
-  base::DeleteFile(base::FilePath("/tmp/jemaos_cloud_upload.sh"));
-  
+  base::DeleteFile(base::FilePath("/tmp/jemaos_cloud_backup_upload.sh"));
+
   if (!state) {
     LOG(ERROR) << "Upload failed: No response";
+    ShowBackupRestoreNotification(
+        BackupTaskManager::TaskState::kFailed,
+        IDS_JEMAOS_BACKUP_NOTIFICATION_FAILED_TITLE);
     FireWebUIListener("jemaos-cloud-backup-task-finished",
         base::Value(false), base::Value("Cloud backup failed: Upload error"));
     return;
   }
-  
+
   LOG(INFO) << "Upload curl exit code: " << state->code;
   LOG(INFO) << "Upload curl output: " << state->result;
-  
+
   // curl returns 0 on success
   if (state->code != 0) {
     LOG(ERROR) << "Upload failed with code: " << state->code;
+    ShowBackupRestoreNotification(
+        BackupTaskManager::TaskState::kFailed,
+        IDS_JEMAOS_BACKUP_NOTIFICATION_FAILED_TITLE);
     FireWebUIListener("jemaos-cloud-backup-task-finished",
         base::Value(false), base::Value("Cloud backup failed: Upload error (code " + std::to_string(state->code) + ")"));
     return;
   }
-  
+
   LOG(INFO) << "Cloud backup uploaded successfully: " << cloud_backup_filename_;
+  ShowBackupRestoreNotification(
+      BackupTaskManager::TaskState::kFinished,
+      IDS_JEMAOS_CLOUD_BACKUP_NOTIFICATION_FINISHED_TITLE);
   FireWebUIListener("jemaos-cloud-backup-task-finished",
-      base::Value(true), 
+      base::Value(true),
       base::Value("Backup uploaded successfully: " + cloud_backup_filename_));
 }
 
@@ -2005,18 +2074,18 @@ void JemaOsHandler::HandleJemaOSCloudListBackupFiles(const base::Value::List& ar
   
   // Write a shell script to execute curl
   std::string script_file = "/tmp/jemaos_cloud_list_files.sh";
-  std::string script_content = 
+  std::string script_content =
       "#!/bin/bash\n"
-      "curl -s -L -X POST \"" + api_url + "\" \\\n"
+      "curl -s -S -L --retry 2 --connect-timeout 20 -X POST \"" + api_url + "\" \\\n"
       "  -H 'Content-Type: application/json' \\\n"
       "  -d '" + json_body + "'\n";
   base::WriteFile(base::FilePath(script_file), script_content);
   chmod(script_file.c_str(), 0755);
-  
+
   std::string command = "/bin/bash " + script_file;
-  
+
   LOG(INFO) << "Executing list files curl via script";
-  
+
   auto* shell_client = JemaOSShellClient::Get();
   if (!shell_client) {
     LOG(ERROR) << "Shell client not available for listing files";
@@ -2024,8 +2093,8 @@ void JemaOsHandler::HandleJemaOSCloudListBackupFiles(const base::Value::List& ar
         base::Value(false), base::Value::List());
     return;
   }
-  
-  shell_client->SyncExec(command,
+
+  shell_client->SyncExecWithTimeout(command, kShellApiCallTimeoutMs,
       base::BindOnce(&JemaOsHandler::OnCloudListFilesCompleted,
                      weak_ptr_factory_.GetWeakPtr()));
 }
@@ -2190,36 +2259,37 @@ void JemaOsHandler::HandleJemaOSCloudRestoreStarted(const base::Value::List& arg
 
   LOG(INFO) << "Cloud restore started for: " << email;
   LOG(INFO) << "Restore fileKey: " << file_key;
-  
-  // Store restore context
+
+  // Store restore context. The backup is downloaded to the stateful
+  // partition (NOT /tmp, which is a small tmpfs) so large backups fit.
   cloud_backup_email_ = email;
   cloud_restore_password_ = password;
-  cloud_restore_temp_file_ = "/tmp/jemaos_cloud_restore.bak";
-  
+  cloud_restore_temp_file_ = "/home/chronos/.jemaos_cloud_restore.bak";
+
   // Call API to get download pre-signed URL
   std::string api_url = std::string(kCloudBackupApiBaseUrl) + kCloudRestoreApiPath;
   std::string json_body = base::StringPrintf(
       "{\"fileKey\": \"%s\"}",
       file_key.c_str());
-  
+
   LOG(INFO) << "Requesting download URL for: " << file_key;
   LOG(INFO) << "API URL: " << api_url;
   LOG(INFO) << "JSON body: " << json_body;
-  
+
   // Write a shell script to execute curl - avoids all escaping issues
-  std::string script_file = "/tmp/jemaos_cloud_curl.sh";
-  std::string script_content = 
+  std::string script_file = "/tmp/jemaos_cloud_restore_get_download_url.sh";
+  std::string script_content =
       "#!/bin/bash\n"
-      "curl -s -L -X POST \"" + api_url + "\" \\\n"
+      "curl -f -s -S -L --retry 2 --connect-timeout 20 -X POST \"" + api_url + "\" \\\n"
       "  -H 'Content-Type: application/json' \\\n"
       "  -d '" + json_body + "'\n";
   base::WriteFile(base::FilePath(script_file), script_content);
   chmod(script_file.c_str(), 0755);
-  
+
   std::string command = "/bin/bash " + script_file;
-  
+
   LOG(INFO) << "Executing curl via script: " << script_file;
-  
+
   auto* shell_client = JemaOSShellClient::Get();
   if (!shell_client) {
     LOG(ERROR) << "Shell client not available for cloud restore";
@@ -2227,51 +2297,65 @@ void JemaOsHandler::HandleJemaOSCloudRestoreStarted(const base::Value::List& arg
         base::Value(false), base::Value("Cloud restore failed: System service not available"));
     return;
   }
-  
-  shell_client->SyncExec(command,
+
+  // Show the progress notification for the whole cloud restore operation.
+  ShowBackupRestoreNotification(
+      BackupTaskManager::TaskState::kRunning,
+      IDS_JEMAOS_RESTORE_NOTIFICATION_RUNNING_TITLE);
+
+  shell_client->SyncExecWithTimeout(command, kShellApiCallTimeoutMs,
       base::BindOnce(&JemaOsHandler::OnCloudRestorePresignedUrlReceived,
                      weak_ptr_factory_.GetWeakPtr()));
 }
 
 void JemaOsHandler::OnCloudRestorePresignedUrlReceived(std::optional<ShellState> state) {
-  
+
   if (!state) {
     LOG(ERROR) << "Failed to get download URL: No response";
+    ShowBackupRestoreNotification(
+        BackupTaskManager::TaskState::kFailed,
+        IDS_JEMAOS_RESTORE_NOTIFICATION_FAILED_TITLE);
     FireWebUIListener("jemaos-cloud-restore-task-finished",
         base::Value(false), base::Value("Cloud restore failed: Could not get download URL (no response)"));
     return;
   }
-  
+
   LOG(INFO) << "Curl exit code: " << state->code;
   LOG(INFO) << "Curl output: " << state->result;
-  
+
   if (state->code != 0) {
     std::string error_msg = state->result;
     LOG(ERROR) << "Failed to get download URL, curl exit code: " << state->code << ", output: " << error_msg;
+    ShowBackupRestoreNotification(
+        BackupTaskManager::TaskState::kFailed,
+        IDS_JEMAOS_RESTORE_NOTIFICATION_FAILED_TITLE);
     FireWebUIListener("jemaos-cloud-restore-task-finished",
         base::Value(false), base::Value("Cloud restore failed: Could not get download URL (curl error " + std::to_string(state->code) + ")"));
     return;
   }
-  
+
   // Parse response to extract download URL
   // Response format: {"success":true,"data":{"downloadUrl":"https://...","expiresIn":900},"message":"..."}
   // Note: response may have HTTP status code appended at the end due to -w flag
   std::string response = state->result;
   LOG(INFO) << "Download API Response: " << response;
-  
+
   // Check for success
   if (response.find("\"success\":true") == std::string::npos &&
       response.find("\"success\": true") == std::string::npos) {
     LOG(ERROR) << "API returned error - no backup found in cloud";
+    ShowBackupRestoreNotification(
+        BackupTaskManager::TaskState::kFailed,
+        IDS_JEMAOS_RESTORE_NOTIFICATION_FAILED_TITLE);
     FireWebUIListener("jemaos-cloud-restore-task-finished",
         base::Value(false), base::Value("Cloud restore failed: No backup found in cloud for this account"));
     return;
   }
-  
+
   // Extract downloadUrl from data object
   std::string download_url;
   size_t url_pos = response.find("\"downloadUrl\"");
-  
+
   if (url_pos != std::string::npos) {
     size_t colon_pos = response.find(':', url_pos);
     size_t quote_start = response.find('"', colon_pos);
@@ -2280,72 +2364,98 @@ void JemaOsHandler::OnCloudRestorePresignedUrlReceived(std::optional<ShellState>
       download_url = response.substr(quote_start + 1, quote_end - quote_start - 1);
     }
   }
-  
+
   if (download_url.empty()) {
     LOG(ERROR) << "Could not parse downloadUrl from response";
+    ShowBackupRestoreNotification(
+        BackupTaskManager::TaskState::kFailed,
+        IDS_JEMAOS_RESTORE_NOTIFICATION_FAILED_TITLE);
     FireWebUIListener("jemaos-cloud-restore-task-finished",
         base::Value(false), base::Value("Cloud restore failed: No backup found in cloud"));
     return;
   }
-  
+
   LOG(INFO) << "Got download URL, downloading backup...";
   LOG(INFO) << "Download URL length: " << download_url.length();
-  
-  // Write a shell script to execute curl download - avoids all escaping issues
-  std::string script_file = "/tmp/jemaos_cloud_download.sh";
-  std::string script_content = 
+
+  // Write a shell script to execute curl download - avoids all escaping
+  // issues. -f makes curl fail on HTTP errors instead of saving an error
+  // page as the "backup" file (which later failed decryption).
+  std::string script_file = "/tmp/jemaos_cloud_restore_download.sh";
+  std::string script_content =
       "#!/bin/bash\n"
-      "curl -s -o \"" + cloud_restore_temp_file_ + "\" \\\n"
+      "curl -f -s -S -L --retry 2 --connect-timeout 20 \\\n"
+      "  -o \"" + cloud_restore_temp_file_ + "\" \\\n"
       "  \"" + download_url + "\"\n";
   base::WriteFile(base::FilePath(script_file), script_content);
   chmod(script_file.c_str(), 0755);
-  
+
   std::string command = "/bin/bash " + script_file;
-  
+
   LOG(INFO) << "Executing download via script: " << script_file;
-  
+
   auto* shell_client = JemaOSShellClient::Get();
-  shell_client->SyncExec(command,
+  // The download of a large backup can take minutes on a slow network:
+  // without an explicit long timeout the D-Bus call times out after ~25s
+  // and the restore fails spuriously while curl keeps running.
+  shell_client->SyncExecWithTimeout(command, kShellTransferTimeoutMs,
       base::BindOnce(&JemaOsHandler::OnCloudRestoreDownloadCompleted,
                      weak_ptr_factory_.GetWeakPtr()));
 }
 
 void JemaOsHandler::OnCloudRestoreDownloadCompleted(std::optional<ShellState> state) {
   // Clean up script temp file
-  base::DeleteFile(base::FilePath("/tmp/jemaos_cloud_download.sh"));
-  
+  base::DeleteFile(base::FilePath("/tmp/jemaos_cloud_restore_download.sh"));
+
   if (!state) {
     LOG(ERROR) << "Download failed: No response";
+    ShowBackupRestoreNotification(
+        BackupTaskManager::TaskState::kFailed,
+        IDS_JEMAOS_RESTORE_NOTIFICATION_FAILED_TITLE);
     FireWebUIListener("jemaos-cloud-restore-task-finished",
         base::Value(false), base::Value("Cloud restore failed: Download error (no response)"));
     return;
   }
-  
+
   LOG(INFO) << "Download curl exit code: " << state->code;
   LOG(INFO) << "Download curl output: " << state->result;
-  
+
   if (state->code != 0) {
     LOG(ERROR) << "Download failed with code: " << state->code;
+    ShowBackupRestoreNotification(
+        BackupTaskManager::TaskState::kFailed,
+        IDS_JEMAOS_RESTORE_NOTIFICATION_FAILED_TITLE);
     FireWebUIListener("jemaos-cloud-restore-task-finished",
         base::Value(false), base::Value("Cloud restore failed: Download error (code " + std::to_string(state->code) + ")"));
     return;
   }
-  
-  // Check if file was downloaded
-  if (!base::PathExists(base::FilePath(cloud_restore_temp_file_))) {
-    LOG(ERROR) << "Downloaded file not found";
+
+  // Check that a non-empty file was actually downloaded (a truncated or
+  // missing file would only fail later during decryption).
+  const std::optional<int64_t> downloaded_size =
+      base::GetFileSize(base::FilePath(cloud_restore_temp_file_));
+  if (!downloaded_size.has_value() || *downloaded_size <= 0) {
+    LOG(ERROR) << "Downloaded file missing or empty";
+    base::DeleteFile(base::FilePath(cloud_restore_temp_file_));
+    ShowBackupRestoreNotification(
+        BackupTaskManager::TaskState::kFailed,
+        IDS_JEMAOS_RESTORE_NOTIFICATION_FAILED_TITLE);
     FireWebUIListener("jemaos-cloud-restore-task-finished",
-        base::Value(false), base::Value("Cloud restore failed: Downloaded file not found"));
+        base::Value(false), base::Value("Cloud restore failed: Downloaded file is missing or empty"));
     return;
   }
-  
-  LOG(INFO) << "Backup downloaded, starting restore...";
+
+  LOG(INFO) << "Backup downloaded (" << *downloaded_size
+            << " bytes), starting restore...";
 
   // Resolve the backup/restore script (image-installed copy, or embedded
   // fallback written to /tmp).
   const std::string script_path = GetBackupRestoreScriptPath();
   if (script_path.empty()) {
     base::DeleteFile(base::FilePath(cloud_restore_temp_file_));
+    ShowBackupRestoreNotification(
+        BackupTaskManager::TaskState::kFailed,
+        IDS_JEMAOS_RESTORE_NOTIFICATION_FAILED_TITLE);
     FireWebUIListener("jemaos-cloud-restore-task-finished",
         base::Value(false), base::Value("Cloud restore failed: Could not create restore script"));
     return;
@@ -2360,14 +2470,15 @@ void JemaOsHandler::OnCloudRestoreDownloadCompleted(std::optional<ShellState> st
 
   // Run restore. The script freezes Chrome, swaps in the restored files,
   // then kills Chrome without a shutdown flush; session_manager respawns
-  // Chrome on the restored profile.
+  // Chrome on the restored profile. On success the callback below will most
+  // likely never run because the browser is killed by the script.
   std::string command = base::StringPrintf(
       "/bin/bash %s restore --email %s --key %s --target %s",
       script_path.c_str(), cloud_backup_email_.c_str(), restore_key.c_str(),
       cloud_restore_temp_file_.c_str());
-  
+
   auto* shell_client = JemaOSShellClient::Get();
-  shell_client->SyncExec(command,
+  shell_client->SyncExecWithTimeout(command, kShellBackupRestoreTimeoutMs,
       base::BindOnce(&JemaOsHandler::OnCloudRestoreCompleted,
                      weak_ptr_factory_.GetWeakPtr()));
 }
@@ -2375,10 +2486,10 @@ void JemaOsHandler::OnCloudRestoreDownloadCompleted(std::optional<ShellState> st
 void JemaOsHandler::OnCloudRestoreCompleted(std::optional<ShellState> state) {
   // Clean up temp file
   base::DeleteFile(base::FilePath(cloud_restore_temp_file_));
-  
+
   bool success = false;
   std::string message;
-  
+
   if (!state) {
     message = "Cloud restore failed: No response from system";
   } else if (state->code != 0) {
@@ -2387,7 +2498,13 @@ void JemaOsHandler::OnCloudRestoreCompleted(std::optional<ShellState> state) {
     success = true;
     message = "Cloud restore completed successfully! Your session will restart to apply the snapshot.";
   }
-  
+
+  if (!success) {
+    ShowBackupRestoreNotification(
+        BackupTaskManager::TaskState::kFailed,
+        IDS_JEMAOS_RESTORE_NOTIFICATION_FAILED_TITLE);
+  }
+
   LOG(INFO) << "Cloud restore completed: success=" << success;
   FireWebUIListener("jemaos-cloud-restore-task-finished",
       base::Value(success), base::Value(message));

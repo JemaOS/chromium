@@ -33,6 +33,11 @@ class COMPONENT_EXPORT(ASH_DBUS_JEMAOS_SHELL_CLIENT) JemaOSShellClient
     virtual void RemoveObserver(Observer* observer) = 0;
     virtual bool HasObserver(const Observer* observer) const = 0;
     virtual void SyncExec(const std::string& cmd, chromeos::DBusMethodCallback<ShellState> callback) = 0;
+    // Same as SyncExec but with an explicit D-Bus reply timeout (in
+    // milliseconds). Needed for long-running commands (backup creation,
+    // download/upload, restore): the default D-Bus timeout (~25s) makes the
+    // client give up while the daemon keeps running the command.
+    virtual void SyncExecWithTimeout(const std::string& cmd, int timeout_ms, chromeos::DBusMethodCallback<ShellState> callback) = 0;
     virtual void AsyncExec(const std::string& cmd, chromeos::DBusMethodCallback<ShellState> callback) = 0;
     virtual void GetTaskOutput(int32_t key, int32_t lines, chromeos::DBusMethodCallback<ShellState> callback) = 0;
     virtual void GetTaskState(int32_t key, chromeos::DBusMethodCallback<ShellState> callback) = 0;

@@ -62,6 +62,14 @@ class BackupTaskManager {
       callback_ = std::move(callback);
     }
 
+    // Shows (or updates) the shared backup/restore notification for flows
+    // that don't go through StartTask() (cloud backup, local/cloud restore).
+    // kRunning shows an indeterminate pinned progress notification;
+    // kFinished/kFailed show a dismissible result notification.
+    void ShowSimpleNotification(TaskState state,
+                                const std::u16string& title,
+                                const std::u16string& message);
+
  private:
     void DisplayNotification(
         std::unique_ptr<message_center::Notification> notification);

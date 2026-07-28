@@ -25,9 +25,11 @@
 #include "chrome/browser/notifications/notification_handler.h"
 #include "chrome/browser/platform_util.h"
 #include "chrome/grit/generated_resources.h"
+#include "chrome/grit/theme_resources.h"
 #include "components/vector_icons/vector_icons.h"
 #include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/jemaos_shell_client.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/base/resource/resource_bundle.h"
 #include "ui/message_center/message_center.h"
 #include "ui/message_center/public/cpp/notification.h"
 
@@ -344,6 +346,8 @@ std::unique_ptr<Notification> CreateNotification(
   if (state == BackupTaskManager::TaskState::kFailed) {
     warning_level = message_center::SystemNotificationWarningLevel::WARNING;
   }
+  // No vector icon: the Jema logo (raster) is set as the small image below,
+  // replacing the default Chrome product icon.
   std::unique_ptr<Notification> notification =
       ::ash::CreateSystemNotificationPtr(
           type, kJemaOSBackupNotificationId, title, message, std::u16string(),
@@ -353,7 +357,9 @@ std::unique_ptr<Notification> CreateNotification(
               kJemaOSBackupNotifierId,
               ash::NotificationCatalogName::kJemaOSDataBackup),
           message_center::RichNotificationData(), nullptr,
-          vector_icons::kProductIcon, warning_level);
+          gfx::VectorIcon(), warning_level);
+  notification->SetSmallImage(
+      ui::ResourceBundle::GetSharedInstance().GetImageNamed(IDR_JEMAOS_LOGO));
   if (state == BackupTaskManager::TaskState::kRunning) {
     notification->set_progress(-1);
     notification->set_pinned(true);
@@ -384,6 +390,21 @@ bool WriteFile_(const base::FilePath& path, const std::string& content) {
   return base::PathExists(path);
 }
 }  // namespace
+
+void BackupTaskManager::ShowSimpleNotification(
+    TaskState state,
+    const std::u16string& title,
+    const std::u16string& message) {
+  // For a new running operation, force remove and re-add the notification
+  // to make sure it pops up even if a previous one is still visible.
+  if (state == TaskState::kRunning &&
+      MessageCenter::Get()->FindVisibleNotificationById(
+          kJemaOSBackupNotificationId)) {
+    MessageCenter::Get()->RemoveNotification(kJemaOSBackupNotificationId,
+                                             false);
+  }
+  DisplayNotification(CreateNotification(state, title, message, nullptr));
+}
 
 BackupTaskManager* BackupTaskManager::GetInstance() {
   if (!g_backup_task_manager) {

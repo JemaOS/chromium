@@ -430,6 +430,18 @@
     <message name="IDS_JEMAOS_BACKUP_NOTIFICATION_FAILED_MESSAGE" desc="Message of backup notification when backup is failed.">
       Voir le journal d'erreurs
     </message>
+    <message name="IDS_JEMAOS_CLOUD_BACKUP_NOTIFICATION_RUNNING_TITLE" desc="Title of cloud backup notification when cloud backup is running.">
+      Sauvegarde cloud en cours. Cela peut prendre un moment, veuillez patienter…
+    </message>
+    <message name="IDS_JEMAOS_CLOUD_BACKUP_NOTIFICATION_FINISHED_TITLE" desc="Title of cloud backup notification when cloud backup is successful.">
+      La sauvegarde cloud a été créée avec succès
+    </message>
+    <message name="IDS_JEMAOS_RESTORE_NOTIFICATION_RUNNING_TITLE" desc="Title of restore notification when a restore (local or cloud) is running.">
+      Restauration en cours. Cela peut prendre un moment, veuillez patienter…
+    </message>
+    <message name="IDS_JEMAOS_RESTORE_NOTIFICATION_FAILED_TITLE" desc="Title of restore notification when a restore (local or cloud) is failed.">
+      Échec de la restauration
+    </message>
     <message name="IDS_OOBE_DISPLAY_SIZE_RDP_APP_NAME" desc="Remote desktop app name in the preview section of the display size screen.">
       Bureau à distance
     </message>
@@ -599,6 +611,18 @@
     </message>
     <message name="IDS_JEMAOS_BACKUP_NOTIFICATION_FAILED_MESSAGE" desc="Message of backup notification when backup is failed.">
       View error log
+    </message>
+    <message name="IDS_JEMAOS_CLOUD_BACKUP_NOTIFICATION_RUNNING_TITLE" desc="Title of cloud backup notification when cloud backup is running.">
+      Cloud backup in progress. This may take a while; please wait…
+    </message>
+    <message name="IDS_JEMAOS_CLOUD_BACKUP_NOTIFICATION_FINISHED_TITLE" desc="Title of cloud backup notification when cloud backup is successful.">
+      Cloud backup completed successfully
+    </message>
+    <message name="IDS_JEMAOS_RESTORE_NOTIFICATION_RUNNING_TITLE" desc="Title of restore notification when a restore (local or cloud) is running.">
+      Restore in progress. This may take a while; please wait…
+    </message>
+    <message name="IDS_JEMAOS_RESTORE_NOTIFICATION_FAILED_TITLE" desc="Title of restore notification when a restore (local or cloud) is failed.">
+      Restore failed
     </message>
     <message name="IDS_OOBE_DISPLAY_SIZE_RDP_APP_NAME" desc="Remote desktop app name in the preview section of the display size screen.">
       Remote desktop

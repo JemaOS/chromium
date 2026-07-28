@@ -44,12 +44,17 @@ class JemaOSShellClientImpl : public JemaOSShellClient {
     ~JemaOSShellClientImpl() override = default;
 
     void SyncExec(const std::string& cmd, chromeos::DBusMethodCallback<ShellState> callback) override {
+      SyncExecWithTimeout(cmd, dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+                          std::move(callback));
+    }
+
+    void SyncExecWithTimeout(const std::string& cmd, int timeout_ms, chromeos::DBusMethodCallback<ShellState> callback) override {
       VLOG(1) << "SyncExec received command:" << cmd;
       dbus::MethodCall method_call(kJemaOSShellServiceInterface, kShellSyncExec);
       dbus::MessageWriter writer(&method_call);
       writer.AppendString(cmd);
       shell_proxy_->CallMethod(&method_call,
-          dbus::ObjectProxy::TIMEOUT_USE_DEFAULT,
+          timeout_ms,
           base::BindOnce(&JemaOSShellClientImpl::OnShellDaemonReturn,
             weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
     }

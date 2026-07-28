@@ -105,7 +105,13 @@ class PreinstalledWebAppManager {
 
   // JemaOS: re-runs the load+synchronize pass outside of startup. Used when
   // the Jema subscription state (which gates the premium OEM PWAs) becomes
-  // known only after the startup pass has already run.
+  // known only after the startup pass has already run. Synchronize passes
+  // are serialized: if one is already in progress (e.g. the startup pass),
+  // the request is queued and executed once it completes. Running two
+  // passes concurrently hits the "Only one concurrent
+  // SynchronizeInstalledApps() expected per ExternalInstallSource" CHECK in
+  // ExternallyManagedAppManager and crashes the browser (black screen
+  // during the first online login).
   void SynchronizeNow(SynchronizeCallback callback);
 
   void LoadAndSynchronizeForTesting(SynchronizeCallback callback);
@@ -143,6 +149,13 @@ class PreinstalledWebAppManager {
   class DeviceDataInitializedEvent;
 
   void LoadAndSynchronize(SynchronizeCallback callback);
+
+  // JemaOS: runs the next queued synchronize request when no pass is in
+  // progress (serialization of SynchronizeNow, see above).
+  void MaybeRunNextSynchronize();
+  // JemaOS: completion hook of a synchronize pass; clears
+  // `synchronize_in_progress_` and drains queued requests.
+  void OnSynchronizePassCompleted();
 
   void Load(ConsumeInstallOptions callback);
   void LoadDeviceInfo(ConsumeDeviceInfo callback);
@@ -191,6 +204,10 @@ class PreinstalledWebAppManager {
 
   base::ObserverList<PreinstalledWebAppManager::Observer, /*check_empty=*/true>
       observers_;
+
+  // JemaOS: serialization state for synchronize passes (see SynchronizeNow).
+  bool synchronize_in_progress_ = false;
+  std::vector<SynchronizeCallback> pending_synchronize_callbacks_;
 
   base::WeakPtrFactory<PreinstalledWebAppManager> weak_ptr_factory_{this};
 };

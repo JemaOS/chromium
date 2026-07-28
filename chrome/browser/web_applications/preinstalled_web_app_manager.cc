@@ -676,7 +676,11 @@ void PreinstalledWebAppManager::Start(base::OnceClosure on_done) {
     return;                                                        // IN-TEST
   }
 
-  LoadAndSynchronize(
+  // JemaOS: route the startup pass through the serialized queue too. An
+  // out-of-startup SynchronizeNow() (Jema subscription resolution) may have
+  // started a pass first; running a second one concurrently would hit the
+  // concurrent-sync CHECK in ExternallyManagedAppManager and crash.
+  SynchronizeNow(
       base::BindOnce(&PreinstalledWebAppManager::OnStartUpTaskCompleted,
                      weak_ptr_factory_.GetWeakPtr())
           .Then(std::move(on_done)));
@@ -702,7 +706,28 @@ void PreinstalledWebAppManager::SetSkipStartupSynchronizeForTesting(  // IN-TEST
 }
 
 void PreinstalledWebAppManager::SynchronizeNow(SynchronizeCallback callback) {
-  LoadAndSynchronize(std::move(callback));
+  pending_synchronize_callbacks_.push_back(std::move(callback));
+  MaybeRunNextSynchronize();
+}
+
+void PreinstalledWebAppManager::MaybeRunNextSynchronize() {
+  if (synchronize_in_progress_ || pending_synchronize_callbacks_.empty()) {
+    return;
+  }
+  synchronize_in_progress_ = true;
+  SynchronizeCallback callback =
+      std::move(pending_synchronize_callbacks_.front());
+  pending_synchronize_callbacks_.erase(
+      pending_synchronize_callbacks_.begin());
+  LoadAndSynchronize(
+      std::move(callback).Then(base::BindOnce(
+          &PreinstalledWebAppManager::OnSynchronizePassCompleted,
+          weak_ptr_factory_.GetWeakPtr())));
+}
+
+void PreinstalledWebAppManager::OnSynchronizePassCompleted() {
+  synchronize_in_progress_ = false;
+  MaybeRunNextSynchronize();
 }
 
 void PreinstalledWebAppManager::LoadAndSynchronizeForTesting(

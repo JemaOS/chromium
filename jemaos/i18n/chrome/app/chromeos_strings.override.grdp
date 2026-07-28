@@ -45,6 +45,18 @@
     </if>
   </if>
 
+  <!-- === Local State error (powerwash required) === -->
+  <if expr="lang == 'fr' or lang == 'fr-CA'">
+    <message name="IDS_LOCAL_STATE_ERROR_TEXT_1" desc="Text for notification that all local files will be deleted while JemaOS account and any synced data won't be affected.">
+      La réinitialisation de votre appareil n'a aucune incidence sur vos comptes JemaOS ni sur leurs données synchronisées. Toutefois, tous les fichiers enregistrés en local sur votre appareil vont être supprimés.
+    </message>
+  </if>
+  <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <message name="IDS_LOCAL_STATE_ERROR_TEXT_1" desc="Text for notification that all local files will be deleted while JemaOS account and any synced data won't be affected.">
+      Resetting your device will not affect your JemaOS accounts or any data synced to these accounts. However, all files saved locally on your device will be deleted.
+    </message>
+  </if>
+
   <!-- === Marketing opt-in === -->
   <if expr="lang == 'fr' or lang == 'fr-CA'">
     <message name="IDS_LOGIN_MARKETING_OPT_IN_SCREEN_SUBTITLE" desc="The sub-title of the dialog that allows user to opt-in into several Google marketing options.">

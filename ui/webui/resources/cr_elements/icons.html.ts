@@ -152,7 +152,7 @@ div.innerHTML = getTrustedHTML`
       <g id="chrome-product" viewBox="0 -960 960 960">
         <!-- JemaOS: Jema "A" logo (bold simplified shape for small
              sizes) instead of the Chrome roundel. -->
-        <path d="M342 -849.6 L618 -849.6 L960 -110.4 L750 -110.4 C630 -159.6 330 -159.6 210 -110.4 L0 -110.4 Z M480 -694.2 L678.6 -250.8 C570 -291 390 -291 279 -249 Z">
+        <path d="M342 -849.6 L618 -849.6 L960 -110.4 L750 -110.4 C630 -159.6 330 -159.6 210 -110.4 L0 -110.4 Z M480 -694.2 L279 -249 C390 -291 570 -291 678.6 -250.8 Z">
         </path>
       </g>
       <g id="close">

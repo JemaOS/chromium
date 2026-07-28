@@ -150,7 +150,10 @@ div.innerHTML = getTrustedHTML`
         </path>
       </g>
       <g id="chrome-product" viewBox="0 -960 960 960">
-        <path d="M336-479q0 60 42 102t102 42q60 0 102-42t42-102q0-60-42-102t-102-42q-60 0-102 42t-42 102Zm144 216q11 0 22.5-.5T525-267L427-99q-144-16-237.5-125T96-479q0-43 9.5-84.5T134-645l160 274q28 51 78 79.5T480-263Zm0-432q-71 0-126.5 42T276-545l-98-170q53-71 132.5-109.5T480-863q95 0 179 45t138 123H480Zm356 72q15 35 21.5 71t6.5 73q0 155-100 260.5T509-96l157-275q14-25 22-52t8-56q0-40-15-77t-41-67h196Z">
+        <!-- JemaOS: Jema "A" logo (same path as chrome/app/vector_icons/
+             browser_logo.icon, scaled to the 960 grid) instead of the
+             Chrome roundel. -->
+        <path d="M340.8-849.6 L619.2-849.6 L960-110.4 L738-110.4 Q480-206.4 222-110.4 L0-110.4 Z M480-694.2 L679.8-246.6 Q480-333 280.2-246.6 Z">
         </path>
       </g>
       <g id="close">

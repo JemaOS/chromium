@@ -4,7 +4,8 @@
   <div route-path="default">
     <settings-card header-text="$i18n{jemaosSettingsAccountTitle}" section="jemaosAccount" hidden="[[!isJemaAccount_]]">
       <os-settings-jemaos-account
-        on-auth-factor-has-password-changed="onAuthFactorHasPasswordChanged_">
+        on-auth-factor-has-password-changed="onAuthFactorHasPasswordChanged_"
+        on-auth-factor-has-password-or-pin-changed="onAuthFactorHasPasswordOrPinChanged_">
       </os-settings-jemaos-account>
     </settings-card>
     <if expr="use_jemaos_license">
@@ -29,6 +30,7 @@
                         hidden="[[!showJemaOsTweakUi_(showToggleRebootButtonInTray, showToggleRotateScreenButton, showToggleSwitchTabletLaptopButton)]]">
       <os-settings-jemaos-tweak-ui
         auth-factor-has-password="[[authFactorHasPassword_]]"
+        auth-factor-has-password-or-pin="[[authFactorHasPasswordOrPin_]]"
         show-toggle-rotate-screen-button="[[showToggleRotateScreenButton]]"
         show-toggle-reboot-button-in-tray="[[showToggleRebootButtonInTray]]"
         show-toggle-switch-tablet-laptop-button="[[showToggleSwitchTabletLaptopButton]]">

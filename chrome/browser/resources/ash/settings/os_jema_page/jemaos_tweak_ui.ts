@@ -216,6 +216,8 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
       },
       authFactorHasPassword: Boolean,
 
+      authFactorHasPasswordOrPin: Boolean,
+
       connectApiUserId_: {
         type: String,
         value: '',
@@ -284,6 +286,7 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
   private isCloudBackup_: boolean = false;
   private isCloudRestore_: boolean = false;
   private authFactorHasPassword: boolean;
+  private authFactorHasPasswordOrPin: boolean;
   private connectApiUserId_: string;
   private connectApiStatus_: string;
   private backupAnalysis_: any;
@@ -550,7 +553,7 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
   }
 
   backupDisabled_() {
-    return this.backupRunning_ || !this.authFactorHasPassword;
+    return this.backupRunning_ || !this.authFactorHasPasswordOrPin;
   }
 
   getJemaosBackupState_() {
@@ -648,7 +651,7 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
   }
 
   restoreDisabled_() {
-    return this.restoreRunning_ || !this.authFactorHasPassword;
+    return this.restoreRunning_ || !this.authFactorHasPasswordOrPin;
   }
 
   onRestoreClick_() {

@@ -90,6 +90,8 @@ class OsSettingsJemaPageElement extends OsSettingsJemaPageElementBase {
       },
 
       authFactorHasPassword_: Boolean,
+
+      authFactorHasPasswordOrPin_: Boolean,
     };
   }
 
@@ -100,6 +102,7 @@ class OsSettingsJemaPageElement extends OsSettingsJemaPageElementBase {
   private showToggleRotateScreenButton: boolean;
   private showToggleSwitchTabletLaptopButton: boolean;
   private authFactorHasPassword_: boolean;
+  private authFactorHasPasswordOrPin_: boolean;
 
   constructor() {
     super();
@@ -121,6 +124,10 @@ class OsSettingsJemaPageElement extends OsSettingsJemaPageElementBase {
 
   onAuthFactorHasPasswordChanged_(e: CustomEvent) {
     this.authFactorHasPassword_ = e.detail;
+  }
+
+  onAuthFactorHasPasswordOrPinChanged_(e: CustomEvent) {
+    this.authFactorHasPasswordOrPin_ = e.detail;
   }
 
 // <if expr="use_jemaos_license">

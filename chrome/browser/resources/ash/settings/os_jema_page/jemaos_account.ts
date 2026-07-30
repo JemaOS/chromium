@@ -140,7 +140,7 @@ class JemaSettingsAccountPageElement extends JemaSettingsAccountPageElementBase 
   getIsOfflineAutoSigninEnabled_() {
     sendWithPromise('getIsOfflineAutoSigninEnabled').then((result) => {
       console.log('getIsOfflineAutoSigninEnabled_', result);
-      const { is_current_user, enabled, system_salt_obtained, auth_factor_has_password } = result;
+      const { is_current_user, enabled, system_salt_obtained, auth_factor_has_password, auth_factor_has_password_or_pin } = result;
       this.isOfflineAutoSigninEnabled_ = enabled;
       this.isOfflineAutoSigninEnabledForCurrentUser_ = is_current_user;
       this.systemSaltObtained_ = system_salt_obtained;
@@ -152,6 +152,13 @@ class JemaSettingsAccountPageElement extends JemaSettingsAccountPageElementBase 
           detail: auth_factor_has_password,
         });
       this.dispatchEvent(event);
+      const passwordOrPinEvent = new CustomEvent(
+        'auth-factor-has-password-or-pin-changed',
+        {
+          bubbles: true, composed: true,
+          detail: auth_factor_has_password_or_pin,
+        });
+      this.dispatchEvent(passwordOrPinEvent);
     }).finally(() => {
       const ele = this.shadowRoot!.querySelector('#toggleOfflineAutoSignin') as CrToggleElement;
       ele.checked = this.getOfflineAutoSigninCheckedState_();

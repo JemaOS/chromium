@@ -101,7 +101,7 @@ PowerSoundsController::~PowerSoundsController() {
 void PowerSoundsController::RegisterLocalStatePrefs(
     PrefRegistrySimple* registry) {
   registry->RegisterBooleanPref(prefs::kChargingSoundsEnabled,
-                                /*default_value=*/false);
+                                /*default_value=*/true);
   registry->RegisterBooleanPref(prefs::kLowBatterySoundEnabled,
                                 /*default_value=*/false);
 }

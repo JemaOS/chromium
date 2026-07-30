@@ -912,6 +912,14 @@ void UserSessionManager::SetFirstLoginPrefs(
     g_browser_process->local_state()->SetBoolean(prefs::kLowBatterySoundEnabled,
                                                  true);
   }
+
+  // Turn on the feature of the charging sounds for all users on the device
+  // when a new user login.
+  if (!g_browser_process->local_state()->IsManagedPreference(
+          prefs::kChargingSoundsEnabled)) {
+    g_browser_process->local_state()->SetBoolean(prefs::kChargingSoundsEnabled,
+                                                 true);
+  }
 }
 
 void UserSessionManager::DoBrowserLaunch(Profile* profile) {

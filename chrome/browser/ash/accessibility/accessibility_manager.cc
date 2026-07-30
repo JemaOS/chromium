@@ -2471,7 +2471,7 @@ bool AccessibilityManager::GetStartupSoundEnabled() const {
   // log in.
   return known_user
       .FindBoolPath(user_list[0]->GetAccountId(), kUserStartupSoundEnabled)
-      .value_or(false);
+      .value_or(true);
 }
 
 void AccessibilityManager::SetStartupSoundEnabled(bool value) const {

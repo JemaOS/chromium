@@ -402,7 +402,11 @@ std::unique_ptr<Notification> CreateNotification(
       ui::ResourceBundle::GetSharedInstance().GetImageNamed(IDR_JEMAOS_LOGO));
   if (state == BackupTaskManager::TaskState::kRunning) {
     notification->set_progress(-1);
-    notification->set_pinned(true);
+    // Not pinned: a pinned notification shows a masked monochrome icon in the
+    // status tray (rendered as a plain colored square), which looks broken.
+    // never_timeout keeps the progress popup visible for the whole operation;
+    // the session restarts on success anyway.
+    notification->set_pinned(false);
     notification->set_never_timeout(true);
   } else {
     notification->set_never_timeout(false);

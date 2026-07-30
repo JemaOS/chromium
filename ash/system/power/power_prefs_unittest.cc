@@ -68,6 +68,26 @@ std::string GetExpectedPowerPolicyForPrefs(PrefService* prefs,
   const bool is_smart_dim_enabled =
       prefs->GetBoolean(prefs::kPowerSmartDimEnabled);
 
+  // Mirrors the adjustment PowerPolicyController::ApplyPrefs() performs when
+  // automatic screen locking is enabled: the screen is locked shortly after
+  // being turned off due to user inactivity if the configured lock delay is
+  // unset or longer than that.
+  const bool enable_auto_screen_lock =
+      prefs->GetBoolean(prefs::kEnableAutoScreenLock);
+  auto adjust_screen_lock_delay =
+      [enable_auto_screen_lock](
+          power_manager::PowerManagementPolicy::Delays* delays) {
+        const int64_t lock_ms =
+            delays->screen_off_ms() +
+            chromeos::PowerPolicyController::kScreenLockAfterOffDelayMs;
+        if (enable_auto_screen_lock && delays->screen_off_ms() > 0 &&
+            (delays->screen_lock_ms() <= 0 ||
+             lock_ms < delays->screen_lock_ms()) &&
+            lock_ms < delays->idle_ms()) {
+          delays->set_screen_lock_ms(lock_ms);
+        }
+      };
+
   power_manager::PowerManagementPolicy expected_policy;
   expected_policy.mutable_ac_delays()->set_screen_dim_ms(
       prefs->GetInteger(screen_lock_state == ScreenLockState::LOCKED
@@ -83,6 +103,7 @@ std::string GetExpectedPowerPolicyForPrefs(PrefService* prefs,
       prefs->GetInteger(prefs::kPowerAcIdleWarningDelayMs));
   expected_policy.mutable_ac_delays()->set_idle_ms(
       prefs->GetInteger(prefs::kPowerAcIdleDelayMs));
+  adjust_screen_lock_delay(expected_policy.mutable_ac_delays());
   expected_policy.mutable_battery_delays()->set_screen_dim_ms(
       prefs->GetInteger(screen_lock_state == ScreenLockState::LOCKED
                             ? prefs::kPowerLockScreenDimDelayMs
@@ -97,6 +118,7 @@ std::string GetExpectedPowerPolicyForPrefs(PrefService* prefs,
       prefs->GetInteger(prefs::kPowerBatteryIdleWarningDelayMs));
   expected_policy.mutable_battery_delays()->set_idle_ms(
       prefs->GetInteger(prefs::kPowerBatteryIdleDelayMs));
+  adjust_screen_lock_delay(expected_policy.mutable_battery_delays());
   expected_policy.set_ac_idle_action(
       static_cast<power_manager::PowerManagementPolicy_Action>(
           prefs->GetInteger(prefs::kPowerAcIdleAction)));
@@ -429,7 +451,7 @@ TEST_F(PowerPrefsTest, DisabledLockScreen) {
 
   // The lock screen is disabled, but, as automatic screen locking is not
   // enabled, the power policy actions still have the default values.
-  prefs->ClearPref(prefs::kEnableAutoScreenLock);
+  prefs->SetBoolean(prefs::kEnableAutoScreenLock, false);
   prefs->SetBoolean(prefs::kAllowScreenLock, false);
   EXPECT_EQ(std::vector<power_manager::PowerManagementPolicy_Action>(
                 {power_manager::PowerManagementPolicy_Action_DO_NOTHING,

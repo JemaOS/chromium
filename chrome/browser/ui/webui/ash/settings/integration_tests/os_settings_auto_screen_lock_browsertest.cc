@@ -41,11 +41,6 @@ IN_PROC_BROWSER_TEST_F(OSSettingsAutoScreenLockTest, Toggle) {
     mojom::LockScreenSettingsAsyncWaiter lock_screen_settings =
         OpenLockScreenSettingsAndAuthenticate();
 
-    lock_screen_settings.AssertAutoLockScreenEnabled(false);
-    CHECK(!IsAutoScreenLockPrefEnabled());
-
-    lock_screen_settings.EnableAutoLockScreen();
-
     lock_screen_settings.AssertAutoLockScreenEnabled(true);
     CHECK(IsAutoScreenLockPrefEnabled());
 

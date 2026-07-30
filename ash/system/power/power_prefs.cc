@@ -123,7 +123,7 @@ void RegisterProfilePrefs(PrefRegistrySimple* registry) {
 
   registry->RegisterBooleanPref(prefs::kAllowScreenLock, true);
   registry->RegisterBooleanPref(
-      prefs::kEnableAutoScreenLock, false,
+      prefs::kEnableAutoScreenLock, true,
       user_prefs::PrefRegistrySyncable::SYNCABLE_OS_PREF);
 }
 

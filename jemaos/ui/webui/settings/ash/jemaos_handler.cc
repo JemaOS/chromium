@@ -125,7 +125,7 @@ const char kRestoreScript[] = R"SCRIPT(#!/bin/bash
 
 LOGFILE="/tmp/jemaos-backup.log"
 echo "=== $(date) ===" >> "$LOGFILE"
-echo "Script version: unified snapshot v3" >> "$LOGFILE"
+echo "Script version: unified snapshot v4" >> "$LOGFILE"
 echo "Args: $@" >> "$LOGFILE"
 
 EMAIL=""
@@ -349,7 +349,47 @@ elif [ "$COMMAND" = "restore" ]; then
   # immediately respawns it and the new instance reads the restored profile.
   echo "Killing Chrome without shutdown flush; session will restart" \
     >> "$LOGFILE"
+  CHROME_PIDS=$(pgrep -x chrome 2>/dev/null || true)
   killall -9 chrome 2>> "$LOGFILE" || true
+
+  # Drop the dead instance's singleton markers right away so the respawned
+  # Chrome never tries to hand off to a dying predecessor: a process stuck
+  # in uninterruptible I/O can survive SIGKILL for a while and would make
+  # the new instance hang on a black screen waiting for a hand-off reply.
+  rm -f "$PROFILE_PATH"/SingletonLock "$PROFILE_PATH"/SingletonSocket \
+      "$PROFILE_PATH"/SingletonCookie 2>> "$LOGFILE" || true
+
+  # Wait for the killed processes to actually disappear (bounded): SIGKILL
+  # teardown is not instantaneous and stragglers still hold DRM/profile
+  # locks while session_manager is already respawning Chrome.
+  for _ in $(seq 1 150); do
+    ALIVE=0
+    for pid in $CHROME_PIDS; do
+      if [ -e "/proc/$pid" ]; then ALIVE=1; break; fi
+    done
+    [ "$ALIVE" -eq 0 ] && break
+    sleep 0.1
+  done
+
+  # Watchdog: if session_manager did not respawn Chrome (crash-loop give
+  # up, stuck predecessor, ...), recover instead of leaving a permanent
+  # black screen: restart the ui job, and reboot as a last resort (the
+  # known-good manual recovery). Detached with stdio redirected so the
+  # daemon does not block on our pipes waiting for EOF.
+  (
+    sleep 40
+    if ! pgrep -x chrome >/dev/null 2>&1; then
+      logger -t jemaos-restore \
+        "Chrome did not respawn after restore; restarting ui"
+      restart ui || start ui || true
+      sleep 30
+      if ! pgrep -x chrome >/dev/null 2>&1; then
+        logger -t jemaos-restore \
+          "ui restart did not bring Chrome back; rebooting"
+        reboot
+      fi
+    fi
+  ) </dev/null >>"$LOGFILE" 2>&1 &
 
   echo "Restore completed" >> "$LOGFILE"
   echo "Restore completed"
@@ -604,10 +644,17 @@ void JemaOsHandler::OnListAuthFactors(const std::string& callback_id, std::optio
   }
   CHECK(reply.has_value());
   auth_factor_has_password_ = false;
+  bool auth_factor_has_pin = false;
   for (const auto& factor_with_status_proto :
        reply->configured_auth_factors_with_status()) {
-    if (factor_with_status_proto.auth_factor().type() == user_data_auth::AUTH_FACTOR_TYPE_PASSWORD) {
+    const auto factor_type =
+        factor_with_status_proto.auth_factor().type();
+    if (factor_type == user_data_auth::AUTH_FACTOR_TYPE_PASSWORD) {
       auth_factor_has_password_ = true;
+    } else if (factor_type == user_data_auth::AUTH_FACTOR_TYPE_PIN) {
+      auth_factor_has_pin = true;
+    }
+    if (auth_factor_has_password_ && auth_factor_has_pin) {
       break;
     }
   }
@@ -631,6 +678,11 @@ void JemaOsHandler::OnListAuthFactors(const std::string& callback_id, std::optio
   }
   response.Set("system_salt_obtained", !system_salt_.empty());
   response.Set("auth_factor_has_password", auth_factor_has_password_);
+  // Local backup/restore only needs a sign-in credential to derive the
+  // backup passphrase from: a PIN-only local account must be treated like a
+  // password-protected one, otherwise its buttons stay grayed out.
+  response.Set("auth_factor_has_password_or_pin",
+               auth_factor_has_password_ || auth_factor_has_pin);
   ResolveJavascriptCallback(callback_id, response);
 }
 

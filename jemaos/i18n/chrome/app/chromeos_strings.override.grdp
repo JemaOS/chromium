@@ -806,10 +806,16 @@
     <message name="IDS_CONNECT_TO_ONEDRIVE_BODY_TEXT" desc="Explanation text for a dialog which allows the user to connect Files app and Microsoft OneDrive storage.">
       Associez OneDrive à l'appli Fichiers pour gérer vos documents stockés depuis votre PC Jema. Vous devez vous connecter avec votre compte Microsoft.
     </message>
+    <message name="IDS_OFFICE_WELCOME_BODY_TEXT" desc="Body text for the welcome dialog when the user sets up Microsoft Office for the first time.">
+      <ph name="LINK_BEGIN">&lt;a href="https://support.google.com/chromebook?p=edit_office_files" target="_blank"&gt;</ph>En savoir plus<ph name="LINK_END">&lt;/a&gt;</ph> sur Microsoft 365 pour votre PC Jema.
+    </message>
   </if>
   <if expr="lang != 'fr' and lang != 'fr-CA'">
     <message name="IDS_CONNECT_TO_ONEDRIVE_BODY_TEXT" desc="Explanation text for a dialog which allows the user to connect Files app and Microsoft OneDrive storage.">
       Connect OneDrive to the Files app to manage your stored documents from your Jema PC. You'll need to sign in with your Microsoft account.
+    </message>
+    <message name="IDS_OFFICE_WELCOME_BODY_TEXT" desc="Body text for the welcome dialog when the user sets up Microsoft Office for the first time.">
+      <ph name="LINK_BEGIN">&lt;a href="https://support.google.com/chromebook?p=edit_office_files" target="_blank"&gt;</ph>Learn more<ph name="LINK_END">&lt;/a&gt;</ph> about Microsoft 365 on your Jema PC.
     </message>
   </if>
 

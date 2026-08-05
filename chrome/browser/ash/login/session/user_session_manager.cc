@@ -2286,7 +2286,7 @@ namespace {
 
 // JemaOS Connect API used to renew subscription access tokens.
 constexpr char kJemaOsConnectApiBase[] = "https://test-connect-api.jematech.fr";
-constexpr char kJemaOsTokenRefreshPath[] = "/v1/connect/os/token/refresh";
+constexpr char kJemaOsTokenRefreshPath[] = "/v1/connect/refreshtoken";
 constexpr base::TimeDelta kJemaOsTokenCheckInterval = base::Minutes(15);
 // Refresh proactively when this much lifetime remains (JWT exp).
 constexpr base::TimeDelta kJemaOsRefreshMargin = base::Minutes(30);
@@ -2395,12 +2395,6 @@ void UserSessionManager::RefreshJemaOSToken() {
   }
   jemaos_token_refresh_in_flight_ = true;
 
-  std::string email;
-  if (g_browser_process) {
-    email = g_browser_process->local_state()->GetString(
-        jemaos::prefs::kJemaOsAuthEmail);
-  }
-
   const GURL url(std::string(kJemaOsConnectApiBase) + kJemaOsTokenRefreshPath);
   const net::NetworkTrafficAnnotationTag annotation =
       net::DefineNetworkTrafficAnnotation("jemaos_token_refresh", R"(
@@ -2423,9 +2417,15 @@ void UserSessionManager::RefreshJemaOSToken() {
   resource_request->credentials_mode = network::mojom::CredentialsMode::kOmit;
   resource_request->headers.SetHeader(net::HttpRequestHeaders::kAccept,
                                       "application/json");
+  // Same API key the PWAs and FetchJemaOSSubscriptionState send; every
+  // connect route enforces it (401 otherwise, which would wipe the session).
+  resource_request->headers.SetHeader(
+      "x-api-key", "e58492a3-b452-4197-9f4a-deb7915b9446");
 
-  const std::string body = std::string("{\"refreshToken\": \"") +
-                           refresh_token + "\", \"email\": \"" + email + "\"}";
+  // The backend contract (connect/src/refreshtoken.js) requires a
+  // snake_case "refresh_token" field; a camelCase key is rejected with 401.
+  const std::string body =
+      std::string("{\"refresh_token\": \"") + refresh_token + "\"}";
 
   auto loader =
       network::SimpleURLLoader::Create(std::move(resource_request), annotation);

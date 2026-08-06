@@ -27,6 +27,10 @@
 <translation id="472164133625585606">Afficher un commutateur tablette/ordinateur portable dans le menu système</translation>
 <translation id="4058176713282795846">Activer Widevine pour le streaming de contenu premium protégé. <ph name="BEGIN_LINK_LEARN_MORE" />En savoir plus<ph name="END_LINK_LEARN_MORE" /></translation>
 <translation id="2164041826798266548">L'installation du module Widevine CDM a échoué. Veuillez vérifier votre connexion et réessayer.</translation>
+<translation id="4504180440924117879">Turbo Boost du processeur</translation>
+<translation id="5703018181535417351">Permet au processeur de dépasser temporairement sa fréquence de base pour les tâches exigeantes (montage vidéo, jeux, multitâche). Le désactiver privilégie l'autonomie et le silence.</translation>
+<translation id="5530860395213334543">Impossible de modifier le Turbo Boost</translation>
+<translation id="17872584571705168931">Le Turbo Boost n'est pas disponible sur cet appareil, ou la modification a échoué. Veuillez réessayer.</translation>
 <translation id="4106982328079440606">Paramètres du compte JemaOS</translation>
 <translation id="3487615413425326553">Contourner les vérifications du Module de Plateforme de Confiance (TPM)</translation>
 <translation id="4817176087932811573">Certaines fonctionnalités peuvent échouer en raison d'une puce TPM incompatible dans votre appareil, vous pouvez contourner les vérifications TPM comme solution de contournement.</translation>

@@ -512,6 +512,14 @@ void JemaOsHandler::RegisterMessages() {
       "triggerWidevineUpdate",
       base::BindRepeating(&JemaOsHandler::HandleTriggerWidevineUpdate,
                           base::Unretained(this)));
+  web_ui()->RegisterMessageCallback(
+      "getCpuTurboEnabled",
+      base::BindRepeating(&JemaOsHandler::HandleGetCpuTurboEnabled,
+                          base::Unretained(this)));
+  web_ui()->RegisterMessageCallback(
+      "triggerCpuTurbo",
+      base::BindRepeating(&JemaOsHandler::HandleTriggerCpuTurbo,
+                          base::Unretained(this)));
 
   web_ui()->RegisterMessageCallback(
       "jemaosBackupSupported",
@@ -1401,6 +1409,59 @@ void JemaOsHandler::OnWidevineUpdateCompleted(
   } else {
     PrefService* prefs = g_browser_process->local_state();
     prefs->SetBoolean(jemaos::prefs::kRebootRequiredForWidevine, true);
+  }
+  ResolveJavascriptCallback(callback_id, base::Value(success));
+}
+
+void JemaOsHandler::HandleGetCpuTurboEnabled(
+    const base::Value::List& args) {
+  DCHECK(args.size());
+  std::string callback_id = args[0].GetString();
+  PrefService* prefs = g_browser_process->local_state();
+  ResolveJavascriptCallback(
+      callback_id,
+      base::Value(prefs->GetBoolean(jemaos::prefs::kCpuTurboEnabled)));
+}
+
+void JemaOsHandler::HandleTriggerCpuTurbo(const base::Value::List& args) {
+  AllowJavascript();
+  if (args.size() < 2 || !args[0].is_string() || !args[1].is_bool()) {
+    VLOG(2) << "Invalid arguments for triggerCpuTurbo";
+    return;
+  }
+  std::string callback_id = args[0].GetString();
+  bool enable = args[1].GetBool();
+
+  // Same root-exec delegation as the Widevine toggle: the browser
+  // process is sandboxed, so the sysfs write runs in the shell daemon.
+  auto* shell_client = JemaOSShellClient::Get();
+  if (!shell_client) {
+    LOG(ERROR) << "Shell client not available for CPU turbo toggle";
+    ResolveJavascriptCallback(callback_id, base::Value(false));
+    return;
+  }
+
+  const std::string command =
+      enable ? "/usr/share/jemaos_shell/cpu_turbo.sh on"
+             : "/usr/share/jemaos_shell/cpu_turbo.sh off";
+  shell_client->SyncExec(
+      command,
+      base::BindOnce(&JemaOsHandler::OnCpuTurboCompleted,
+                     weak_ptr_factory_.GetWeakPtr(), callback_id, enable));
+}
+
+void JemaOsHandler::OnCpuTurboCompleted(
+    const std::string& callback_id,
+    bool enable,
+    std::optional<ShellState> state) {
+  bool success = state && state->code == 0;
+  if (!success) {
+    LOG(ERROR) << "CPU turbo toggle failed"
+               << (state ? " with code " + std::to_string(state->code)
+                         : " (no state)");
+  } else {
+    PrefService* prefs = g_browser_process->local_state();
+    prefs->SetBoolean(jemaos::prefs::kCpuTurboEnabled, enable);
   }
   ResolveJavascriptCallback(callback_id, base::Value(success));
 }

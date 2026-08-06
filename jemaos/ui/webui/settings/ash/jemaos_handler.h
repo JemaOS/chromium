@@ -71,6 +71,11 @@ class JemaOsHandler :
   void OnWidevineUpdateCompleted(const std::string& callback_id,
                                  bool enable,
                                  std::optional<ShellState> state);
+  void HandleGetCpuTurboEnabled(const base::Value::List& args);
+  void HandleTriggerCpuTurbo(const base::Value::List& args);
+  void OnCpuTurboCompleted(const std::string& callback_id,
+                           bool enable,
+                           std::optional<ShellState> state);
 
 
   void FileSelected(

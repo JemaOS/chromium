@@ -52,6 +52,7 @@ void RegisterLocalStatePrefs(PrefRegistrySimple* registry) {
   registry->RegisterInt64Pref(kJemaOsAuthIssuedAt, 0);
 
   registry->RegisterBooleanPref(kRebootRequiredForWidevine, false);
+  registry->RegisterBooleanPref(kCpuTurboEnabled, true);
 
 #if BUILDFLAG(USE_JEMAOS_LICENSE)
   registry->RegisterBooleanPref(kJemaLicenseShouldShowInSettings, false);

@@ -110,6 +110,18 @@
   <message name="IDS_OS_SETTINGS_JEMAOS_FAILED_ENABLE_WIDEVINE_MESSAGE" desc="jemaos settings message of failed enabling libwidevine">
     The Widevine CDM module installation failed. Please check your connection and try again.
   </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_CPU_TURBO_LABEL" desc="jemaos settings CPU turbo switch label">
+    CPU Turbo Boost
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_CPU_TURBO_HELP_MESSAGE" desc="jemaos settings CPU turbo switch hint msg">
+    Allow the processor to temporarily exceed its base frequency for demanding tasks (video editing, gaming, multitasking). Disabling it favors battery life and quiet operation.
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_FAILED_CPU_TURBO_TITLE" desc="jemaos settings title of failed CPU turbo change">
+    Unable to change Turbo Boost
+  </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_FAILED_CPU_TURBO_MESSAGE" desc="jemaos settings message of failed CPU turbo change">
+    Turbo Boost is not available on this device, or the change failed. Please try again.
+  </message>
   <message name="IDS_OS_SETTINGS_JEMAOS_ACCOUNT_TITLE" desc="jemaos settings account section title">
     JemaOS account settings
   </message>

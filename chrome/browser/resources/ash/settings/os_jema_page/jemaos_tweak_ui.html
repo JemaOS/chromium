@@ -179,3 +179,30 @@
     </div>
   </cr-dialog>
 </template>
+<div class="settings-box two-line" hidden=[[!showToggleCpuTurbo_]]>
+  <div class="start padded">
+    $i18n{jemaosCpuTurboLabel}
+    <div class="secondary">$i18n{jemaosCpuTurboHelpMessage}</div>
+  </div>
+  <div class="icon-container" hidden="[[!togglingCpuTurbo_]]">
+    <iron-icon src="chrome://resources/images/throbber_small.svg">
+    </iron-icon>
+  </div>
+  <cr-toggle id="toggleCpuTurbo" disabled="[[togglingCpuTurbo_]]" role="button"
+    checked="[[cpuTurboEnabled_]]" on-change="onToggleCpuTurbo_">
+  </cr-toggle>
+</div>
+<template is="dom-if" if="[[showCpuTurboErrorDialog_]]" restamp>
+  <cr-dialog id="cpuTurboErrorDialog" close-text="$i18n{close}" show-on-attach
+    on-close="onCpuTurboErrorDialogClose_">
+    <div slot="title">$i18n{jemaosCpuTurboFailedTitle}</div>
+    <div slot="body">
+      $i18n{jemaosCpuTurboFailedMessage}
+    </div>
+    <div slot="button-container">
+      <cr-button class="action-button" on-click="onCpuTurboErrorDialogClose_">
+        $i18n{confirm}
+      </cr-button>
+    </div>
+  </cr-dialog>
+</template>

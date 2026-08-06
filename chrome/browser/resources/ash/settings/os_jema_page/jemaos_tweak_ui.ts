@@ -150,6 +150,22 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
         type: Boolean,
         value: false,
       },
+      showToggleCpuTurbo_: {
+        type: Boolean,
+        value: false,
+      },
+      cpuTurboEnabled_: {
+        type: Boolean,
+        value: false,
+      },
+      togglingCpuTurbo_: {
+        type: Boolean,
+        value: false,
+      },
+      showCpuTurboErrorDialog_: {
+        type: Boolean,
+        value: false,
+      },
       showBackup_: {
         type: Boolean,
         value: false,
@@ -339,6 +355,7 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
     this.addWebUiListener('connect-api-user-id-fetched', this.onConnectApiUserIdFetched_.bind(this));
 
     this.checkLibwidevineStatus_();
+    this.checkCpuTurboStatus_();
     this.checkBackupSupported_();
 
     // Cloud backup/restore availability depends on the account tier
@@ -528,6 +545,42 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
 
   onWidevineErrorDialogClose_() {
     this.showWidevineErrorDialog_ = false;
+  }
+
+  async checkCpuTurboStatus_() {
+    // The toggle is always offered: cpu_turbo.sh fails at apply time
+    // on devices without boost support, which the error dialog shows.
+    this.showToggleCpuTurbo_ = true;
+    try {
+      this.cpuTurboEnabled_ = await sendWithPromise('getCpuTurboEnabled');
+    } catch (e) {
+      this.cpuTurboEnabled_ = true;
+    }
+  }
+
+  async onToggleCpuTurbo_() {
+    if (this.togglingCpuTurbo_) {
+      return;
+    }
+    const enabled = !this.cpuTurboEnabled_;
+    this.cpuTurboEnabled_ = enabled;
+    this.togglingCpuTurbo_ = true;
+    try {
+      const result = await sendWithPromise('triggerCpuTurbo', enabled);
+      if (!result) {
+        this.cpuTurboEnabled_ = !enabled;
+        this.showCpuTurboErrorDialog_ = true;
+      }
+    } catch (e) {
+      this.cpuTurboEnabled_ = !enabled;
+      this.showCpuTurboErrorDialog_ = true;
+    } finally {
+      this.togglingCpuTurbo_ = false;
+    }
+  }
+
+  onCpuTurboErrorDialogClose_() {
+    this.showCpuTurboErrorDialog_ = false;
   }
 
   async checkBackupSupported_() {

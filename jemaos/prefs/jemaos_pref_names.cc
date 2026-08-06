@@ -40,6 +40,8 @@ const char kFactoryResetRequested[] = "FactoryResetRequested";
 
 const char kRebootRequiredForWidevine[] = "reboot_required_for_widevine";
 
+const char kCpuTurboEnabled[] = "jemaos_cpu_turbo_enabled";
+
 const char kJemaAssistantEnabled[] = "jema_assistant_enabled";
 const char kJemaAssistantExtraAcceleratorEnabled[] =
     "jema_assistant_extra_accelerator_enabled";

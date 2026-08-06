@@ -47,6 +47,10 @@ extern const char kFactoryResetRequested[];
 
 extern const char kRebootRequiredForWidevine[];
 
+// Whether CPU Turbo Boost is enabled (JemaOS Settings toggle, applied
+// via /usr/share/jemaos_shell/cpu_turbo.sh). Default true.
+extern const char kCpuTurboEnabled[];
+
 extern const char kJemaAssistantEnabled[];
 extern const char kJemaAssistantExtraAcceleratorEnabled[];
 

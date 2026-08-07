@@ -320,6 +320,11 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
   private showWidevineErrorDialog_: boolean;
   private rebootRequiredForWidevine_: boolean;
 
+  private showToggleCpuTurbo_: boolean;
+  private cpuTurboEnabled_: boolean;
+  private togglingCpuTurbo_: boolean;
+  private showCpuTurboErrorDialog_: boolean;
+
   constructor() {
     super();
     this.client_ = new WidevineHelper(this);

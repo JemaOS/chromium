@@ -1012,21 +1012,21 @@ void ChooseAndSetDefaultTask(Profile* profile,
     }
   }
 
-  // No default task. If the "Open in Docs/Sheets/Slides through Drive" workflow
-  // is available for Office files, set as default.
+  // JemaOS: prefer Microsoft 365 as the default handler for Office files.
+  // No default task. If the "Open in Microsoft 365" workflow is available for
+  // Office files, set as default.
   for (FullTaskDescriptor& task : tasks) {
-    if (IsWebDriveOfficeTask(task.task_descriptor)) {
+    if (IsOpenInOfficeTask(task.task_descriptor)) {
       task.is_default = true;
       return;
     }
   }
 
-  // No default task. If the "Open in Microsoft 365" workflow is available for
-  // Office files, set as default.
-  // This step only makes sense in the enterprise environment when the
-  // corresponding Google workflow above is disabled by policy.
+  // No default task. If the "Open in Docs/Sheets/Slides through Drive" workflow
+  // is available for Office files, set as default (fallback when the
+  // Microsoft 365 workflow is not available).
   for (FullTaskDescriptor& task : tasks) {
-    if (IsOpenInOfficeTask(task.task_descriptor)) {
+    if (IsWebDriveOfficeTask(task.task_descriptor)) {
       task.is_default = true;
       return;
     }

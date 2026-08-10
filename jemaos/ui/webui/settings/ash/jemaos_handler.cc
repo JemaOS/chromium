@@ -772,7 +772,7 @@ void JemaOsHandler::HandleFetchConnectApiUserId(const base::Value::List& args) {
   LOG(INFO) << "Fetching Connect API user ID for email: " << email;
   
   // API endpoint
-  const char kConnectApiBaseUrl[] = "https://test-connect-api.jematech.fr";
+  const char kConnectApiBaseUrl[] = "https://connect-api.jematech.fr";
   std::string api_url = std::string(kConnectApiBaseUrl) + "/v1/connect/user/by-email";
   
   // Prepare JSON body
@@ -1047,7 +1047,7 @@ void JemaOsHandler::HandleGetBackupAnalysis(const base::Value::List& args) {
   LOG(INFO) << "Fetching backup analysis for user_id: " << user_id;
   
   // API endpoint
-  const char kConnectApiBaseUrl[] = "https://test-connect-api.jematech.fr";
+  const char kConnectApiBaseUrl[] = "https://connect-api.jematech.fr";
   std::string api_url = base::StringPrintf("%s/v1/connect/backup/analysis/%s",
                                            kConnectApiBaseUrl, user_id.c_str());
   
@@ -1839,7 +1839,7 @@ void JemaOsHandler::OnRestoreCompleted(std::optional<ShellState> state) {
 }
 
 // Cloud Backup API constants
-const char kCloudBackupApiBaseUrl[] = "https://test-connect-api.jematech.fr";
+const char kCloudBackupApiBaseUrl[] = "https://connect-api.jematech.fr";
 const char kCloudBackupApiPath[] = "/v1/connect/upload/signed-url-private";
 
 // Cloud Backup implementation

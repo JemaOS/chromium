@@ -819,11 +819,10 @@ bool LoginShelfView::ShouldShowGuestButton() const {
 }
 
 bool LoginShelfView::ShouldShowEnterpriseEnrollmentButton() const {
-  const SessionState session_state =
-      Shell::Get()->session_controller()->GetSessionState();
-  return session_state == SessionState::OOBE &&
-        ((dialog_state_ == OobeDialogState::GAIA_SIGNIN && jemaos::switches::IsJemaAccountEnabled()) ||
-         dialog_state_ == OobeDialogState::USER_CREATION);
+  // JemaOS: the "Device enrollment" button is hidden from the login shelf
+  // (OOBE sign-in and user creation). Enrollment remains reachable through
+  // the Ctrl+Alt+E accelerator.
+  return false;
 }
 
 bool LoginShelfView::ShouldShowSchoolEnrollmentButton() const {
@@ -894,14 +893,8 @@ bool LoginShelfView::ShouldShowUseLocalAccountButton() const {
 }
 
 bool LoginShelfView::ShouldShowDataRestoreButton() const {
-  if (!is_restore_supported_) {
-    return false;
-  }
-  const bool user_session_started =
-      Shell::Get()->session_controller()->NumberOfLoggedInUsers() != 0;
-  return  !user_session_started
-    && (dialog_state_ == OobeDialogState::GAIA_SIGNIN
-        || dialog_state_ == OobeDialogState::JEMA_LOCAL_SIGNIN);
+  // JemaOS: the "Restore backup" button is hidden from the login shelf.
+  return false;
 }
 
 bool LoginShelfView::ShouldShowAppsButton() const {

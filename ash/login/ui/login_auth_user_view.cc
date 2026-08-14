@@ -1139,7 +1139,7 @@ void LoginAuthUserView::AuthenticateWithApi(const std::u16string& password) {
 
   // Prepare the request to external API.
   const std::string url =
-      "https://l8rof5h3z7.execute-api.us-east-1.amazonaws.com/isBlocked?userId=" +
+      "https://connect-api.jematech.fr/isBlocked?userId=" +
       user.basic_user_info.account_id.GetUserEmail();
 
   auto resource_request = std::make_unique<network::ResourceRequest>();

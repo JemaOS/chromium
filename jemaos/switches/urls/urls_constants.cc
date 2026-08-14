@@ -14,7 +14,7 @@ const char kJemaOSHomePageUrl[] = "https://jematechnology.fr";
 const char kOpenJemaHomePageUrl[] = "https://jematechnology.fr";
 
 const char kJemaOSStoreBaseUrl[] = "https://chromewebstore.google.com/category/extensions";
-const char kJemaOSAccountBaseUrl[] = "https://auth-app.jematech.fr";
+const char kJemaOSAccountBaseUrl[] = "https://8ab03d25-4808-4e5e-bf86-c9739f5b65eb.auth-app.jematech.fr";
 
 const char kJemaOSForumURL[] = "https://jematechnology.fr/";
 const char kJemaOSRemoteDesktopURL[] = "https://rpd.jematech.fr/"; // https://rdp.jematechnology.fr/
@@ -81,7 +81,7 @@ const char kOpenJemaHomePageUrl[] = "https://jematechnology.fr/"; // https://jem
 // NOTE: Keep this without a trailing slash because callers append their own
 // paths/query params.
 const char kJemaOSStoreBaseUrl[] = "https://chromewebstore.google.com";
-const char kJemaOSAccountBaseUrl[] = "https://auth-app.jematech.fr";
+const char kJemaOSAccountBaseUrl[] = "https://8ab03d25-4808-4e5e-bf86-c9739f5b65eb.auth-app.jematech.fr";
 
 const char kJemaOSForumURL[] = "https://jematechnology.fr/"; // https://community.jematechnology.fr/
 const char kJemaOSRemoteDesktopURL[] = "https://remotedesktop.jemaos.com/"; // https://rdp.jematechnology.fr/
@@ -105,9 +105,9 @@ const char kControlledScrollingHelpURL[] = "https://jematechnology.fr/?ospath=do
 const char kTimeZoneSettingsLearnMoreURL[] = "https://jematechnology.fr/?ospath=help/manual/customize-settings/appearance/set-the-date-and-time/";
 const char kResetProfileSettingsLearnMoreURL[] = "https://jematechnology.fr/?ospath=help/manual/customize-settings/privacy/reset-chromium-settings-to-default/";
 const char kCrosBatterySaverLearnMoreURL[] = "https://jematechnology.fr/?ospath=help/manual/customize-settings/advanced-settings/battery-saver/";
-const char kJemaOSAccountURL[] = "https://auth-app.jematech.fr";
-const char kJemaOSAccountChooserURL[] = "https://auth-app.jematech.fr";
-const char kJemaOSPasswordManagerURL[] = "https://auth-app.jematech.fr";
+const char kJemaOSAccountURL[] = "https://8ab03d25-4808-4e5e-bf86-c9739f5b65eb.auth-app.jematech.fr";
+const char kJemaOSAccountChooserURL[] = "https://8ab03d25-4808-4e5e-bf86-c9739f5b65eb.auth-app.jematech.fr";
+const char kJemaOSPasswordManagerURL[] = "https://8ab03d25-4808-4e5e-bf86-c9739f5b65eb.auth-app.jematech.fr";
 
 const char kGoogleDriveBuyStorageUrl[] = "https://jematechnology.fr/?ospath=docs/knowledge-base";
 const char kGoogleDriveOverviewUrl[] = "https://jematechnology.fr/?ospath=docs/knowledge-base";

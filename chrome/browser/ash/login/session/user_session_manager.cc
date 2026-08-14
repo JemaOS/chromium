@@ -2285,7 +2285,7 @@ void UserSessionManager::InjectJemaOSTokenCookie(Profile* profile) {
 namespace {
 
 // JemaOS Connect API used to renew subscription access tokens.
-constexpr char kJemaOsConnectApiBase[] = "https://test-connect-api.jematech.fr";
+constexpr char kJemaOsConnectApiBase[] = "https://connect-api.jematech.fr";
 constexpr char kJemaOsTokenRefreshPath[] = "/v1/connect/refreshtoken";
 constexpr base::TimeDelta kJemaOsTokenCheckInterval = base::Minutes(15);
 // Refresh proactively when this much lifetime remains (JWT exp).

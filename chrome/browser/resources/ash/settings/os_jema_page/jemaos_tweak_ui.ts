@@ -238,6 +238,12 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
         type: String,
         value: '',
       },
+      // Renseigne quand la recuperation du user_id SaaS a echoue : l UI
+      // affiche "Information indisponible" au lieu de charger sans fin.
+      connectApiError_: {
+        type: String,
+        value: '',
+      },
 
       connectApiStatus_: {
         type: String,
@@ -304,6 +310,7 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
   private authFactorHasPassword: boolean;
   private authFactorHasPasswordOrPin: boolean;
   private connectApiUserId_: string;
+  private connectApiError_: string;
   private connectApiStatus_: string;
   private backupAnalysis_: any;
   private backupAnalysisLoading_: boolean;
@@ -614,6 +621,22 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
     return this.backupRunning_ || !this.authFactorHasPasswordOrPin;
   }
 
+  // Les sections "Informations utilisateur de l'API Connect" et "Analyse du
+  // stockage de sauvegarde" n'ont de sens que pour un compte en ligne lie au
+  // SaaS : pour un compte local (@jemaos.local) il n'existe aucun user_id
+  // cote serveur, l'affichage resterait bloque sur "Chargement en cours".
+  showConnectApiSections_(showBackup: boolean, isLocalAccount: boolean): boolean {
+    return showBackup && !isLocalAccount;
+  }
+
+  isConnectApiLoading_(userId: string, error: string): boolean {
+    return !userId && !error;
+  }
+
+  showUserIdRequired_(userId: string, error: string): boolean {
+    return !userId && !error;
+  }
+
   getJemaosBackupState_() {
     sendWithPromise('getJemaosBackupState').then((state) => {
       this.backupRunning_ = (state === 'running');
@@ -884,6 +907,10 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
     try {
       sendWithPromise('getConnectApiUserId').then((result) => {
         console.log('getConnectApiUserId result:', result);
+        if (result && result.error) {
+          this.connectApiError_ = String(result.error);
+          return;
+        }
         if (result && result.user_id) {
           this.connectApiUserId_ = result.user_id;
           console.log('User ID set:', this.connectApiUserId_);
@@ -905,6 +932,10 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
   onConnectApiUserIdFetched_(result: any) {
     try {
       console.log('onConnectApiUserIdFetched_ called with:', result);
+      if (result && result.error) {
+        this.connectApiError_ = String(result.error);
+        return;
+      }
       if (result && result.user_id) {
         this.connectApiUserId_ = result.user_id;
         console.log('User ID received from event:', this.connectApiUserId_);

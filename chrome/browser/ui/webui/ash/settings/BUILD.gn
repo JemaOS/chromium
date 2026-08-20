@@ -55,6 +55,7 @@ static_library("settings") {
     "//chromeos/ash/services/nearby/public/mojom:nearby_share_settings",
     "//chromeos/components/in_session_auth/mojom",
     "//chromeos/services/network_config/public/mojom",
+    "//components/os_crypt/sync",
     "//content/public/browser",
     "//content/public/common",
     "//mojo/public/cpp/bindings",

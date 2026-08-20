@@ -60,10 +60,11 @@
     $i18n{jemaosSettingsCloudRestoreButtonLabel}
   </cr-button>
 </div>
-<div class="settings-box two-line" hidden="[[!showBackup_]]">
+<div class="settings-box two-line" hidden="[[!showConnectApiSections_(showBackup_, isLocalAccount_)]]">
   <div class="start padded">
     <div>$i18n{jemaosSettingsConnectApiUserInfoTitle}</div>
-    <div class="secondary" hidden="[[connectApiUserId_]]">$i18n{jemaosSettingsLoading}</div>
+    <div class="secondary" hidden="[[!isConnectApiLoading_(connectApiUserId_, connectApiError_)]]">$i18n{jemaosSettingsLoading}</div>
+    <div class="secondary" hidden="[[!connectApiError_]]">$i18n{jemaosSettingsUnavailable}</div>
     <div class="secondary" hidden="[[!connectApiUserId_]]">
       $i18n{jemaosSettingsUserIdLabel}: [[connectApiUserId_]]
     </div>
@@ -72,10 +73,11 @@
     </div>
   </div>
 </div>
-<div class="settings-box two-line" hidden="[[!showBackup_]]">
+<div class="settings-box two-line" hidden="[[!showConnectApiSections_(showBackup_, isLocalAccount_)]]">
   <div class="start padded">
     <div>$i18n{jemaosSettingsBackupStorageAnalysisTitle}</div>
-    <div class="secondary" hidden="[[connectApiUserId_]]">$i18n{jemaosSettingsUserIdRequired}</div>
+    <div class="secondary" hidden="[[!showUserIdRequired_(connectApiUserId_, connectApiError_)]]">$i18n{jemaosSettingsUserIdRequired}</div>
+    <div class="secondary" hidden="[[!connectApiError_]]">$i18n{jemaosSettingsUnavailable}</div>
     <template is="dom-if" if="[[backupAnalysis_]]">
       <div class="secondary">
         $i18n{jemaosSettingsStorageLabel}: [[getBackupStorageUsed_()]] / [[getBackupStorageLimit_()]]

@@ -4,11 +4,11 @@
 
 #include "jemaos/misc/jemaos_device_uid.h"
 
-#include <openssl/sha.h>
+#include "third_party/boringssl/src/include/openssl/sha.h"
 
 #include "base/files/file_util.h"
-#include "base/guid.h"
-#include "base/hash/hash.h"
+#include "base/uuid.h"
+#include "base/strings/string_number_conversions.h"
 #include "base/logging.h"
 #include "base/strings/string_util.h"
 #include "chromeos/ash/components/system/statistics_provider.h"
@@ -76,7 +76,7 @@ std::string GetDeviceUid(PrefService* local_state) {
   if (raw.empty() && local_state) {
     raw = local_state->GetString(prefs::kJemaOsDeviceUid);
     if (raw.empty()) {
-      raw = base::GenerateGUID();
+      raw = base::Uuid::GenerateRandomV4().AsLowercaseString();
       local_state->SetString(prefs::kJemaOsDeviceUid, raw);
       local_state->CommitPendingWrite();
     }

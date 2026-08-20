@@ -1,4 +1,6 @@
-#include "jemaos/misc/jemaos_statistics_collector.h"#include "jemaos/misc/jemaos_device_uid.h"
+#include "jemaos/misc/jemaos_statistics_collector.h"
+
+#include "jemaos/misc/jemaos_device_uid.h"
 
 #include "jemaos/switches/services/services_switches.h"
 #include "jemaos/switches/services/services_constants.h"

@@ -15,9 +15,12 @@ namespace jemaos {
 // vie privee : le resultat est un hash SHA-256, le numero de serie brut ne
 // quitte jamais la machine. Ordre de priorite :
 //   1. machine-id VPD ChromeOS (vrais Chromebooks / appareils avec VPD) ;
-//   2. /var/lib/dbus/machine-id ou /etc/machine-id (stable par installation,
+//   2. /var/lib/jemaos/device_uid (hash DMI ecrit au boot, survit a la
+//      reinstallation) ;
 //      lisible par l utilisateur chrome) ;
-//   3. UUID aleatoire persiste dans local state (pref jemaos.device_uid).
+//   3. /var/lib/dbus/machine-id ou /etc/machine-id (stable par installation,
+//      lisible par l utilisateur chrome) ;
+//   4. UUID aleatoire persiste dans local state (pref jemaos.device_uid).
 std::string GetDeviceUid(PrefService* local_state);
 
 }  // namespace jemaos

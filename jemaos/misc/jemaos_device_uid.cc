@@ -41,7 +41,23 @@ std::string GetDeviceUid(PrefService* local_state) {
     }
   }
 
-  // 2. machine-id D-Bus/systeme : stable par installation, lisible par
+  // 2. UID firmware (DMI) pre-hache au boot par le service root
+  //    (/etc/init/jemaos-device-uid.conf) : survit a la reinstallation,
+  //    car le DMI vit dans le firmware. Le fichier contient deja le hash
+  //    final : le retourner tel quel, sans re-hacher.
+  if (raw.empty()) {
+    std::string content;
+    if (base::ReadFileToString(base::FilePath("/var/lib/jemaos/device_uid"),
+                               &content)) {
+      std::string prehashed =
+          std::string(base::TrimWhitespaceASCII(content, base::TRIM_ALL));
+      if (prehashed.size() == 64) {
+        return prehashed;
+      }
+    }
+  }
+
+  // 3. machine-id D-Bus/systeme : stable par installation, lisible par
   //    l utilisateur chrome, disponible sur tout PC generique.
   if (raw.empty()) {
     for (const char* path : {"/var/lib/dbus/machine-id", "/etc/machine-id"}) {
@@ -55,7 +71,7 @@ std::string GetDeviceUid(PrefService* local_state) {
     }
   }
 
-  // 3. Dernier recours : UUID aleatoire persiste dans local state (survit
+  // 4. Dernier recours : UUID aleatoire persiste dans local state (survit
   //    aux reboots).
   if (raw.empty() && local_state) {
     raw = local_state->GetString(prefs::kJemaOsDeviceUid);

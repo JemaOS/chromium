@@ -32,6 +32,9 @@ const char kOfflineAutoSigninIsChromeLastSignout[] =
     "offline_auto_signin.chrome_signout";
 
 const char kConnectApiUserId[] = "connect_api.user_id";
+// UID materiel genere en dernier recours par GetDeviceUid (aucune source
+// d identite native : PC generique sans VPD ni machine-id).
+const char kJemaOsDeviceUid[] = "jemaos.device_uid";
 const char kConnectApiUserStatus[] = "connect_api.user_status";
 
 const char kJemaSubscriptionActive[] = "jemaos.subscription_active";

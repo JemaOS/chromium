@@ -41,6 +41,7 @@
 #include "ui/base/l10n/l10n_util.h"
 #include "chrome/grit/generated_resources.h"
 #include "jemaos/misc/jemaos_dev_mode.h"
+#include "jemaos/misc/jemaos_device_uid.h"
 #include "base/hash/sha1.h"
 #include <sys/stat.h>
 
@@ -775,9 +776,12 @@ void JemaOsHandler::HandleFetchConnectApiUserId(const base::Value::List& args) {
   const char kConnectApiBaseUrl[] = "https://connect-api.jematech.fr";
   std::string api_url = std::string(kConnectApiBaseUrl) + "/v1/connect/user/by-email";
   
-  // Prepare JSON body
+  // Prepare JSON body (avec l UID materiel stable pour le SaaS prod)
+  const std::string device_uid =
+      jemaos::GetDeviceUid(g_browser_process->local_state());
   std::string json_body = base::StringPrintf(
-      "{\"email\": \"%s\"}", email.c_str());
+      "{\"email\": \"%s\", \"device_uid\": \"%s\"}", email.c_str(),
+      device_uid.c_str());
   
   LOG(INFO) << "=== Connect API Call Debug ===";
   LOG(INFO) << "Email: " << email;

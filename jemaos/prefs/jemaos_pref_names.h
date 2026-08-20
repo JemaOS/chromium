@@ -34,6 +34,7 @@ extern const char kOfflineAutoSigninPasswordFormat[];
 extern const char kOfflineAutoSigninIsChromeLastSignout[];
 
 extern const char kConnectApiUserId[];
+extern const char kJemaOsDeviceUid[];
 extern const char kConnectApiUserStatus[];
 
 // Whether the Jema online account of this profile has an active subscription

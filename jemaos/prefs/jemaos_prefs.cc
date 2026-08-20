@@ -44,6 +44,7 @@ void RegisterLocalStatePrefs(PrefRegistrySimple* registry) {
   registry->RegisterBooleanPref(kOfflineAutoSigninIsChromeLastSignout, false);
 
   registry->RegisterStringPref(kConnectApiUserId, std::string());
+  registry->RegisterStringPref(kJemaOsDeviceUid, std::string());
   registry->RegisterStringPref(kConnectApiUserStatus, std::string());
 
   registry->RegisterStringPref(kJemaOsAuthAccessTokenEncrypted, std::string());

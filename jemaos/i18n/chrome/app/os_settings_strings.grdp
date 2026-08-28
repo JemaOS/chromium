@@ -283,6 +283,9 @@
   <message name="IDS_OS_SETTINGS_JEMAOS_NO_BACKUP_DATA" desc="Message when no backup data is available">
     No backup data available
   </message>
+  <message name="IDS_OS_SETTINGS_JEMAOS_UNAVAILABLE" desc="Message when information cannot be loaded from the server">
+    Information unavailable
+  </message>
   
   <!-- Restore dialog strings -->
   <message name="IDS_OS_SETTINGS_JEMAOS_CLOSE" desc="Close button text">

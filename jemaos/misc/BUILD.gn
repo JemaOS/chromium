@@ -20,6 +20,8 @@ static_library("misc") {
     "jemaos_email_subscription.h",
     "jemaos_misc_scheduler.cc",
     "jemaos_misc_scheduler.h",
+    "jemaos_device_uid.cc",
+    "jemaos_device_uid.h",
     "jemaos_statistics_collector.cc",
     "jemaos_statistics_collector.h",
     "jemaos_release_note_url.cc",

@@ -28,6 +28,8 @@
 #include "chrome/browser/ash/file_manager/path_util.h"
 #include "ash/wm/tablet_mode/tablet_mode_controller.h"
 #include "jemaos/prefs/jemaos_pref_names.h"
+#include "components/os_crypt/sync/os_crypt.h"
+#include "base/strings/string_util.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/jemaos_shell_client.h"
 #include "base/json/json_reader.h"
@@ -41,6 +43,7 @@
 #include "ui/base/l10n/l10n_util.h"
 #include "chrome/grit/generated_resources.h"
 #include "jemaos/misc/jemaos_dev_mode.h"
+#include "jemaos/misc/jemaos_device_uid.h"
 #include "base/hash/sha1.h"
 #include <sys/stat.h>
 
@@ -760,12 +763,57 @@ void JemaOsHandler::HandleCleanOfflineLoginPassword(
   ResolveJavascriptCallback(callback_id, base::Value(true));
 }
 
+namespace {
+
+// Cle API partagee avec les autres appels connect-api (cf.
+// user_session_manager.cc, refresh du token OS).
+constexpr char kConnectApiKey[] = "e58492a3-b452-4197-9f4a-deb7915b9446";
+
+// Token d acces OS (connect_id) stocke chiffre par OSCrypt au login.
+std::string GetDecryptedOsAccessToken() {
+  if (!g_browser_process) {
+    return std::string();
+  }
+  PrefService* prefs = g_browser_process->local_state();
+  if (!prefs) {
+    return std::string();
+  }
+  const std::string encrypted =
+      prefs->GetString(jemaos::prefs::kJemaOsAuthAccessTokenEncrypted);
+  if (encrypted.empty()) {
+    return std::string();
+  }
+  std::string plain;
+  if (!OSCrypt::DecryptString(encrypted, &plain)) {
+    LOG(ERROR) << "Failed to decrypt OS access token";
+    return std::string();
+  }
+  return plain;
+}
+
+}  // namespace
+
 void JemaOsHandler::HandleFetchConnectApiUserId(const base::Value::List& args) {
   CHECK_EQ(1u, args.size());
   std::string email = args[0].GetString();
-  
+
   if (email.empty()) {
     LOG(ERROR) << "Empty email provided for Connect API user ID fetch";
+    return;
+  }
+
+  // Compte local : aucun utilisateur correspondant cote SaaS, inutile
+  // d appeler l API (404 garanti).
+  if (base::EndsWith(email, "@jemaos.local",
+                     base::CompareCase::INSENSITIVE_ASCII)) {
+    LOG(INFO) << "Local account, skipping Connect API user ID fetch";
+    if (IsJavascriptAllowed()) {
+      base::Value::Dict err;
+      err.Set("user_id", "");
+      err.Set("status", "");
+      err.Set("error", "local_account");
+      FireWebUIListener("connect-api-user-id-fetched", err);
+    }
     return;
   }
   
@@ -775,9 +823,12 @@ void JemaOsHandler::HandleFetchConnectApiUserId(const base::Value::List& args) {
   const char kConnectApiBaseUrl[] = "https://connect-api.jematech.fr";
   std::string api_url = std::string(kConnectApiBaseUrl) + "/v1/connect/user/by-email";
   
-  // Prepare JSON body
+  // Prepare JSON body (avec l UID materiel stable pour le SaaS prod)
+  const std::string device_uid =
+      jemaos::GetDeviceUid(g_browser_process->local_state());
   std::string json_body = base::StringPrintf(
-      "{\"email\": \"%s\"}", email.c_str());
+      "{\"email\": \"%s\", \"device_uid\": \"%s\"}", email.c_str(),
+      device_uid.c_str());
   
   LOG(INFO) << "=== Connect API Call Debug ===";
   LOG(INFO) << "Email: " << email;
@@ -791,6 +842,7 @@ void JemaOsHandler::HandleFetchConnectApiUserId(const base::Value::List& args) {
       "exec 2>/dev/null\n"  // Suppress stderr warnings about noexec mount
       "curl -s -L -X POST \"" + api_url + "\" \\\n"
       "  -H 'Content-Type: application/json' \\\n"
+      "  -H 'x-api-key: " + std::string(kConnectApiKey) + "' \\\n"
       "  -d '" + json_body + "'\n";
   
   LOG(INFO) << "Writing script to: " << script_file;
@@ -819,10 +871,24 @@ void JemaOsHandler::OnConnectApiUserIdReceived(const std::string& email,
                                                std::optional<ShellState> state) {
   LOG(INFO) << "=== OnConnectApiUserIdReceived called ===";
   LOG(INFO) << "Email: " << email;
+
+  // Notifie l UI en cas d echec : sans cela la page Parametres reste
+  // bloquee sur "Chargement en cours" (l event connect-api-user-id-fetched
+  // n etait emis que sur succes).
+  auto notify_failure = [this](const std::string& reason) {
+    if (IsJavascriptAllowed()) {
+      base::Value::Dict err;
+      err.Set("user_id", "");
+      err.Set("status", "");
+      err.Set("error", reason);
+      FireWebUIListener("connect-api-user-id-fetched", err);
+    }
+  };
   
   if (!state) {
     LOG(ERROR) << "CRITICAL: No state returned from Connect API call - command may not have been executed";
     LOG(ERROR) << "This usually means the shell client failed to execute the command";
+    notify_failure("shell_exec_failed");
     return;
   }
   
@@ -834,6 +900,7 @@ void JemaOsHandler::OnConnectApiUserIdReceived(const std::string& email,
     LOG(ERROR) << "Command failed with exit code: " << state->code;
     LOG(ERROR) << "Full output: " << state->result;
     LOG(ERROR) << "Possible causes: network issue, curl not found, or command syntax error";
+    notify_failure("api_call_failed");
     return;
   }
   
@@ -843,6 +910,7 @@ void JemaOsHandler::OnConnectApiUserIdReceived(const std::string& email,
   // Check if response is empty
   if (state->result.empty()) {
     LOG(ERROR) << "Empty response from Connect API";
+    notify_failure("empty_response");
     return;
   }
   
@@ -855,6 +923,7 @@ void JemaOsHandler::OnConnectApiUserIdReceived(const std::string& email,
     LOG(INFO) << "Cleaned JSON response: [" << cleaned_result << "]";
   } else {
     LOG(ERROR) << "No JSON found in response";
+    notify_failure("no_json");
     return;
   }
   
@@ -863,6 +932,7 @@ void JemaOsHandler::OnConnectApiUserIdReceived(const std::string& email,
   if (!json_value || !json_value->is_dict()) {
     LOG(ERROR) << "Invalid JSON response from Connect API. First 200 chars: " 
                << cleaned_result.substr(0, std::min<size_t>(200, cleaned_result.length()));
+    notify_failure("invalid_json");
     return;
   }
   
@@ -870,18 +940,21 @@ void JemaOsHandler::OnConnectApiUserIdReceived(const std::string& email,
   const base::Value* success = root_dict.Find("success");
   if (!success || !success->GetBool()) {
     LOG(ERROR) << "API returned success=false";
+    notify_failure("user_not_found");
     return;
   }
   
   const base::Value::Dict* data = root_dict.FindDict("data");
   if (!data) {
     LOG(ERROR) << "No data field in API response";
+    notify_failure("no_data");
     return;
   }
   
   const std::string* user_id = data->FindString("user_id");
   if (!user_id || user_id->empty()) {
     LOG(ERROR) << "No user_id in API response data";
+    notify_failure("no_user_id");
     return;
   }
   
@@ -1032,7 +1105,20 @@ void JemaOsHandler::HandleGetBackupAnalysis(const base::Value::List& args) {
   }
   
   std::string user_id = prefs->GetString(jemaos::prefs::kConnectApiUserId);
-  
+
+  // L endpoint backup/analysis exige x-api-key + Bearer (userAuthMiddleware).
+  const std::string access_token = GetDecryptedOsAccessToken();
+  if (access_token.empty()) {
+    LOG(ERROR) << "No OS access token for backup analysis (not signed in?)";
+    if (IsJavascriptAllowed()) {
+      base::Value::Dict error_response;
+      error_response.Set("success", false);
+      error_response.Set("error", "Not authenticated");
+      ResolveJavascriptCallback(callback_id, error_response);
+    }
+    return;
+  }
+
   if (user_id.empty()) {
     LOG(ERROR) << "No user_id available for backup analysis";
     if (IsJavascriptAllowed()) {
@@ -1053,9 +1139,11 @@ void JemaOsHandler::HandleGetBackupAnalysis(const base::Value::List& args) {
   
   // Create curl script
   std::string script_file = "/tmp/jemaos_backup_analysis.sh";
-  std::string script_content = 
+  std::string script_content =
       "#!/bin/bash\n"
-      "curl -s -L \"" + api_url + "\"\n";
+      "curl -s -L \"" + api_url + "\" \\\n"
+      "  -H 'x-api-key: " + std::string(kConnectApiKey) + "' \\\n"
+      "  -H 'Authorization: Bearer " + access_token + "'\n";
   
   base::WriteFile(base::FilePath(script_file), script_content);
   chmod(script_file.c_str(), 0755);

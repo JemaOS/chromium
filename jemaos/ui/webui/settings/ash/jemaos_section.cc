@@ -215,6 +215,8 @@ void JemaOsSection::AddLoadTimeData(content::WebUIDataSource* html_source) {
       IDS_OS_SETTINGS_JEMAOS_HARDWARE_DEVICES_LABEL},
     {"jemaosSettingsNoBackupData",
       IDS_OS_SETTINGS_JEMAOS_NO_BACKUP_DATA},
+    {"jemaosSettingsUnavailable",
+      IDS_OS_SETTINGS_JEMAOS_UNAVAILABLE},
 
     // Restore dialog strings
     {"jemaosSettingsClose",

@@ -1,4 +1,7 @@
 #include "jemaos/misc/jemaos_statistics_collector.h"
+
+#include "jemaos/misc/jemaos_device_uid.h"
+
 #include "jemaos/switches/services/services_switches.h"
 #include "jemaos/switches/services/services_constants.h"
 #include "chrome/browser/profiles/profile.h"
@@ -261,6 +264,11 @@ void StatisticsCollector::CollectDeviceInfo() {
     if (machine_id) {
       statistics_.sn = machine_id.value();
     }
+  }
+  if (statistics_.sn.empty()) {
+    // PC generique sans VPD : UID materiel stable et hashe (machine-id),
+    // pour que le SaaS recoive un identifiant unique par appareil.
+    statistics_.sn = jemaos::GetDeviceUid(g_browser_process->local_state());
   }
   // std::string region;
   // provider_->GetMachineStatistic("region", &region);

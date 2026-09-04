@@ -779,13 +779,18 @@ std::string GetDecryptedOsAccessToken() {
   if (!prefs) {
     return std::string();
   }
-  const std::string encrypted =
+  // SetEncryptedPref() stocke Base64Encode(OSCrypt(ciphertext)) : decoder le
+  // base64 AVANT de dechiffrer, sinon le handler envoie le blob chiffre comme
+  // Bearer (incoherence avec GetDecryptedPref de jema_local_signin_screen_handler).
+  const std::string encoded =
       prefs->GetString(jemaos::prefs::kJemaOsAuthAccessTokenEncrypted);
-  if (encrypted.empty()) {
+  if (encoded.empty()) {
     return std::string();
   }
+  std::string encrypted;
   std::string plain;
-  if (!OSCrypt::DecryptString(encrypted, &plain)) {
+  if (!base::Base64Decode(encoded, &encrypted) ||
+      !OSCrypt::DecryptString(encrypted, &plain)) {
     LOG(ERROR) << "Failed to decrypt OS access token";
     return std::string();
   }

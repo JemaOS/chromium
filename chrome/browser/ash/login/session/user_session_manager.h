@@ -226,8 +226,20 @@ class UserSessionManager
   // access token through the refresh endpoint before it expires server-side.
   void MaybeRefreshAndInjectJemaOSToken();
   void RefreshJemaOSToken();
+  // JEMAOS: Same refresh, with a completion callback so callers (e.g. the
+  // settings backup-analysis handler) can retry an API call with the renewed
+  // token. When a refresh is already in flight the callback is queued and
+  // runs when it completes; it also runs when there is nothing to refresh.
+  void RefreshJemaOSToken(base::OnceClosure on_done);
   void OnJemaOSTokenRefreshed(std::unique_ptr<network::SimpleURLLoader> loader,
                               std::unique_ptr<std::string> response_body);
+  // JEMAOS: Runs (and clears) the callbacks queued for the current/last
+  // token refresh.
+  void RunJemaOSTokenRefreshCallbacks();
+  // JEMAOS: Deletes the cookies previously injected by
+  // InjectJemaOSTokenCookie (access token + managed marker), so PWAs stop
+  // considering the session OS-managed once it is dead.
+  void ClearJemaOSInjectedCookies(Profile* profile);
   void StartJemaOSTokenLifecycleTimer();
 
   // JEMAOS: Queries /v1/connect/os/subscription with the stored access token
@@ -661,6 +673,9 @@ class UserSessionManager
   // JEMAOS: Keeps the subscription cookie fresh and renews the access token.
   base::RepeatingTimer jemaos_token_timer_;
   bool jemaos_token_refresh_in_flight_ = false;
+  // JEMAOS: Completion callbacks queued for the in-flight token refresh (see
+  // RefreshJemaOSToken(base::OnceClosure)).
+  std::vector<base::OnceClosure> jemaos_token_refresh_done_callbacks_;
 
   base::WeakPtrFactory<UserSessionManager> weak_factory_{this};
 };

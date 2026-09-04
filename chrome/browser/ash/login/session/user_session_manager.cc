@@ -2280,6 +2280,57 @@ void UserSessionManager::InjectJemaOSTokenCookie(Profile* profile) {
       base::BindOnce([](net::CookieAccessResult result) {
         LOG(INFO) << "[JEMAOS] Cookie set: " << result.status.IsInclude();
       }));
+
+  // JEMAOS: Managed-session marker. The OS is the SINGLE owner of the
+  // refresh token and rotates it on its own lifecycle; the server-side
+  // rotation invalidates the previous refresh token, so if a PWA rotated
+  // the shared session too, the OS session would die (401 on every system
+  // call, e.g. the backup-analysis panel). PWAs (SubscriptionGuard) read
+  // this marker and, when present, never refresh on their own and never
+  // pull tokens from the jema-auth portal: they wait for this cookie to be
+  // renewed by the OS. Cleared by ClearJemaOSInjectedCookies() when the
+  // session is rejected, so PWAs can fall back to the web session.
+  const std::string managed_cookie_value =
+      "jemaos_managed=1; Path=/; Domain=.jemaos.com; Secure; SameSite=Lax; "
+      "Max-Age=604800";
+  auto managed_cookie = net::CanonicalCookie::Create(
+      kJemaOsUrl, managed_cookie_value, base::Time::Now(),
+      /*server_time=*/base::Time(),
+      /*cookie_partition_key=*/std::nullopt, net::CookieSourceType::kOther,
+      &status);
+  if (managed_cookie) {
+    cookie_manager->SetCanonicalCookie(
+        *managed_cookie, kJemaOsUrl, options,
+        base::BindOnce([](net::CookieAccessResult result) {
+          LOG(INFO) << "[JEMAOS] Managed-session cookie set: "
+                    << result.status.IsInclude();
+        }));
+  }
+}
+
+void UserSessionManager::ClearJemaOSInjectedCookies(Profile* profile) {
+  if (!profile) {
+    return;
+  }
+  auto* storage_partition = profile->GetDefaultStoragePartition();
+  if (!storage_partition) {
+    return;
+  }
+  auto* cookie_manager =
+      storage_partition->GetCookieManagerForBrowserProcess();
+  if (!cookie_manager) {
+    return;
+  }
+  const GURL kJemaOsUrl("https://jemaos.com");
+  for (const char* cookie_name :
+       {"jemaos_access_token", "jemaos_managed", "jemaos_refresh_token"}) {
+    network::mojom::CookieDeletionFilterPtr filter(
+        network::mojom::CookieDeletionFilter::New());
+    filter->url = kJemaOsUrl;
+    filter->cookie_name = cookie_name;
+    cookie_manager->DeleteCookies(std::move(filter), base::DoNothing());
+  }
+  LOG(INFO) << "[JEMAOS] Cleared injected session cookies";
 }
 
 namespace {
@@ -2371,6 +2422,28 @@ void UserSessionManager::MaybeRefreshAndInjectJemaOSToken() {
     } else if (base::Time::Now() > expiry - kJemaOsRefreshMargin) {
       should_refresh = true;
     }
+  } else {
+    // No refresh token: the access token can never be renewed. Once it is
+    // older than its server-side lifetime it is dead; drop the stored
+    // credentials and injected cookies so PWAs fall back to the web session
+    // instead of looping on an expired token marked as OS-managed.
+    if (g_browser_process) {
+      const int64_t issued_at = g_browser_process->local_state()->GetInt64(
+          jemaos::prefs::kJemaOsAuthIssuedAt);
+      const base::TimeDelta token_age =
+          issued_at == 0
+              ? base::Hours(48)
+              : base::Time::Now() -
+                    base::Time::FromDeltaSinceWindowsEpoch(
+                        base::Seconds(issued_at));
+      if (token_age > kJemaOsOpaqueTokenMaxAge * 4) {
+        LOG(WARNING) << "[JEMAOS] Access token is stale with no refresh "
+                        "token; clearing stored auth tokens";
+        ClearJemaOSAuthTokens();
+        ClearJemaOSInjectedCookies(profile);
+        return;
+      }
+    }
   }
 
   if (should_refresh && !jemaos_token_refresh_in_flight_) {
@@ -2384,6 +2457,10 @@ void UserSessionManager::MaybeRefreshAndInjectJemaOSToken() {
 }
 
 void UserSessionManager::RefreshJemaOSToken() {
+  RefreshJemaOSToken(base::OnceClosure());
+}
+
+void UserSessionManager::RefreshJemaOSToken(base::OnceClosure on_done) {
   const std::string refresh_token = GetJemaOSRefreshToken();
   Profile* profile = ProfileManager::GetActiveUserProfile();
   if (refresh_token.empty() || !profile) {
@@ -2391,6 +2468,18 @@ void UserSessionManager::RefreshJemaOSToken() {
     if (profile) {
       InjectJemaOSTokenCookie(profile);
     }
+    // Nothing to renew: run the completion callback right away so the
+    // caller can retry its API call with the (unchanged) token state.
+    if (on_done) {
+      std::move(on_done).Run();
+    }
+    return;
+  }
+  if (on_done) {
+    jemaos_token_refresh_done_callbacks_.push_back(std::move(on_done));
+  }
+  if (jemaos_token_refresh_in_flight_) {
+    // A refresh is already running; queued callbacks run when it completes.
     return;
   }
   jemaos_token_refresh_in_flight_ = true;
@@ -2441,6 +2530,17 @@ void UserSessionManager::RefreshJemaOSToken() {
       256 * 1024);
 }
 
+void UserSessionManager::RunJemaOSTokenRefreshCallbacks() {
+  if (jemaos_token_refresh_done_callbacks_.empty()) {
+    return;
+  }
+  std::vector<base::OnceClosure> callbacks;
+  callbacks.swap(jemaos_token_refresh_done_callbacks_);
+  for (auto& callback : callbacks) {
+    std::move(callback).Run();
+  }
+}
+
 void UserSessionManager::OnJemaOSTokenRefreshed(
     std::unique_ptr<network::SimpleURLLoader> loader,
     std::unique_ptr<std::string> response_body) {
@@ -2454,10 +2554,14 @@ void UserSessionManager::OnJemaOSTokenRefreshed(
 
   if (status == 401 || status == 403) {
     // Refresh token revoked or expired: clear credentials so apps show the
-    // upgrade/login screen instead of failing silently.
+    // upgrade/login screen instead of failing silently. The injected cookies
+    // are removed too so PWAs stop treating the session as OS-managed and
+    // fall back to the web (jema-auth portal) session.
     LOG(WARNING) << "[JEMAOS] Refresh token rejected (" << status
                  << "), clearing stored auth tokens";
     ClearJemaOSAuthTokens();
+    ClearJemaOSInjectedCookies(profile);
+    RunJemaOSTokenRefreshCallbacks();
     return;
   }
 
@@ -2467,6 +2571,7 @@ void UserSessionManager::OnJemaOSTokenRefreshed(
     if (profile) {
       InjectJemaOSTokenCookie(profile);
     }
+    RunJemaOSTokenRefreshCallbacks();
     return;
   }
 
@@ -2476,6 +2581,7 @@ void UserSessionManager::OnJemaOSTokenRefreshed(
     if (profile) {
       InjectJemaOSTokenCookie(profile);
     }
+    RunJemaOSTokenRefreshCallbacks();
     return;
   }
 
@@ -2494,6 +2600,7 @@ void UserSessionManager::OnJemaOSTokenRefreshed(
     if (profile) {
       InjectJemaOSTokenCookie(profile);
     }
+    RunJemaOSTokenRefreshCallbacks();
     return;
   }
 
@@ -2508,6 +2615,7 @@ void UserSessionManager::OnJemaOSTokenRefreshed(
   if (profile) {
     InjectJemaOSTokenCookie(profile);
   }
+  RunJemaOSTokenRefreshCallbacks();
 }
 
 void UserSessionManager::FetchJemaOSSubscriptionState(Profile* profile) {

@@ -30,6 +30,7 @@
 #include "jemaos/prefs/jemaos_pref_names.h"
 #include "components/os_crypt/sync/os_crypt.h"
 #include "base/strings/string_util.h"
+#include "chrome/browser/ash/login/session/user_session_manager.h"
 #include "chrome/browser/ash/profiles/profile_helper.h"
 #include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/jemaos_shell_client.h"
 #include "base/json/json_reader.h"
@@ -791,6 +792,30 @@ std::string GetDecryptedOsAccessToken() {
   return plain;
 }
 
+// True when the Connect API answer is an authentication failure for the OS
+// access token ("Invalid or expired session", errorCode 6100, ...): the
+// stored token was invalidated server-side (e.g. rotated away) and a token
+// refresh + retry can recover the call.
+bool IsBackupAnalysisAuthFailure(const base::Value::Dict& root_dict) {
+  if (std::optional<int> error_code = root_dict.FindInt("errorCode");
+      error_code && *error_code == 6100) {
+    return true;
+  }
+  if (std::optional<int> error_code = root_dict.FindInt("error_code");
+      error_code && *error_code == 6100) {
+    return true;
+  }
+  const std::string* message = root_dict.FindString("message");
+  if (!message) {
+    return false;
+  }
+  const std::string lower_message = base::ToLowerASCII(*message);
+  return lower_message.find("session") != std::string::npos ||
+         lower_message.find("expir") != std::string::npos ||
+         lower_message.find("token") != std::string::npos ||
+         lower_message.find("unauthor") != std::string::npos;
+}
+
 }  // namespace
 
 void JemaOsHandler::HandleFetchConnectApiUserId(const base::Value::List& args) {
@@ -1080,6 +1105,11 @@ void JemaOsHandler::HandleGetBackupAnalysis(const base::Value::List& args) {
     return;
   }
   
+  RequestBackupAnalysis(callback_id, /*is_retry=*/false);
+}
+
+void JemaOsHandler::RequestBackupAnalysis(const std::string& callback_id,
+                                          bool is_retry) {
   // Get user_id from preferences
   if (!g_browser_process) {
     LOG(ERROR) << "Browser process not available";
@@ -1130,7 +1160,8 @@ void JemaOsHandler::HandleGetBackupAnalysis(const base::Value::List& args) {
     return;
   }
   
-  LOG(INFO) << "Fetching backup analysis for user_id: " << user_id;
+  LOG(INFO) << "Fetching backup analysis for user_id: " << user_id
+            << (is_retry ? " (retry after token refresh)" : "");
   
   // API endpoint
   const char kConnectApiBaseUrl[] = "https://connect-api.jematech.fr";
@@ -1165,10 +1196,11 @@ void JemaOsHandler::HandleGetBackupAnalysis(const base::Value::List& args) {
   
   shell_client->SyncExec(command,
       base::BindOnce(&JemaOsHandler::OnBackupAnalysisReceived,
-                     weak_ptr_factory_.GetWeakPtr(), callback_id));
+                     weak_ptr_factory_.GetWeakPtr(), callback_id, is_retry));
 }
 
 void JemaOsHandler::OnBackupAnalysisReceived(const std::string& callback_id,
+                                             bool is_retry,
                                              std::optional<ShellState> state) {
   // Safety check - ensure JavaScript is allowed before resolving callbacks
   if (!IsJavascriptAllowed()) {
@@ -1223,6 +1255,21 @@ void JemaOsHandler::OnBackupAnalysisReceived(const std::string& callback_id,
   const base::Value::Dict& root_dict = json_value->GetDict();
   const base::Value* success = root_dict.Find("success");
   if (!success || !success->GetBool()) {
+    // Session OS invalidee cote serveur (token rot par un autre consommateur
+    // ou expiree) : on force le renouvellement du token OS puis on retente
+    // UNE fois avant d'afficher l'erreur a l'utilisateur.
+    if (!is_retry && IsBackupAnalysisAuthFailure(root_dict)) {
+      LOG(WARNING) << "Backup analysis rejected (session/token); renewing OS "
+                      "access token and retrying";
+      if (UserSessionManager* session_manager =
+              UserSessionManager::GetInstance()) {
+        session_manager->RefreshJemaOSToken(
+            base::BindOnce(&JemaOsHandler::RequestBackupAnalysis,
+                           weak_ptr_factory_.GetWeakPtr(), callback_id,
+                           /*is_retry=*/true));
+        return;
+      }
+    }
     LOG(ERROR) << "API returned success=false";
     if (!callback_id.empty() && IsJavascriptAllowed()) {
       base::Value::Dict error_response;

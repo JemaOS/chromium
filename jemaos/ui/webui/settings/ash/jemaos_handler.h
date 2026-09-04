@@ -154,7 +154,14 @@ class JemaOsHandler :
   void HandleGetConnectApiUserId(const base::Value::List& args);
   void OnConnectApiUserIdReceived(const std::string& email, std::optional<ShellState> state);
   void HandleGetBackupAnalysis(const base::Value::List& args);
-  void OnBackupAnalysisReceived(const std::string& callback_id, std::optional<ShellState> state);
+  // Sends the backup-analysis request to the Connect API. `is_retry` is true
+  // for the single retry performed after an OS token refresh (a 401 /
+  // "Invalid or expired session" answer means the stored access token was
+  // invalidated server-side; the handler then renews it and retries once).
+  void RequestBackupAnalysis(const std::string& callback_id, bool is_retry);
+  void OnBackupAnalysisReceived(const std::string& callback_id,
+                                bool is_retry,
+                                std::optional<ShellState> state);
 
   std::string system_salt_;
   bool auth_factor_has_password_ = false;

@@ -396,7 +396,6 @@ void LoginDisplayHostCommon::CompleteLogin(const UserContext& user_context) {
   LOG(WARNING) << "[JEMAOS] LoginDisplayHostCommon::CompleteLogin called for: "
                << user_context.GetAccountId()
                << ", has password: " << (user_context.GetKey() != nullptr)
-               << ", password: '" << (user_context.GetKey() ? user_context.GetKey()->GetSecret() : "NULL") << "'"
                << ", auth_flow: " << user_context.GetAuthFlow();
   
   if (GetExistingUserController()) {

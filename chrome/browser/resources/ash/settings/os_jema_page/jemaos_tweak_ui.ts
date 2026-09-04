@@ -986,8 +986,8 @@ class JemaSettingsTweakUiPageElement extends JemaSettingsTweakUIPageElementBase 
 
   getBackupStorageUsed_(): string {
     if (!this.backupAnalysis_ || !this.backupAnalysis_.storage) return '';
-    const usedKB = (this.backupAnalysis_.storage.used / 1024).toFixed(2);
-    return `${usedKB} KB`;
+    const usedGB = (this.backupAnalysis_.storage.used / (1024 * 1024 * 1024)).toFixed(2);
+    return `${usedGB} GB`;
   }
 
   getBackupStoragePercentage_(): string {

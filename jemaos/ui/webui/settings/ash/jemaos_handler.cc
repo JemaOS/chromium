@@ -1309,11 +1309,20 @@ void JemaOsHandler::OnBackupAnalysisReceived(const std::string& callback_id,
     base::Value::Dict storage_dict;
     const base::Value* limit = storage->Find("limit");
     const base::Value* used = storage->Find("used");
+    // Les quotas en octets depassent INT32_MAX des 2 Go : le JSONReader les
+    // stocke alors en double, pas en int. GetIfInt() renverrait nullopt et
+    // value_or(0) afficherait "0.00 GB". Lire en double couvre les deux cas.
+    auto get_number = [](const base::Value* v) -> double {
+      if (!v) return 0.0;
+      if (auto d = v->GetIfDouble()) return *d;
+      if (auto i = v->GetIfInt()) return static_cast<double>(*i);
+      return 0.0;
+    };
     if (limit) {
-      storage_dict.Set("limit", limit->GetIfInt().value_or(0));
+      storage_dict.Set("limit", get_number(limit));
     }
     if (used) {
-      storage_dict.Set("used", used->GetIfInt().value_or(0));
+      storage_dict.Set("used", get_number(used));
     }
     response.Set("storage", std::move(storage_dict));
   }

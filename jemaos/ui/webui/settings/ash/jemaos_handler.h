@@ -151,6 +151,7 @@ class JemaOsHandler :
   void OnListAuthFactors(const std::string& callback_id, std::optional<user_data_auth::ListAuthFactorsReply> reply);
 
   void HandleFetchConnectApiUserId(const base::Value::List& args);
+  void HandleGetDeviceUid(const base::Value::List& args);
   void HandleGetConnectApiUserId(const base::Value::List& args);
   void OnConnectApiUserIdReceived(const std::string& email, std::optional<ShellState> state);
   void HandleGetBackupAnalysis(const base::Value::List& args);

@@ -26,7 +26,9 @@ std::string HashDeviceUid(const std::string& raw) {
   const std::string input = kUidSalt + raw;
   uint8_t digest[SHA256_DIGEST_LENGTH];
   SHA256(reinterpret_cast<const uint8_t*>(input.data()), input.size(), digest);
-  return base::HexEncode(digest, sizeof(digest));
+  // Lowercase : le shell (sha256sum) produit du minuscule, base::HexEncode
+  // du majuscule, et le SaaS compare/stocke en minuscule.
+  return base::ToLowerASCII(base::HexEncode(digest, sizeof(digest)));
 }
 
 }  // namespace
@@ -52,7 +54,9 @@ std::string GetDeviceUid(PrefService* local_state) {
       std::string prehashed =
           std::string(base::TrimWhitespaceASCII(content, base::TRIM_ALL));
       if (prehashed.size() == 64) {
-        return prehashed;
+        // Le shell ecrit deja en minuscule ; normaliser au cas ou (meme
+        // format que HashDeviceUid pour les autres sources).
+        return base::ToLowerASCII(prehashed);
       }
     }
   }

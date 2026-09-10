@@ -220,6 +220,7 @@
 //---***JEMAOS BEGIN***---
 #include "components/embedder_support/pref_names.h"
 #include "components/omnibox/browser/omnibox_prefs.h"
+#include "jemaos/misc/jemaos_device_uid.h"
 #include "jemaos/prefs/jemaos_prefs.h"
 #include "jemaos/switches/account/toggle/account_type_toggle.h"
 //---***JEMAOS END***---
@@ -2174,6 +2175,15 @@ void UserSessionManager::OnUserProfileLoaded(Profile* profile,
       base::BindOnce(&UserSessionManager::FetchJemaOSSubscriptionState,
                      weak_factory_.GetWeakPtr(), base::Unretained(profile)));
 
+  // JEMAOS: Report this PC's stable hardware UID to the Connect API so the
+  // backend binds (first login) or refreshes last_seen (later logins) on the
+  // enrolled hardware row. Without this, os_device_id stays NULL and the
+  // first-login hardware attach never happens.
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE,
+      base::BindOnce(&UserSessionManager::NotifyJemaOSDeviceUid,
+                     weak_factory_.GetWeakPtr(), base::Unretained(profile)));
+
   // TODO(hidehiko): the condition looks redundant. We can merge them into
   // AuthErrorObserver::ShouldObserve.
   auto* user_manager = user_manager::UserManager::Get();
@@ -2756,6 +2766,103 @@ void UserSessionManager::OnJemaOSSubscriptionFetched(
           base::DoNothing());
     }
   }
+}
+
+void UserSessionManager::NotifyJemaOSDeviceUid(Profile* profile) {
+  if (!profile || !g_browser_process || !g_browser_process->local_state()) {
+    return;
+  }
+  // Online accounts only: local (@jemaos.local) and other profiles have no
+  // SaaS identity to bind the hardware UID to.
+  const std::string email = profile->GetProfileUserName();
+  if (email.empty() ||
+      base::EndsWith(email, "@jemaos.local",
+                     base::CompareCase::INSENSITIVE_ASCII)) {
+    return;
+  }
+  const std::string device_uid =
+      jemaos::GetDeviceUid(g_browser_process->local_state());
+  if (device_uid.empty()) {
+    LOG(WARNING) << "[JEMAOS] Device UID unavailable, skipping SaaS notify";
+    return;
+  }
+
+  const GURL url(std::string(kJemaOsConnectApiBase) +
+                 "/v1/connect/user/by-email");
+  const net::NetworkTrafficAnnotationTag annotation =
+      net::DefineNetworkTrafficAnnotation("jemaos_device_uid_notify", R"(
+        semantics {
+          sender: "JemaOS device identity reporter"
+          description: "Reports this PC's stable hardware UID to the Connect"
+            " API at sign-in so the backend binds (first login) or refreshes"
+            " last_seen (later logins) on the enrolled hardware row."
+          trigger: "User profile load at sign-in."
+          data: "The signed-in account email and the hashed device UID."
+          destination: OTHER
+        }
+        policy {
+          cookies_allowed: NO
+          setting: "Tied to the user's JemaOS account session."
+        })");
+
+  auto resource_request = std::make_unique<network::ResourceRequest>();
+  resource_request->url = url;
+  resource_request->method = "POST";
+  resource_request->credentials_mode = network::mojom::CredentialsMode::kOmit;
+  resource_request->headers.SetHeader(net::HttpRequestHeaders::kAccept,
+                                      "application/json");
+  // Same API key as the other connect routes (401 otherwise).
+  resource_request->headers.SetHeader(
+      "x-api-key", "e58492a3-b452-4197-9f4a-deb7915b9446");
+
+  // Escape quotes/backslashes: the email comes from the login form.
+  std::string safe_email = email;
+  base::ReplaceSubstringsAfterOffset(&safe_email, 0, "\\", "\\\\");
+  base::ReplaceSubstringsAfterOffset(&safe_email, 0, "\"", "\\\"");
+  const std::string body = "{\"email\": \"" + safe_email +
+                           "\", \"device_uid\": \"" + device_uid + "\"}";
+
+  auto* storage_partition = profile->GetDefaultStoragePartition();
+  if (!storage_partition) {
+    return;
+  }
+  scoped_refptr<network::SharedURLLoaderFactory> loader_factory =
+      storage_partition->GetURLLoaderFactoryForBrowserProcess();
+  if (!loader_factory) {
+    LOG(WARNING) << "[JEMAOS] Device UID notify skipped: no URL loader "
+                    "factory yet";
+    return;
+  }
+
+  auto loader =
+      network::SimpleURLLoader::Create(std::move(resource_request), annotation);
+  loader->SetAllowHttpErrorResults(true);
+  loader->AttachStringForUpload(body, "application/json");
+  auto* loader_ptr = loader.get();
+  LOG(INFO) << "[JEMAOS] Reporting device UID for " << email;
+  loader_ptr->DownloadToString(
+      loader_factory.get(),
+      base::BindOnce(&UserSessionManager::OnJemaOSDeviceUidNotified,
+                     weak_factory_.GetWeakPtr(), std::move(loader)),
+      64 * 1024);
+}
+
+void UserSessionManager::OnJemaOSDeviceUidNotified(
+    std::unique_ptr<network::SimpleURLLoader> loader,
+    std::unique_ptr<std::string> response_body) {
+  if (!loader || !response_body) {
+    return;
+  }
+  int status = 0;
+  if (loader->ResponseInfo() && loader->ResponseInfo()->headers) {
+    status = loader->ResponseInfo()->headers->response_code();
+  }
+  if (status < 200 || status >= 300) {
+    LOG(WARNING) << "[JEMAOS] Device UID notify failed (status " << status
+                 << ")";
+    return;
+  }
+  LOG(INFO) << "[JEMAOS] Device UID reported to SaaS";
 }
 
 void UserSessionManager::StartTetherServiceIfPossible(Profile* profile) {

@@ -252,6 +252,16 @@ class UserSessionManager
       std::unique_ptr<network::SimpleURLLoader> loader,
       std::unique_ptr<std::string> response_body);
 
+  // JEMAOS: Notifies the Connect API (POST /v1/connect/user/by-email with
+  // {email, device_uid}) that this physical PC signed in as this account, so
+  // the backend can bind/refresh last_seen on the enrolled hardware
+  // (jema.hardware.os_device_id). Fire-and-forget: runs only for Jema online
+  // accounts, never blocks the session.
+  void NotifyJemaOSDeviceUid(Profile* profile);
+  void OnJemaOSDeviceUidNotified(
+      std::unique_ptr<network::SimpleURLLoader> loader,
+      std::unique_ptr<std::string> response_body);
+
   // Start the Tether service if it is ready.
   void StartTetherServiceIfPossible(Profile* profile);
 

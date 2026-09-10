@@ -466,6 +466,10 @@ void JemaOsHandler::RegisterMessages() {
       base::BindRepeating(&JemaOsHandler::HandleGetConnectApiUserId,
                           base::Unretained(this)));
   web_ui()->RegisterMessageCallback(
+      "getDeviceUid",
+      base::BindRepeating(&JemaOsHandler::HandleGetDeviceUid,
+                          base::Unretained(this)));
+  web_ui()->RegisterMessageCallback(
       "getBackupAnalysis",
       base::BindRepeating(&JemaOsHandler::HandleGetBackupAnalysis,
                           base::Unretained(this)));
@@ -1009,6 +1013,33 @@ void JemaOsHandler::OnConnectApiUserIdReceived(const std::string& email,
   
   if (IsJavascriptAllowed()) {
     FireWebUIListener("connect-api-user-id-fetched", response_dict);
+  }
+}
+
+void JemaOsHandler::HandleGetDeviceUid(const base::Value::List& args) {
+  AllowJavascript();
+
+  if (args.size() != 1u || !args[0].is_string()) {
+    LOG(ERROR) << "Invalid arguments for getDeviceUid";
+    return;
+  }
+
+  std::string callback_id = args[0].GetString();
+
+  if (callback_id.empty()) {
+    LOG(ERROR) << "Empty callback_id for getDeviceUid";
+    return;
+  }
+
+  std::string device_uid;
+  if (g_browser_process) {
+    device_uid = jemaos::GetDeviceUid(g_browser_process->local_state());
+  }
+
+  if (IsJavascriptAllowed()) {
+    base::Value::Dict response;
+    response.Set("device_uid", device_uid);
+    ResolveJavascriptCallback(callback_id, std::move(response));
   }
 }
 

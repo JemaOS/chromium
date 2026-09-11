@@ -796,6 +796,12 @@ export class Authenticator extends EventTarget {
     this.enableJemaAccount_ = data.enableJemaAccount;
     this.isExistedUser_ = data.email && data.readOnlyEmail;
     this.deviceEnterpriseManaged_ = data.enterpriseDomainManager || data.enterpriseEnrollmentDomain;
+    console.log('[JEMAOS-DIAG] load email:', data.email,
+      'readOnlyEmail:', data.readOnlyEmail,
+      'isExistedUser:', this.isExistedUser_,
+      'enableJemaAccount:', this.enableJemaAccount_,
+      'enterpriseManaged:', this.deviceEnterpriseManaged_,
+      'requireSelectAccountType:', this.requireSelectAccountTypeAfterSignin_);
 
     this.initialFrameUrl_ = this.constructInitialFrameUrl_(data);
     this.reloadUrl_ = data.frameUrl || this.initialFrameUrl_;
@@ -1225,11 +1231,26 @@ export class Authenticator extends EventTarget {
    * @private
    */
   maybeCompleteAuth_() {
+    console.log('[JEMAOS-DIAG] maybeCompleteAuth email:', this.email_,
+      'gaiaId:', this.gaiaId_,
+      'sessionIndex:', this.sessionIndex_,
+      'services:', JSON.stringify(this.services_),
+      'closeView:', this.closeViewReceived_,
+      'waitConfirm:', this.waitApiPasswordConfirm_,
+      'authCompletedFired:', this.authCompletedFired_,
+      'isExistedUser:', this.isExistedUser_,
+      'selectedAccountType:', this.selectedAccountType_,
+      'samlApiUsed:', this.samlHandler_ && this.samlHandler_.samlApiUsed,
+      'confirmToken:', this.samlHandler_ && this.samlHandler_.confirmToken_,
+      'apiTokens:',
+        this.samlHandler_ && Object.keys(this.samlHandler_.apiTokenStore_ || {}));
     if (this.authCompletedFired_) {
+      console.log('[JEMAOS-DIAG] exit: already-fired');
       return;
     }
     if (this.shouldWaitForJemaAccountTypeSelection_()) {
       if (!this.selectedAccountType_) {
+        console.log('[JEMAOS-DIAG] exit: wait-account-type');
         return;
       }
       if (this.selectedAccountType_ === 'google') {
@@ -1240,6 +1261,7 @@ export class Authenticator extends EventTarget {
     const missingGaiaInfo =
       !this.email_ || !this.gaiaId_ || !this.sessionIndex_;
     if (missingGaiaInfo && !this.skipForNow_) {
+      console.log('[JEMAOS-DIAG] exit: missing-gaia-info', this.email_, this.gaiaId_, this.sessionIndex_);
       if (this.missingGaiaInfoCallback) {
         this.missingGaiaInfoCallback();
       }
@@ -1260,6 +1282,7 @@ export class Authenticator extends EventTarget {
       this.maybeRecordAccountFreshnessInOobe_();
       this.maybeClearGaiaTimeout_();
     } else if (this.gaiaDoneTimer_) {
+      console.log('[JEMAOS-DIAG] wait: gaiaDone false, timer armed');
       // Early out if `gaiaDoneTimer_` is running.
       return;
     } else {
@@ -1363,14 +1386,17 @@ export class Authenticator extends EventTarget {
     // Validate required data to prevent crashes
     if (!this.skipForNow_) {
       if (!this.email_ || typeof this.email_ !== 'string') {
+        console.log('[JEMAOS-DIAG] exit: onAuthCompleted-precondition email');
         console.error('[FATAL] Invalid email:', this.email_);
         return;
       }
       if (!this.gaiaId_ || typeof this.gaiaId_ !== 'string') {
+        console.log('[JEMAOS-DIAG] exit: onAuthCompleted-precondition gaiaId');
         console.error('[FATAL] Invalid gaiaId:', this.gaiaId_);
         return;
       }
       if (!this.sessionIndex_ || typeof this.sessionIndex_ !== 'string') {
+        console.log('[JEMAOS-DIAG] exit: onAuthCompleted-precondition sessionIndex');
         console.error('[FATAL] Invalid sessionIndex:', this.sessionIndex_);
         return;
       }

@@ -203,7 +203,7 @@ class JemaOSInstaller {
       }
     }
 
-    return this.isARM().then((ret) => {
+    return this.isARM().then(async (ret) => {
       let extraArray = []
       if (ret) {
         extraArray.push('--skip_postinstall');
@@ -214,9 +214,23 @@ class JemaOSInstaller {
         extraArray.push('--skip_dst_removable');
       }
       const extra = extraArray.join(' ');
-      return this.execForLongTask(`${JemaOSInstaller.InstallCommand} ${extra} --dst ${diskPath} --yes`,
+      if (!await this.quotaReady()) {
+        dispatchError('JemaOS: composant quota introuvable, image invalide.');
+        return;
+      }
+      try {
+        await this.quotaCheck();
+      } catch (err) {
+        const detail = (err && err.message) ? err.message.trim() : 'compteur invalide';
+        dispatchError(`JemaOS: quota refuse (${detail})`);
+        return;
+      }
+      const result = await this.execForLongTask(
+        `${JemaOSInstaller.InstallCommand} ${extra} --dst ${diskPath} --yes`,
         this.asyncTaskCreated,
         dispatchSuccess, dispatchError, 999999, 2, 10, dispatchProcess);
+      await this.quotaBump();
+      return result;
     });
   }
 
@@ -276,6 +290,27 @@ class JemaOSInstaller {
       return true;
     } catch (err) {
       return false;
+    }
+  }
+
+  // JEMAOS: signed installation quota (jemaos-install-quota). The counter
+  // lives on the USB ESP, signed with a key in the read-only rootfs. We check
+  // before installing and bump after a successful install.
+  async quotaReady() {
+    if (this.IS_DEBUG) return false;
+    return this.isFileExist('/usr/sbin/jemaos-install-quota') &&
+      this.isFileExist('/usr/share/jemaos/quota.key');
+  }
+
+  async quotaCheck() {
+    await this.execForResult('/usr/sbin/jemaos-install-quota check');
+  }
+
+  async quotaBump() {
+    try {
+      await this.execForResult('/usr/sbin/jemaos-install-quota bump');
+    } catch (err) {
+      console.log('quota bump failed', err);
     }
   }
 
@@ -379,15 +414,29 @@ class JemaOSInstaller {
       }
     }
 
-    return this.isARM().then((ret) => {
+    return this.isARM().then(async (ret) => {
       let extraArray = ['--skip_dst_removable'];
       if (ret) {
         extraArray.push('--skip_postinstall');
       }
       const extra = extraArray.join(' ');
-      return this.execForLongTask(`${JemaOSInstaller.InstallCommand} ${extra} --dst ${diskPath} --yes`,
+      if (!await this.quotaReady()) {
+        dispatchError('JemaOS: composant quota introuvable, image invalide.');
+        return;
+      }
+      try {
+        await this.quotaCheck();
+      } catch (err) {
+        const detail = (err && err.message) ? err.message.trim() : 'compteur invalide';
+        dispatchError(`JemaOS: quota refuse (${detail})`);
+        return;
+      }
+      const result = await this.execForLongTask(
+        `${JemaOSInstaller.InstallCommand} ${extra} --dst ${diskPath} --yes`,
         this.asyncTaskCreated,
         dispatchSuccess, dispatchError, 999999, 2, 10, dispatchProcess);
+      await this.quotaBump();
+      return result;
     });
   }
 

@@ -233,6 +233,20 @@
         </select>
       </div>
     </div>
+    <div class="dualboot-config-select" hidden="[[!isCreatePartition_]]">
+      <div class="flex layout center horizontal justified config-selection-entry">
+        <div class="flex layout vertical center-justified">
+          <div class="config-selection-title layout vertical center-justified">
+            [[i18nDynamic(locale, 'jemaosInstallerCreateOSPartSizeLabel')]]
+          </div>
+          <div id="dualbootConfigSizeMessage" class="dualboot-config-message">[[i18nDynamic(locale, 'jemaosInstallerCreateOSPartSizeHelperText')]]</div>
+        </div>
+        <select id="dualbootConfigSizeList" class="md-select"
+                                              value=[[dualbootConfigSelectedSize_]]
+                                              >
+        </select>
+      </div>
+    </div>
     <div class="dualboot-config-select">
       <div class="flex layout center horizontal justified config-selection-entry">
         <div class="flex layout vertical center-justified">

@@ -580,6 +580,18 @@
     <message name="IDS_JEMAOS_INSTALLER_USB_CONFIG_NO_AVAILABLE_DISK" desc="Message when no USB disk is available, jemaos installer">
       Aucun disque USB disponible
     </message>
+    <message name="IDS_JEMAOS_INSTALLER_CREATE_OS_PART_OPTION" desc="Option that asks the installer to create the JemaOS target partition">
+      Créer une nouvelle partition <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>
+    </message>
+    <message name="IDS_JEMAOS_INSTALLER_CREATE_OS_PART_SIZE_LABEL" desc="Label of the size selector for the partition created for JemaOS">
+      Espace à réserver pour <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>
+    </message>
+    <message name="IDS_JEMAOS_INSTALLER_CREATE_OS_PART_SIZE_HELPER_TEXT" desc="Helper text explaining how the JemaOS partition is created">
+      <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> crée une nouvelle partition dans l'espace libre du disque. Si le disque est plein, la partition Windows est réduite (aucune donnée Windows n'est effacée, mais sauvegardez vos données par précaution).
+    </message>
+    <message name="IDS_JEMAOS_INSTALLER_CREATE_OS_PART_FAILED" desc="Error message when the JemaOS partition could not be created">
+      Impossible de créer la partition multi-amorçage. Vérifiez l'espace disponible ou réduisez la taille demandée.
+    </message>
     <message name="IDS_JEMAOS_OOBE_WELCOME_DISABLE_NEXT_DESC" desc="oobe welcome disable next desc">
       Nous avons détecté que vous utilisez JemaOS à partir d'une image téléchargée. Pour bénéficier des mises à jour et du support complets, nous recommandons d'utiliser l'« Installateur » pour une installation sur disque. Vous pouvez <ph name="LINK_BEGIN">&lt;span id="continue-anyway"&gt;</ph>continuer à utiliser cette copie sans installer<ph name="LINK_END">&lt;/span&gt;</ph>, mais après une installation ultérieure toutes les données seront effacées et vous repartirez de cette page.
     </message>
@@ -761,6 +773,18 @@
     </message>
     <message name="IDS_JEMAOS_INSTALLER_USB_CONFIG_NO_AVAILABLE_DISK" desc="Message when no USB disk is available, jemaos installer">
       No USB disk available
+    </message>
+    <message name="IDS_JEMAOS_INSTALLER_CREATE_OS_PART_OPTION" desc="Option that asks the installer to create the JemaOS target partition">
+      Create a new <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> partition
+    </message>
+    <message name="IDS_JEMAOS_INSTALLER_CREATE_OS_PART_SIZE_LABEL" desc="Label of the size selector for the partition created for JemaOS">
+      Space to reserve for <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph>
+    </message>
+    <message name="IDS_JEMAOS_INSTALLER_CREATE_OS_PART_SIZE_HELPER_TEXT" desc="Helper text explaining how the JemaOS partition is created">
+      <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> creates a new partition in the disk's free space. If the disk is full, the Windows partition is shrunk (no Windows data is erased, but back up your data as a precaution).
+    </message>
+    <message name="IDS_JEMAOS_INSTALLER_CREATE_OS_PART_FAILED" desc="Error message when the JemaOS partition could not be created">
+      Could not create the multi-boot partition. Check the available space or reduce the requested size.
     </message>
     <message name="IDS_JEMAOS_OOBE_WELCOME_DISABLE_NEXT_DESC" desc="oobe welcome disable next desc">
       We have detected that you are running this copy of JemaOS from a downloaded image file. To utilise the most comprehensive support features (including Over-The-Air updates) that JemaOS can offer, we strongly recommend you launch the "Installer" function to perform a full-disk installation of JemaOS to a separate storage device.

@@ -88,21 +88,30 @@ class JemaOSInstaller {
   }
 
   static SizeInBytes(str) {
+    // lsblk prints human-readable sizes ("476.9G", "1.8T"). The old version
+    // only knew B/K/M/G and used parseInt, so any terabyte partition produced
+    // NaN: it was silently filtered out of the target list, and the OOBE showed
+    // the disk with nothing selectable.
     const m = {
       B: 1,
       K: 1024,
       M: 1024 * 1024,
       G: 1024 * 1024 * 1024,
+      T: 1024 * 1024 * 1024 * 1024,
+      P: 1024 * 1024 * 1024 * 1024 * 1024,
     };
-    const unit = str.substr(-1);
-    const digit = parseInt(str.substring(0, str.length - 1), 10);
-    return digit * m[unit];
+    const s = String(str || '').trim();
+    if (!s) return 0;
+    const unit = s.substr(-1).toUpperCase();
+    const digit = parseFloat(s.substring(0, s.length - 1));
+    if (isNaN(digit)) return 0;
+    return digit * (m[unit] || 1);
   }
 
   async GetBlockDevList() {
     // TODO real dev
     let blkList = await this.execForResult(
-      'lsblk -l -J -o name,size,type,vendor,rev,ro,parttype,rm,tran,mountpoint',
+      'lsblk -l -J -o name,size,type,vendor,rev,ro,parttype,rm,tran,mountpoint,fstype,label',
     );
     const mock = `{
 "blockdevices": [
@@ -516,8 +525,34 @@ class JemaOSInstaller {
     return `/usr/share/dualboot/install_jemaos_loader.sh -d ${devPath}`;
   }
 
-  DualbootInstall({ partPath, efiPath, installrEFI = true, installBoot = false }) {
-    console.log(`multi-boot install, partPath: ${partPath}, efiPath: ${efiPath}, installrEFI: ${installrEFI}`);
+  // Creates the JemaOS multi-boot partition from the OOBE: uses free space when
+  // available, otherwise shrinks the Windows partition. 'yes' is the explicit
+  // user confirmation (the OOBE only passes it after the Install click).
+  static PrepareDualbootPartitionCMD(diskPath, size) {
+    return JemaOSInstaller.UtilWrapperCMD('prepare_dualboot_partition', [diskPath, size, 'yes']);
+  }
+
+  static GetDualbootPartCMD() {
+    return JemaOSInstaller.UtilWrapperCMD('get_dualboot_part');
+  }
+
+  // Returns the real (non-loop, non-dm) JEMAOS-DUAL-BOOT partition, or ''.
+  async ResolveDualbootPart() {
+    let out = '';
+    try {
+      out = await this.execForResult(JemaOSInstaller.GetDualbootPartCMD());
+    } catch (err) {
+      return '';
+    }
+    const parts = String(out || '').split('\n')
+      .map(line => line.trim())
+      .filter(line => line.startsWith('/dev/') &&
+        !line.startsWith('/dev/loop') && !line.startsWith('/dev/dm-'));
+    return parts.length ? parts[parts.length - 1] : '';
+  }
+
+  DualbootInstall({ partPath, efiPath, installrEFI = true, installBoot = false, createPart = null }) {
+    console.log(`multi-boot install, partPath: ${partPath}, efiPath: ${efiPath}, installrEFI: ${installrEFI}, createPart: ${JSON.stringify(createPart)}`);
     const self = this;
 
     this.forceClosed = false;
@@ -549,7 +584,8 @@ class JemaOSInstaller {
       self.dispatchEvent(JemaOSInstaller.Events.OnSuccess);
     }
 
-    const process = [
+    let process = [];
+    const buildProcess = () => [
       {
         command: JemaOSInstaller.UtilWrapperCMD('safe_format', partPath),
         enable: true,
@@ -625,9 +661,45 @@ class JemaOSInstaller {
       }
     }
 
-    return self.clearDualbootLog().then(() => {
-      Exector();
-    });
+    // Optional first step: carve the target partition out of the disk before
+    // anything else runs. Uses free space, or shrinks Windows when the disk is
+    // full (see prepare_dualboot_partition). partPath is resolved here, so the
+    // rest of the process must be built afterwards.
+    const preparePartition = () => {
+      if (!createPart || !createPart.diskPath || !createPart.size) {
+        return Promise.resolve();
+      }
+      return new Promise((resolve, reject) => {
+        self.execForLongTask(
+          JemaOSInstaller.PrepareDualbootPartitionCMD(createPart.diskPath, createPart.size),
+          self.asyncTaskCreated,
+          () => {
+            self.dispatchEvent(JemaOSInstaller.Events.OnProgress,
+              { detail: { desc: 'Create the JemaOS multi-boot partition', indicator: 10 } });
+            resolve();
+          },
+          (err) => {
+            reject(err instanceof Error ? err : new Error(String(err)));
+          },
+          999999, 2, 10, null);
+      }).then(() => self.ResolveDualbootPart()).then((part) => {
+        if (!part) {
+          throw new Error('JemaOS: partition multi-amorcage introuvable apres creation.');
+        }
+        partPath = part;
+      });
+    };
+
+    return self.clearDualbootLog()
+      .then(preparePartition)
+      .then(() => {
+        process = buildProcess();
+        Exector();
+      })
+      .catch((err) => {
+        const desc = createPart ? 'Create the JemaOS multi-boot partition' : 'Install';
+        dispatchError(desc, (err && err.message) ? err.message : err);
+      });
   }
 
   execForLongTask(
@@ -686,7 +758,14 @@ const recommandedSize = 20 * 1024 * 1024 * 1024;
 const availOSPart = dev => {
   const okSize = JemaOSInstaller.SizeInBytes(dev.size) > minimumSize;
   const notEfi = dev.parttype !== JemaOSInstaller.EFI_TYPE;
-  return okSize && notEfi;
+  // NEVER offer a partition that already carries another OS: formatting it
+  // destroys it - this is exactly how a Windows install got wiped. Only an
+  // empty partition, or our own JEMAOS-DUAL-BOOT one (reinstallation), is a
+  // valid target. safe_format() re-checks this on the back-end.
+  const fstype = (dev.fstype || '').trim();
+  const label = (dev.label || '').trim();
+  const usable = fstype === '' || label === 'JEMAOS-DUAL-BOOT';
+  return okSize && notEfi && usable;
 }
 
 const availEFIPart = dev => {
@@ -806,6 +885,15 @@ class JemaOSInstallerScreen extends JemaOSInstallerScreenElementBase {
       dualbootConfigSelectedEFIPart_: {
         type: String,
         value: '',
+      },
+      dualbootConfigSelectedSize_: {
+        type: String,
+        value: '60G',
+      },
+      isCreatePartition_: {
+        type: Boolean,
+        value: false,
+        computed: 'computeIsCreatePartition_(dualbootConfigSelectedOSPart_)',
       },
       isNormalSetup_: {
         type: Boolean,
@@ -966,6 +1054,7 @@ class JemaOSInstallerScreen extends JemaOSInstallerScreenElementBase {
     this.dualbootConfigSelectEFIMessage_ = '';
     this.dualbootConfigSelectedOSPart_ = '';
     this.dualbootConfigSelectedEFIPart_ = '';
+    this.dualbootConfigSelectedSize_ = '60G';
     this.multiBootOptionSelected_ = '';
     this.usbConfigSelectedDisk_ = '';
     this.usbConfigMessage_ = '';
@@ -1056,7 +1145,8 @@ class JemaOSInstallerScreen extends JemaOSInstallerScreenElementBase {
     if (output) {
       this.installOutput_ = output.trim();
     }
-    this.progressMessage_ = this.i18n('jemaosInstallerInstallFailedMessage');
+    this.progressMessage_ = this.i18n(this.isCreatePartition_ ?
+      'jemaosInstallerCreateOSPartFailed' : 'jemaosInstallerInstallFailedMessage');
   }
 
   close_() {
@@ -1157,8 +1247,26 @@ class JemaOSInstallerScreen extends JemaOSInstallerScreenElementBase {
     this.usbConfigSelectedDisk_ = value;
   }
 
+  setupDualbootSizeSelect_() {
+    const element = this.$.dualbootConfigSizeList;
+    if (!element) return;
+    const sizes = [40, 60, 80, 100, 150];
+    const list = sizes.map(n => ({ title: `${n} GB`, value: `${n}G` }));
+    setupSelect(element, list, (value) => {
+      this.dualbootConfigSelectedSize_ = value;
+    });
+    // SelectListType has no preselected entry, so apply the default explicitly.
+    element.value = this.dualbootConfigSelectedSize_;
+  }
+
+  computeIsCreatePartition_(dualbootConfigSelectedOSPart) {
+    return !!dualbootConfigSelectedOSPart &&
+      dualbootConfigSelectedOSPart.startsWith('create:');
+  }
+
   computeIsDualbootSetup_(dualbootConfigSelectedOSPart, dualbootConfigSelectedEFIPart) {
-    return dualbootConfigSelectedOSPart && dualbootConfigSelectedOSPart.length && dualbootConfigSelectedEFIPart && dualbootConfigSelectedEFIPart.length;
+    return !!dualbootConfigSelectedOSPart && dualbootConfigSelectedOSPart.length &&
+      !!dualbootConfigSelectedEFIPart && dualbootConfigSelectedEFIPart.length;
   }
 
   async prepareConfigForDualbootInstall_() {
@@ -1175,6 +1283,14 @@ class JemaOSInstallerScreen extends JemaOSInstallerScreenElementBase {
       for (let j = 0; j < availOSPartList.length; j++) {
         osPartList.push(DiskToSelectOption(availOSPartList[j]));
       }
+      // Always offer to create the partition, so the OOBE works on a disk that
+      // has no ready-to-use partition: previously the target list ended up
+      // empty (only the disk group label was shown) and Install stayed
+      // disabled. The value is "create:<disk>"; see onInstallClicked_.
+      osPartList.push({
+        title: `${this.i18n('jemaosInstallerCreateOSPartOption')} (${JemaOSInstaller.GetDevPath(disk.name)})`,
+        value: `create:${disk.name}`,
+      });
       const availEFIPartList = this.fullDiskList_.filter(p => p.type === 'part' && p.name.startsWith(disk.name) && availEFIPart(p));
       for (let j = 0; j < availEFIPartList.length; j++) {
         efiPartList.push(DiskToSelectOption(availEFIPartList[j]));
@@ -1186,6 +1302,7 @@ class JemaOSInstallerScreen extends JemaOSInstallerScreenElementBase {
     if (efiPartList.length) {
       this.setupSelect_(this.$.dualbootConfigEFIPartList, efiPartList, this.onDualbootConfigEFIPartSelected_.bind(this));
     }
+    this.setupDualbootSizeSelect_();
 
     const candidateOSPartList = this.fullDiskList_.filter(p => p.type === 'part' && candidateOSPart(p));
     const candidateEFIPartList = this.fullDiskList_.filter(p => p.type === 'part' && availEFIPart(p));
@@ -1209,6 +1326,12 @@ class JemaOSInstallerScreen extends JemaOSInstallerScreenElementBase {
     this.dualbootConfigSelectedOSPart_ = partName;
     if (!partName) return;
     console.log('handleDualbootConfigOSPartChange_', partName);
+    if (partName.startsWith('create:')) {
+      // Target partition does not exist yet; prepare_dualboot_partition
+      // creates it at install time, so there is nothing to validate here.
+      this.dualbootConfigSelectOSPartMessage_ = '';
+      return;
+    }
     const dev = this.fullDiskList_.find(d => d.name === partName);
     if (!dev) {
       this.dualbootConfigSelectedOSPart_ = null;
@@ -1229,7 +1352,7 @@ class JemaOSInstallerScreen extends JemaOSInstallerScreenElementBase {
     if (!partName) return;
     const dev = this.fullDiskList_.find(d => d.name === partName);
     if (!dev) {
-      this.dualbootConfigSelectOSPartMessage_ = null;
+      this.dualbootConfigSelectEFIMessage_ = null;
       return;
     }
   }
@@ -1264,11 +1387,19 @@ class JemaOSInstallerScreen extends JemaOSInstallerScreenElementBase {
     if (this.selectedInstallType_ === InstallTypes.NORMAL) {
       this.installer_.Install({ diskPath: JemaOSInstaller.GetDevPath(this.normalConfigSelectedDisk_) });
     } else if (this.selectedInstallType_ === InstallTypes.DUALBOOT) {
+      const osPart = this.dualbootConfigSelectedOSPart_ || '';
+      const createPart = this.isCreatePartition_ ? {
+        diskPath: JemaOSInstaller.GetDevPath(osPart.slice('create:'.length)),
+        size: this.dualbootConfigSelectedSize_,
+      } : null;
       this.installer_.DualbootInstall({
-        partPath: JemaOSInstaller.GetDevPath(this.dualbootConfigSelectedOSPart_),
+        // With createPart the real partition is resolved after it is created;
+        // partPath is ignored in that case.
+        partPath: createPart ? createPart.diskPath : JemaOSInstaller.GetDevPath(osPart),
         efiPath: JemaOSInstaller.GetDevPath(this.dualbootConfigSelectedEFIPart_),
         installrEFI: this.multiBootOptionSelected_ === MultiBootOptions.REFIND,
         installBoot: this.multiBootOptionSelected_ === MultiBootOptions.UEFI,
+        createPart,
       });
     } else if (this.selectedInstallType_ === InstallTypes.USB) {
       this.installer_.InstallToUSB({ diskPath: JemaOSInstaller.GetDevPath(this.usbConfigSelectedDisk_) });

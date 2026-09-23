@@ -32,7 +32,9 @@ import {getTemplate} from './crostini_page.html.js';
 
 // Toggle to show a lightweight placeholder instead of the full Linux/Crostini
 // settings UI.
-const SHOW_LINUX_COMING_SOON = true;
+// JemaOS: disabled so the real Crostini settings card (and its Install button)
+// is exposed now that Termina/Crostini work.
+const SHOW_LINUX_COMING_SOON = false;
 
 export class SettingsCrostiniPageElement extends PolymerElement {
   static get is() {

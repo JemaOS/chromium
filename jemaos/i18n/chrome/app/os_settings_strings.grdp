@@ -427,9 +427,16 @@
     Intel Slim
   </message>
 
-  <message name="IDS_SETTINGS_CROSTINI_MENU_ITEM_DESCRIPTION" desc="The description of Crostini section. It is meant to be used by software developers.">
-    Coming soon
-  </message>
+  <if expr="lang == 'fr' or lang == 'fr-CA'">
+    <message name="IDS_SETTINGS_CROSTINI_MENU_ITEM_DESCRIPTION" desc="The description of Crostini section. It is meant to be used by software developers.">
+      Exécutez des outils Linux, des IDE et des éditeurs.
+    </message>
+  </if>
+  <if expr="lang != 'fr' and lang != 'fr-CA'">
+    <message name="IDS_SETTINGS_CROSTINI_MENU_ITEM_DESCRIPTION" desc="The description of Crostini section. It is meant to be used by software developers.">
+      Run Linux tools, IDEs, and editors.
+    </message>
+  </if>
   <!-- Linux subsystem, Linux apps -->
 
   <message name="IDS_OS_SETTINGS_JEMA_ASSISTANT" desc="jemaos assistant section title">

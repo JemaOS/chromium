@@ -61,6 +61,25 @@ extern const char kJemaOsAuthRefreshTokenEncrypted[];
 extern const char kJemaOsAuthEmail[];
 extern const char kJemaOsAuthIssuedAt[];
 
+// Monotonic SaaS password version last seen by this device. When the value
+// returned by osLogin/getOsToken/refreshtoken differs, the SaaS password was
+// changed and the device must re-seal its cryptohome key (force an online
+// sign-in so the standard password-change flow runs).
+extern const char kJemaOsAuthPasswordVersion[];
+
+// Per-account map (email -> OSCrypt ciphertext of the last password that
+// successfully unlocked the cryptohome). JemaOS uses it to re-seal the
+// cryptohome key automatically after a SaaS password change, so the user is
+// never asked for their old password.
+extern const char kJemaOsSavedPasswords[];
+
+// Per-account map (email -> OSCrypt ciphertext of a random per-account vault
+// secret). For Jema ONLINE accounts the cryptohome vault is sealed with this
+// secret instead of the SaaS password, so a SaaS password change never requires
+// re-sealing the vault: the pod validates the typed password online and unlocks
+// with this stable secret.
+extern const char kJemaOsVaultSecrets[];
+
 extern const char kJemaOSArcMediaAutoScanEnabled[];
 
 #if BUILDFLAG(USE_JEMAOS_LICENSE)

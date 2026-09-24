@@ -2619,6 +2619,33 @@ void UserSessionManager::OnJemaOSTokenRefreshed(
     email = g_browser_process->local_state()->GetString(
         jemaos::prefs::kJemaOsAuthEmail);
   }
+
+  //---***JEMAOS BEGIN***---
+  // Track the SaaS password version. osLogin/refreshtoken expose a monotonic
+  // password_version; we store the last seen value. We deliberately do NOT force
+  // an online sign-in here: Jema accounts keep the NORMAL local password flow
+  // (no "Se connecter" button). The password change is applied transparently
+  // when the user types their new password at the pod.
+  if (g_browser_process) {
+    PrefService* local_state = g_browser_process->local_state();
+    const std::optional<int> new_password_version =
+        dict.FindInt("password_version");
+    if (new_password_version.has_value()) {
+      const int64_t stored_password_version =
+          local_state->GetInt64(jemaos::prefs::kJemaOsAuthPasswordVersion);
+      if (stored_password_version != 0 &&
+          stored_password_version != *new_password_version) {
+        LOG(WARNING) << "[JEMAOS] SaaS password change detected (version "
+                     << stored_password_version << " -> "
+                     << *new_password_version
+                     << "); the new password will be applied on next login.";
+      }
+      local_state->SetInt64(jemaos::prefs::kJemaOsAuthPasswordVersion,
+                            *new_password_version);
+    }
+  }
+  //---***JEMAOS END***---
+
   StoreJemaOSAuthTokens(*new_access, new_refresh ? *new_refresh : std::string(),
                         email);
   LOG(INFO) << "[JEMAOS] Access token renewed successfully";

@@ -50,6 +50,11 @@
 #include "chrome/browser/ash/login/wizard_context.h"
 #include "chrome/browser/ash/login/wizard_controller.h"
 #include "chrome/browser/browser_process.h"
+#include "chrome/browser/ui/ash/login/jema_password_validator.h"
+#include "chromeos/ash/components/login/auth/password_update_flow.h"
+#include "chromeos/ash/components/login/auth/public/auth_callbacks.h"
+#include "chromeos/ash/components/login/auth/public/cryptohome_key_constants.h"
+#include "jemaos/prefs/jemaos_prefs.h"
 #include "chrome/browser/certificate_provider/certificate_provider_service.h"
 #include "chrome/browser/certificate_provider/certificate_provider_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
@@ -744,6 +749,39 @@ void LoginDisplayHostMojo::HandleAuthenticateUserWithPasswordOrPin(
   pending_auth_state_ =
       std::make_unique<AuthState>(account_id, std::move(callback));
 
+  //---***JEMAOS BEGIN***---
+  // Jema ONLINE account: if the typed password differs from the last one that
+  // unlocked the vault, it may have been changed in the SaaS. Verify it online
+  // and, on success, re-seal the vault (old -> new) with the standard
+  // PasswordUpdateFlow before logging in. This never blocks: on any failure we
+  // fall through to the normal local login below.
+  if (account_id.GetGaiaId().find("jema_id_") == 0 && !password.empty()) {
+    const std::string saved = jemaos::prefs::GetJemaAccountPassword(
+        g_browser_process->local_state(), account_id.GetUserEmail());
+    if (!saved.empty() && saved != password) {
+      pending_jema_new_password_ = password;
+      pending_jema_old_password_ = saved;
+      pending_jema_authenticated_by_pin_ = authenticated_by_pin;
+      LOG(WARNING) << "[JEMAOS] Typed password differs from the saved one for "
+                   << account_id.GetUserEmail() << "; verifying online";
+      JemaPasswordValidator::Validate(
+          account_id.GetUserEmail(), password,
+          base::BindOnce(&LoginDisplayHostMojo::OnJemaPasswordValidated,
+                         weak_factory_.GetWeakPtr(), account_id));
+      return;
+    }
+  }
+  //---***JEMAOS END***---
+
+  ContinueLoginWithPassword(account_id, password, authenticated_by_pin,
+                            /*save_password=*/true);
+}
+
+void LoginDisplayHostMojo::ContinueLoginWithPassword(
+    const AccountId& account_id,
+    const std::string& password,
+    bool authenticated_by_pin,
+    bool save_password) {
   const user_manager::User* const user =
       user_manager::UserManager::Get()->FindUser(account_id);
   DCHECK(user);
@@ -773,22 +811,107 @@ void LoginDisplayHostMojo::HandleAuthenticateUserWithPasswordOrPin(
   }
 
   //---***JEMAOS BEGIN***---
-  // Set AUTH_FLOW_JEMA_ONLINE for Jema/Flint accounts to ensure proper authentication flow
-  // Since we use AccountType::GOOGLE for compatibility, check the gaia_id prefix instead
-  // Note: local Flint accounts use the "ft_id_" prefix ("flint_id_" was a typo
-  // that never matched any real account).
   if (account_id.GetGaiaId().find("jema_id_") == 0 ||
       account_id.GetGaiaId().find("ft_id_") == 0 ||
       account_id.GetGaiaId().find("flint_id_") == 0) {
     user_context.SetAuthFlow(UserContext::AUTH_FLOW_JEMA_ONLINE);
     LOG(WARNING) << "Set AUTH_FLOW_JEMA_ONLINE for Jema/Flint account: "
                  << account_id.GetUserEmail() << " (gaia_id: " << account_id.GetGaiaId() << ")";
+
+    // Online Jema account: remember (OSCrypt-encrypted) the password that
+    // currently unlocks its cryptohome, so a SaaS password change can re-seal
+    // the vault automatically without asking for the old password. Only saved
+    // when the login is expected to succeed (never for a rejected password).
+    if (save_password &&
+        account_id.GetGaiaId().find("jema_id_") == 0 && !password.empty()) {
+      jemaos::prefs::SaveJemaAccountPassword(g_browser_process->local_state(),
+                                             account_id.GetUserEmail(),
+                                             password);
+    }
   }
   //---***JEMAOS END***---
 
   // Ensure existing_user_controller_ is created before using it, especially
   // important for relogin scenarios where it might have been reset.
   GetExistingUserController()->Login(user_context, SigninSpecifics());
+}
+
+void LoginDisplayHostMojo::OnJemaPasswordValidated(const AccountId& account_id,
+                                                   bool ok) {
+  const std::string new_password = pending_jema_new_password_;
+  const std::string old_password = pending_jema_old_password_;
+  const bool authenticated_by_pin = pending_jema_authenticated_by_pin_;
+  pending_jema_new_password_.clear();
+  pending_jema_old_password_.clear();
+
+  if (!ok || new_password.empty() || old_password.empty()) {
+    LOG(WARNING) << "[JEMAOS] Online verification refused for "
+                 << account_id.GetUserEmail()
+                 << "; normal local login (wrong password will be reported)";
+    ContinueLoginWithPassword(account_id, new_password, authenticated_by_pin,
+                              /*save_password=*/false);
+    return;
+  }
+
+  const user_manager::User* const user =
+      user_manager::UserManager::Get()->FindUser(account_id);
+  if (!user) {
+    ContinueLoginWithPassword(account_id, new_password, authenticated_by_pin,
+                              /*save_password=*/false);
+    return;
+  }
+
+  // The typed password is the new, SaaS-validated one: re-seal the vault from
+  // the old to the new password (native ChromeOS mechanism), then log in.
+  auto reseal_context = std::make_unique<UserContext>(*user);
+  reseal_context->SetAuthFlow(UserContext::AUTH_FLOW_JEMA_ONLINE);
+  reseal_context->SetIsUsingOAuth(false);
+  reseal_context->SetKey(
+      Key(Key::KEY_TYPE_PASSWORD_PLAIN, "" /*salt*/, new_password));
+  reseal_context->SetLocalPasswordInput(LocalPasswordInput{new_password});
+  reseal_context->SetPasswordKey(Key(new_password));
+  reseal_context->SetLoginInputMethodIdUsed(input_method::InputMethodManager::Get()
+                                                ->GetActiveIMEState()
+                                                ->GetCurrentInputMethod()
+                                                .id());
+
+  LOG(WARNING) << "[JEMAOS] Re-sealing vault (old -> new) for "
+               << account_id.GetUserEmail();
+  pending_password_update_flow_ = std::make_unique<PasswordUpdateFlow>();
+  pending_password_update_flow_->Start(
+      std::move(reseal_context), old_password,
+      base::BindOnce(
+          [](base::WeakPtr<LoginDisplayHostMojo> self,
+             const AccountId account_id, std::string new_password,
+             bool authenticated_by_pin,
+             std::unique_ptr<UserContext> user_context) {
+            LOG(WARNING) << "[JEMAOS] Vault re-seal succeeded for "
+                         << account_id.GetUserEmail();
+            if (self) {
+              self->ContinueLoginWithPassword(account_id, new_password,
+                                              authenticated_by_pin,
+                                              /*save_password=*/true);
+            }
+          },
+          weak_factory_.GetWeakPtr(), account_id, new_password,
+          authenticated_by_pin),
+      base::BindOnce(
+          [](base::WeakPtr<LoginDisplayHostMojo> self,
+             const AccountId account_id, std::string new_password,
+             bool authenticated_by_pin,
+             std::unique_ptr<UserContext> user_context,
+             AuthenticationError error) {
+            LOG(WARNING) << "[JEMAOS] Vault re-seal failed for "
+                         << account_id.GetUserEmail()
+                         << "; falling back to local login";
+            if (self) {
+              self->ContinueLoginWithPassword(account_id, new_password,
+                                              authenticated_by_pin,
+                                              /*save_password=*/false);
+            }
+          },
+          weak_factory_.GetWeakPtr(), account_id, new_password,
+          authenticated_by_pin));
 }
 
 void LoginDisplayHostMojo::HandleAuthenticateUserWithEasyUnlock(

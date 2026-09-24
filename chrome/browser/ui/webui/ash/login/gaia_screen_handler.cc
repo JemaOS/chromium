@@ -28,6 +28,7 @@
 #include "base/logging.h"
 #include "base/memory/ref_counted.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/rand_util.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/system/sys_info.h"
@@ -38,6 +39,7 @@
 #include "chrome/browser/ash/login/error_screens_histogram_helper.h"
 #include "chrome/browser/ash/login/helper.h"
 #include "chrome/browser/ash/login/login_pref_names.h"
+#include "jemaos/prefs/jemaos_prefs.h"
 #include "chrome/browser/ash/login/profile_auth_data.h"
 #include "chrome/browser/ash/login/reauth_stats.h"
 #include "chrome/browser/ash/login/saml/public_saml_url_fetcher.h"
@@ -931,6 +933,18 @@ void GaiaScreenHandler::HandleCompleteAuthenticationEvent(
       user_context.SetKey(key);
       // Set the password from external source (JavaScript) similar to local accounts
       user_context.SetJemaLocalPasswordInput(LocalPasswordInput{raw_password});
+      //---***JEMAOS BEGIN***---
+      // The password was just verified online by the Jema auth host. Record it
+      // as the online/Gaia password so that, if it no longer matches the local
+      // cryptohome key (the user changed it in the SaaS), the standard
+      // password-change flow can re-seal the cryptohome key with this value.
+      user_context.SetGaiaPassword(GaiaPassword{raw_password});
+      // Remember (OSCrypt-encrypted) the password that currently locks this
+      // account's cryptohome so the vault can be re-sealed automatically after
+      // a SaaS password change, without asking for the old password.
+      jemaos::prefs::SaveJemaAccountPassword(g_browser_process->local_state(),
+                                             email, raw_password);
+      //---***JEMAOS END***---
       
       LOG(WARNING) << "[JEMAOS] UserContext after SetKey - has password: " 
                    << !user_context.GetKey()->GetSecret().empty()
@@ -944,14 +958,18 @@ void GaiaScreenHandler::HandleCompleteAuthenticationEvent(
         LOG(ERROR) << "[JEMAOS] Account ID: newUser true " << newUser;
         LoginDisplayHost::default_host()->CompleteLogin(user_context);
       } else {
-        LOG(ERROR) << "[JEMAOS] Account ID: newUser false " << newUser;
-        if (ExistingUserController::current_controller()) {
-          ExistingUserController::current_controller()->Login(user_context,
-                                                              SigninSpecifics());
-        } else {
-          LOG(ERROR) << "JemaLocalSigninScreenHandler::DoCompleteLogin: "
-                    << "ExistingUserController not available.";
-        }
+        //---***JEMAOS BEGIN***---
+        // Existing account whose password was just verified online by the Jema
+        // auth host. Complete the login in external/online-verified mode (like
+        // the standard Gaia flow at the end of this function) instead of the
+        // internal pod path: this enables cryptohome password-change detection
+        // (AuthSessionAuthenticator::CompleteLogin -> HandlePasswordChangeDetected),
+        // so a password changed in the SaaS re-seals the local key rather than
+        // failing with a generic authentication error.
+        LOG(ERROR) << "[JEMAOS] Account ID: newUser false " << newUser
+                   << " -> CompleteLogin (online-verified)";
+        LoginDisplayHost::default_host()->CompleteLogin(user_context);
+        //---***JEMAOS END***---
       }
     
 

@@ -16,6 +16,7 @@ source_set("prefs") {
 
   deps = [
     "//base",
+    "//components/os_crypt/sync",
     "//jemaos/constants",
   ]
 

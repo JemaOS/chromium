@@ -349,12 +349,20 @@ void AuthSessionAuthenticator::DoCompleteLogin(
                              auth_factor_editor_->AsWeakPtr()));
         }
       } else {
-        // For new persistent users, password will be added later during OOBE
-        // (via local-password-setup screen). This allows cryptohome to be properly
-        // initialized first before adding auth factors.
-        LOG(WARNING) << "[JEMAOS] Skipping password addition for new persistent user: "
-                     << context->GetAccountId().GetUserEmail()
-                     << " (password will be set during OOBE local-password-setup)";
+        //---***JEMAOS BEGIN***---
+        // Add the knowledge key (the password typed at sign-in) right away so
+        // the account can log in normally, without the OOBE "local password"
+        // screen. cryptohome has already been created/mounted by the steps
+        // above.
+        steps.push_back(
+            base::BindOnce(&AuthFactorEditor::AddContextKnowledgeKey,
+                           auth_factor_editor_->AsWeakPtr()));
+        steps.push_back(base::BindOnce(
+            &AuthSessionAuthenticator::RecordFirstAuthFactorAdded,
+            weak_factory_.GetWeakPtr()));
+        LOG(WARNING) << "[JEMAOS] Added password key for new persistent user: "
+                     << context->GetAccountId().GetUserEmail();
+        //---***JEMAOS END***---
       }
     }  // challenge-response
   } else {  // existing user

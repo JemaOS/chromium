@@ -55,6 +55,9 @@ const char kJemaOsAuthRefreshTokenEncrypted[] =
     "jemaos_auth.refresh_token_encrypted";
 const char kJemaOsAuthEmail[] = "jemaos_auth.email";
 const char kJemaOsAuthIssuedAt[] = "jemaos_auth.issued_at";
+const char kJemaOsAuthPasswordVersion[] = "jemaos_auth.password_version";
+const char kJemaOsSavedPasswords[] = "jemaos_auth.saved_passwords";
+const char kJemaOsVaultSecrets[] = "jemaos_auth.vault_secrets";
 
 const char kJemaOSArcMediaAutoScanEnabled[] =
     "jemaos_arc_media_auto_scan_enabled";

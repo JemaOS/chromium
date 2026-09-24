@@ -29,6 +29,7 @@
 #include "chromeos/ash/components/cryptohome/auth_factor.h"
 #include "chromeos/ash/components/login/auth/public/user_context.h"
 #include "chromeos/ash/services/auth_factor_config/auth_factor_config_utils.h"
+#include "components/user_manager/user_type.h"
 
 namespace ash {
 
@@ -83,6 +84,21 @@ PasswordSelectionScreen::~PasswordSelectionScreen() = default;
 
 void PasswordSelectionScreen::ShowImpl() {
   is_shown_ = true;
+  //---***JEMAOS BEGIN***---
+  // JemaOS never wants the device "local password" selection screen: the account
+  // cryptohome is sealed with the password typed at sign-in (added during
+  // CompleteLogin in auth_session_authenticator.cc). Skip it entirely.
+  if (context()->user_context) {
+    const AccountId& id = context()->user_context->GetAccountId();
+    const std::string& gaia = id.GetGaiaId();
+    if (gaia.find("jema_id_") == 0 || gaia.find("ft_id_") == 0) {
+      LOG(WARNING) << "[JEMAOS] Skipping password selection screen for "
+                   << id.GetUserEmail();
+      exit_callback_.Run(Result::GAIA_PASSWORD_CHOICE);
+      return;
+    }
+  }
+  //---***JEMAOS END***---
   if (!view_) {
     return;
   }
@@ -121,6 +137,20 @@ void PasswordSelectionScreen::OnUserAction(const base::Value::List& args) {
 }
 
 bool PasswordSelectionScreen::MaybeSkip(WizardContext& wizard_context) {
+  //---***JEMAOS BEGIN***---
+  // Same as ShowImpl: never offer the local-password selection for JemaOS
+  // accounts (Jema online / Flint local).
+  if (wizard_context.user_context) {
+    const AccountId& id = wizard_context.user_context->GetAccountId();
+    const std::string& gaia = id.GetGaiaId();
+    if (gaia.find("jema_id_") == 0 || gaia.find("ft_id_") == 0) {
+      LOG(WARNING) << "[JEMAOS] Skipping password selection screen (MaybeSkip) for "
+                   << id.GetUserEmail();
+      exit_callback_.Run(Result::GAIA_PASSWORD_CHOICE);
+      return true;
+    }
+  }
+  //---***JEMAOS END***---
   if (wizard_context.skip_post_login_screens_for_tests && is_shown_) {
     CHECK_IS_TEST();
     // WizardController::SkipPostLoginScreensForTesting() can be triggered

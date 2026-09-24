@@ -20,6 +20,8 @@ static_library("login") {
     "login_display_host.h",
     "login_display_host_common.cc",
     "login_display_host_common.h",
+    "jema_password_validator.cc",
+    "jema_password_validator.h",
     "login_display_host_mojo.cc",
     "login_display_host_mojo.h",
     "login_display_host_webui.cc",
@@ -173,6 +175,9 @@ static_library("login") {
     "//ui/gfx",
     "//ui/gfx/geometry",
     "//jemaos/switches/account/toggle:account_toggle",
+    "//jemaos/prefs",
+    "//net",
+    "//services/network/public/cpp",
   ]
 
   allow_circular_includes_from = [

@@ -4,6 +4,7 @@
 
 #include "base/base64.h"
 #include "base/no_destructor.h"
+#include "base/rand_util.h"
 #include "base/strings/string_util.h"
 #include "base/time/time.h"
 #include "chrome/browser/ash/login/existing_user_controller.h"
@@ -22,6 +23,7 @@
 #include "components/prefs/pref_service.h"
 #include "components/user_manager/known_user.h"
 #include "jemaos/prefs/jemaos_pref_names.h"
+#include "jemaos/prefs/jemaos_prefs.h"
 
 namespace ash {
 
@@ -359,6 +361,20 @@ void JemaLocalSigninScreenHandler::DoCompleteLogin(
   key.SetLabel(kCryptohomeGaiaKeyLabel);
   user_context.SetKey(key);
   user_context.SetJemaLocalPasswordInput(LocalPasswordInput{password});
+  if (is_online_account) {
+    //---***JEMAOS BEGIN***---
+    // The online password was just verified by the Jema auth host. Recording it
+    // as the Gaia/online password lets the standard password-change flow
+    // re-seal the cryptohome key when the user changed it in the SaaS.
+    user_context.SetGaiaPassword(GaiaPassword{password});
+    // Remember (OSCrypt-encrypted) the password that currently locks this
+    // account's cryptohome, so it can be used to re-seal the vault
+    // automatically after a SaaS password change: the user is never asked for
+    // their old password.
+    jemaos::prefs::SaveJemaAccountPassword(g_browser_process->local_state(),
+                                           username, password);
+    //---***JEMAOS END***---
+  }
   user_context.SetAuthFlow(is_online_account
                                ? UserContext::AUTH_FLOW_JEMA_ONLINE
                                : UserContext::AUTH_FLOW_FLINT_ACCOUNT);
@@ -396,6 +412,16 @@ void JemaLocalSigninScreenHandler::DoCompleteLogin(
                  << account_id.GetUserEmail();
 
     LoginDisplayHost::default_host()->CompleteLogin(user_context);
+  } else if (is_online_account) {
+    //---***JEMAOS BEGIN***---
+    // Existing online account whose password was just verified by the Jema auth
+    // host: complete the login in external/online-verified mode (like the
+    // standard Gaia flow) so a password changed in the SaaS is detected and the
+    // local cryptohome key is re-sealed instead of failing.
+    LOG(WARNING) << "[JEMAOS] Completing online re-login for existing account: "
+                 << account_id.GetUserEmail();
+    LoginDisplayHost::default_host()->CompleteLogin(user_context);
+    //---***JEMAOS END***---
   } else {
     if (ExistingUserController::current_controller()) {
       ExistingUserController::current_controller()->Login(user_context,

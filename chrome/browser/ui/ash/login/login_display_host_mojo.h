@@ -39,6 +39,7 @@ namespace ash {
 class ExistingUserController;
 class MojoSystemInfoDispatcher;
 class OobeUIDialogDelegate;
+class PasswordUpdateFlow;
 class WizardController;
 
 // A LoginDisplayHost instance that sends requests to the views-based signin
@@ -217,6 +218,22 @@ class LoginDisplayHostMojo : public LoginDisplayHostCommon,
     base::OnceCallback<void(bool)> callback;
   };
   std::unique_ptr<AuthState> pending_auth_state_;
+
+  // JEMAOS: set when a Jema account's typed password differs from the last one
+  // that unlocked its vault. The password is verified online and, on success,
+  // the vault is re-sealed with the standard PasswordUpdateFlow before login.
+  std::string pending_jema_new_password_;
+  std::string pending_jema_old_password_;
+  bool pending_jema_authenticated_by_pin_ = false;
+  std::unique_ptr<PasswordUpdateFlow> pending_password_update_flow_;
+
+  // JEMAOS: shared login continuation (builds the UserContext and calls Login).
+  void ContinueLoginWithPassword(const AccountId& account_id,
+                                 const std::string& password,
+                                 bool authenticated_by_pin,
+                                 bool save_password);
+  // JEMAOS: continues after the online verification of a Jema password.
+  void OnJemaPasswordValidated(const AccountId& account_id, bool ok);
 
   std::unique_ptr<UserSelectionScreen> user_selection_screen_;
 

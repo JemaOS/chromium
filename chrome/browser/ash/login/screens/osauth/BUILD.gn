@@ -63,6 +63,7 @@ static_library("osauth") {
     "//components/crash/core/app",
     "//components/device_event_log",
     "//components/user_manager",
+    "//jemaos/prefs",
   ]
 
   allow_circular_includes_from = [

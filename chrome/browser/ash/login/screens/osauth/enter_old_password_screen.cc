@@ -11,11 +11,13 @@
 
 #include "base/check.h"
 #include "base/functional/bind.h"
+#include "base/logging.h"
 #include "base/memory/weak_ptr.h"
 #include "base/values.h"
 #include "chrome/browser/ash/login/oobe_screen.h"
 #include "chrome/browser/ash/login/screens/osauth/base_osauth_setup_screen.h"
 #include "chrome/browser/ash/login/wizard_context.h"
+#include "chrome/browser/browser_process.h"
 #include "chrome/browser/ui/webui/ash/login/enter_old_password_screen_handler.h"
 #include "chromeos/ash/components/cryptohome/auth_factor.h"
 #include "chromeos/ash/components/cryptohome/error_util.h"
@@ -26,6 +28,8 @@
 #include "chromeos/ash/components/login/auth/public/user_context.h"
 #include "chromeos/ash/components/osauth/public/auth_session_storage.h"
 #include "chromeos/ash/components/osauth/public/common_types.h"
+#include "components/prefs/pref_service.h"
+#include "jemaos/prefs/jemaos_prefs.h"
 
 namespace ash {
 namespace {
@@ -62,6 +66,24 @@ EnterOldPasswordScreen::EnterOldPasswordScreen(
 EnterOldPasswordScreen::~EnterOldPasswordScreen() = default;
 
 void EnterOldPasswordScreen::ShowImpl() {
+  //---***JEMAOS BEGIN***---
+  // JemaOS already knows the password that currently unlocks this account's
+  // cryptohome (it is saved, OSCrypt-encrypted, at every successful login).
+  // Use it to re-seal the key automatically instead of asking the user for
+  // their old password: the user only had to type the NEW password once,
+  // online.
+  PrefService* local_state =
+      g_browser_process ? g_browser_process->local_state() : nullptr;
+  const std::string saved = jemaos::prefs::GetJemaAccountPassword(
+      local_state, context()->user_context->GetAccountId().GetUserEmail());
+  if (!saved.empty()) {
+    LOG(WARNING) << "[JEMAOS] Auto re-sealing cryptohome with the saved "
+                    "device password (no old-password prompt)";
+    auto_attempt_ = true;
+    AttemptAuthentication(saved);
+    return;
+  }
+  //---***JEMAOS END***---
   view_->Show();
 }
 
@@ -103,6 +125,17 @@ void EnterOldPasswordScreen::OnPasswordAuthentication(
     if (cryptohome::ErrorMatches(
             error->get_cryptohome_error(),
             user_data_auth::CRYPTOHOME_ERROR_AUTHORIZATION_KEY_FAILED)) {
+      //---***JEMAOS BEGIN***---
+      // The saved password was rejected (e.g. it is stale). Fall back to
+      // asking the user for their old password rather than failing the login.
+      if (auto_attempt_) {
+        auto_attempt_ = false;
+        LOG(WARNING) << "[JEMAOS] Saved device password rejected, falling back "
+                        "to manual old-password entry";
+        view_->Show();
+        return;
+      }
+      //---***JEMAOS END***---
       view_->ShowWrongPasswordError();
       return;
     }

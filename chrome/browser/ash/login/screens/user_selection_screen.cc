@@ -231,8 +231,20 @@ proximity_auth::mojom::AuthType GetInitialUserAuthType(
       gaia_id.find("jema_id_") == 0 || gaia_id.find("ft_id_") == 0;
   
   if (is_jema_or_flint_account) {
-    // Jema/Flint accounts don't have Google OAuth tokens, so skip all OAuth-related checks
-    // They should always use offline password (local password auth factor)
+    //---***JEMAOS BEGIN***---
+    // Honour an explicit online-sign-in request ONLY. It is set when the device
+    // detects (via the SaaS password_version) that the account password changed,
+    // so the pod routes to the online Jema auth and the login stack re-seals the
+    // local cryptohome key. Otherwise Jema accounts keep the ORIGINAL local
+    // password flow (normal password field on the pod).
+    if (user->force_online_signin()) {
+      LOG(WARNING) << "[JEMAOS] Online sign-in forced for Jema/Flint account: "
+                   << user->GetAccountId().GetUserEmail();
+      return proximity_auth::mojom::AuthType::ONLINE_SIGN_IN;
+    }
+    //---***JEMAOS END***---
+    // Local (Flint) accounts don't have Google OAuth tokens, so skip all
+    // OAuth-related checks and use the local password auth factor.
     LOG(WARNING) << "[JEMAOS] Jema/Flint account detected in GetInitialUserAuthType: "
                  << user->GetAccountId().GetUserEmail() << ", forcing OFFLINE_PASSWORD";
     return proximity_auth::mojom::AuthType::OFFLINE_PASSWORD;

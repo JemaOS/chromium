@@ -61,6 +61,10 @@ class EnterOldPasswordScreen : public BaseOSAuthSetupScreen {
 
   std::unique_ptr<AuthPerformer> auth_performer_;
 
+  // JEMAOS: true while we are authenticating with the locally saved password
+  // (no prompt). If it is rejected, we fall back to showing the prompt.
+  bool auto_attempt_ = false;
+
   base::WeakPtrFactory<EnterOldPasswordScreen> weak_factory_{this};
 };
 

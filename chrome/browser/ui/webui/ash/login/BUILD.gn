@@ -342,6 +342,7 @@ static_library("login") {
     "//ui/resources:webui_resources_grd",
     "//ui/strings:ui_strings",
     "//jemaos/switches/account/toggle:account_toggle",
+    "//jemaos/prefs",
   ]
 
   allow_circular_includes_from = [

@@ -277,15 +277,12 @@ std::vector<ExternalInstallOptions> GetPreinstalledWebApps(
     return {};
 
 #if BUILDFLAG(IS_CHROMEOS)
-  // JemaOS: local (Flint) accounts have no Jema subscription: never install
-  // the premium Jema PWAs (OEM folder) nor the first-login app bundle that
-  // online Jema accounts receive.
+  // JemaOS: local (Flint) accounts have no Jema subscription, so no Jema web
+  // apps are preinstalled for them. The only exception is the Remote Desktop
+  // client, which is free and must be available on every account.
   if (IsJemaLocalAccount(profile))
-    return {};
+    return {GetConfigForJemaRemoteDesktop()};
 
-  // JemaOS: Freemium Jema online accounts (no active Pro/Pro+ subscription)
-  // receive the root bundle plus QuickText/Galerie, but not the premium OEM
-  // Jema PWAs.
   const bool include_premium_oem = MayInstallPremiumOemApps(profile);
 #else
   const bool include_premium_oem = true;

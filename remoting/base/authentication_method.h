@@ -29,6 +29,13 @@ enum class AuthenticationMethod {
   // shared secret for SPAKE2 key exchange. This authz mode is used for Corp
   // machines and is incompatible with other forms of SessionAuthz.
   CORP_SESSION_AUTHZ_SPAKE2_CURVE25519,
+
+  // JEMAOS: authentication using the access-code hash directly, without the
+  // SPAKE2 key exchange. Enables the JemaOS web client (which cannot run
+  // BoringSSL SPAKE2) to connect to the native host. Both peers derive the
+  // same key from HMAC-SHA256(support_id, access_code); the channel is then
+  // secured by SslHmacChannelAuthenticator.
+  JEMAOS_HMAC_SHA256,
 };
 
 // Parses a string that defines an authentication method. Returns

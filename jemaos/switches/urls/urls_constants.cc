@@ -17,7 +17,7 @@ const char kJemaOSStoreBaseUrl[] = "https://chromewebstore.google.com/category/e
 const char kJemaOSAccountBaseUrl[] = "https://86db242e-958e-432e-a6c2-0b19a92beeb6.auth-app.jematech.fr";
 
 const char kJemaOSForumURL[] = "https://jematechnology.fr/";
-const char kJemaOSRemoteDesktopURL[] = "https://rpd.jematech.fr/"; // https://rdp.jematechnology.fr/
+const char kJemaOSRemoteDesktopURL[] = "https://rdp.jematechnology.fr/";
 const char kJemaOSNotesAppURL[] = "https://jematechnology.fr"; // https://notes.jematechnology.fr
 const char kJemaOSHelpURL[] = "https://jematechnology.fr/?ospath=help/";
 const char kJemaOSReleaseNotesURL[] = "https://jematechnology.fr/?ospath=release";
@@ -84,7 +84,7 @@ const char kJemaOSStoreBaseUrl[] = "https://chromewebstore.google.com";
 const char kJemaOSAccountBaseUrl[] = "https://86db242e-958e-432e-a6c2-0b19a92beeb6.auth-app.jematech.fr";
 
 const char kJemaOSForumURL[] = "https://jematechnology.fr/"; // https://community.jematechnology.fr/
-const char kJemaOSRemoteDesktopURL[] = "https://remotedesktop.jemaos.com/"; // https://rdp.jematechnology.fr/
+const char kJemaOSRemoteDesktopURL[] = "https://rdp.jematechnology.fr/";
 const char kJemaOSNotesAppURL[] = "https://jematechnology.fr"; // https://notes.jematechnology.fr
 const char kJemaOSHelpURL[] = "https://jematechnology.fr/?ospath=help/";
 const char kJemaOSReleaseNotesURL[] = "https://jematechnology.fr/?ospath=release";

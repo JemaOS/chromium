@@ -13,6 +13,7 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/functional/callback_helpers.h"
+#include "base/memory/ptr_util.h"
 #include "base/notreached.h"
 #include "base/strings/string_split.h"
 #include "remoting/base/rsa_key_pair.h"
@@ -23,9 +24,93 @@
 #include "remoting/protocol/pairing_registry.h"
 #include "remoting/protocol/session_authz_authenticator.h"
 #include "remoting/protocol/spake2_authenticator.h"
+#include "remoting/protocol/ssl_hmac_channel_authenticator.h"
 #include "third_party/libjingle_xmpp/xmllite/xmlelement.h"
 
 namespace remoting::protocol {
+
+namespace {
+
+// JEMAOS: authenticator that skips the SPAKE2 key exchange and uses the
+// access-code hash directly as the channel key. Both peers know it:
+//  - the host holds `shared_secret_hash`
+//    == HMAC-SHA256(support_id, support_id + host_secret)
+//  - the JemaOS web client reproduces it from the code the user typed.
+// No message exchange is needed; SslHmacChannelAuthenticator below secures the
+// channels using that key, so a wrong code fails the channel handshake.
+class JemaosSecretAuthenticator : public Authenticator {
+ public:
+  JemaosSecretAuthenticator(const JemaosSecretAuthenticator&) = delete;
+  JemaosSecretAuthenticator& operator=(const JemaosSecretAuthenticator&) =
+      delete;
+
+  static std::unique_ptr<Authenticator> CreateForHost(
+      const std::string& local_id,
+      const std::string& remote_id,
+      const std::string& local_cert,
+      scoped_refptr<RsaKeyPair> key_pair,
+      const std::string& auth_key,
+      State initial_state) {
+    auto* result = new JemaosSecretAuthenticator(local_cert, std::move(key_pair),
+                                                 auth_key, initial_state);
+    return base::WrapUnique(result);
+  }
+
+  ~JemaosSecretAuthenticator() override = default;
+
+  // Authenticator interface.
+  CredentialsType credentials_type() const override {
+    return CredentialsType::SHARED_SECRET;
+  }
+  const Authenticator& implementing_authenticator() const override {
+    return *this;
+  }
+  State state() const override { return state_; }
+  bool started() const override { return true; }
+  RejectionReason rejection_reason() const override {
+    return RejectionReason::INVALID_CREDENTIALS;
+  }
+
+  void ProcessMessage(const jingle_xmpp::XmlElement* message,
+                      base::OnceClosure resume_callback) override {
+    // Nothing to verify at this layer: a wrong key is caught by the channel
+    // authenticator. Accept immediately.
+    state_ = ACCEPTED;
+    std::move(resume_callback).Run();
+  }
+
+  std::unique_ptr<jingle_xmpp::XmlElement> GetNextMessage() override {
+    // The negotiation adds the `method` attribute itself.
+    return CreateEmptyAuthenticatorMessage();
+  }
+
+  const std::string& GetAuthKey() const override { return auth_key_; }
+  const SessionPolicies* GetSessionPolicies() const override { return nullptr; }
+
+  std::unique_ptr<ChannelAuthenticator> CreateChannelAuthenticator()
+      const override {
+    DCHECK_EQ(state(), ACCEPTED);
+    return SslHmacChannelAuthenticator::CreateForHost(local_cert_, key_pair_,
+                                                      auth_key_);
+  }
+
+ private:
+  JemaosSecretAuthenticator(const std::string& local_cert,
+                            scoped_refptr<RsaKeyPair> key_pair,
+                            const std::string& auth_key,
+                            State initial_state)
+      : local_cert_(local_cert),
+        key_pair_(std::move(key_pair)),
+        auth_key_(auth_key),
+        state_(initial_state) {}
+
+  const std::string local_cert_;
+  scoped_refptr<RsaKeyPair> key_pair_;
+  const std::string auth_key_;
+  State state_;
+};
+
+}  // namespace
 
 NegotiatingHostAuthenticator::NegotiatingHostAuthenticator(
     std::string_view local_id,
@@ -189,6 +274,14 @@ void NegotiatingHostAuthenticator::CreateAuthenticator(
 
     case AuthenticationMethod::SHARED_SECRET_SPAKE2_CURVE25519:
       current_authenticator_ = Spake2Authenticator::CreateForHost(
+          local_id_, remote_id_, config_->local_cert, config_->key_pair,
+          config_->shared_secret_hash, preferred_initial_state);
+      std::move(resume_callback).Run();
+      break;
+
+    case AuthenticationMethod::JEMAOS_HMAC_SHA256:
+      // JEMAOS: SPAKE2-free path for the JemaOS web client.
+      current_authenticator_ = JemaosSecretAuthenticator::CreateForHost(
           local_id_, remote_id_, config_->local_cert, config_->key_pair,
           config_->shared_secret_hash, preferred_initial_state);
       std::move(resume_callback).Run();

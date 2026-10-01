@@ -46,6 +46,9 @@ HostAuthenticationConfig::GetSupportedMethods() {
       methods.push_back(AuthenticationMethod::PAIRED_SPAKE2_CURVE25519);
     }
     methods.push_back(AuthenticationMethod::SHARED_SECRET_SPAKE2_CURVE25519);
+    // JEMAOS: also advertise our SPAKE2-free access-code-hash method so that
+    // the JemaOS web client can connect.
+    methods.push_back(AuthenticationMethod::JEMAOS_HMAC_SHA256);
   }
   return methods;
 }

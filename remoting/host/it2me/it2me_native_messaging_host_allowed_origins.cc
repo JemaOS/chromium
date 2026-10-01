@@ -13,7 +13,9 @@ namespace remoting {
 // to keep the two lists in sync.
 const char* const kIt2MeOrigins[] = {
     // ---***JEMAOS BEGIN***---
-    // remote desktop extension id, old, new, and dev
+    // JemaOS Remote Desktop (sovereign rebuild, our own signing key).
+    "chrome-extension://bhgofkbdjhohckijphjdhjfpmmjbppja/",
+    // remote desktop extension id, old, new, and dev (upstream FydeOS ids)
     "chrome-extension://ljkfnggfkjcmfpcpoomhmhkgeeakhgig/",
     "chrome-extension://fogdcaodknbhigpklbhepedofamkfbln/",
     "chrome-extension://ljacajndfccfgnfohlgkdphmbnpkjflk/",

@@ -18,6 +18,8 @@ const NameMapElement<AuthenticationMethod> kAuthenticationMethodStrings[] = {
      "cloud_session_authz_spake2_curve25519"},
     {AuthenticationMethod::CORP_SESSION_AUTHZ_SPAKE2_CURVE25519,
      "corp_session_authz_spake2_curve25519"},
+    // JEMAOS: our simple access-code-hash method (no SPAKE2).
+    {AuthenticationMethod::JEMAOS_HMAC_SHA256, "jemaos_hmac_sha256"},
 };
 
 }  // namespace

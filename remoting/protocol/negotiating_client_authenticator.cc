@@ -147,6 +147,11 @@ void NegotiatingClientAuthenticator::CreateAuthenticatorForCurrentMethod(
     case AuthenticationMethod::CLOUD_SESSION_AUTHZ_SPAKE2_CURVE25519:
     case AuthenticationMethod::CORP_SESSION_AUTHZ_SPAKE2_CURVE25519:
       NOTREACHED();
+
+    case AuthenticationMethod::JEMAOS_HMAC_SHA256:
+      // JEMAOS: only implemented by the JemaOS web client (not by this native
+      // client), which speaks the protocol directly.
+      NOTREACHED();
   }
 
   ChainStateChangeAfterAcceptedWithUnderlying(*current_authenticator_);

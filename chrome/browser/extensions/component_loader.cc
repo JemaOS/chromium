@@ -589,6 +589,22 @@ void ComponentLoader::AddDefaultComponentExtensionsWithBackgroundPages(
 
     Add(IDR_ARC_SUPPORT_MANIFEST,
         base::FilePath(FILE_PATH_LITERAL("chromeos/arc_support")));
+
+    // JEMAOS: Remote Desktop. Loaded as a component extension so it is always
+    // present, independently of the external-extension provider or policies.
+    {
+      const base::FilePath jema_rd_dir(
+          FILE_PATH_LITERAL("/usr/share/jemaos/remote-desktop"));
+      std::string jema_rd_manifest;
+      if (base::ReadFileToString(
+              jema_rd_dir.Append(extensions::kManifestFilename),
+              &jema_rd_manifest)) {
+        Add(jema_rd_manifest, jema_rd_dir, /*skip_allowlist=*/true);
+      } else {
+        LOG(ERROR) << "JemaOS: Remote Desktop component extension not found in "
+                   << jema_rd_dir.value();
+      }
+    }
 #endif  // BUILDFLAG(IS_CHROMEOS)
   }
 

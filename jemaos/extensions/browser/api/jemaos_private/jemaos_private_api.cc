@@ -11,11 +11,10 @@ namespace extensions {
 
 ExtensionFunction::ResponseAction JemaosPrivateGetJemaOSInfoFunction::Run() {
   base::Value::Dict result;
-#if BUILDFLAG(USE_JEMAOS_COM)
-  std::string host_sufffux = "jemaos.com";
-#else
-  std::string host_sufffux = "jemaos.io";
-#endif
+  // JEMAOS: this suffix drives the sovereign remote-desktop endpoints used by
+  // the preinstalled CRD webapp (accounts.<suffix>, apis.<suffix>/remoting/v1,
+  // rtc.<suffix>:5443/bosh). Point it at our own infrastructure.
+  std::string host_sufffux = "jematechnology.fr";
   base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
   if (command_line->HasSwitch(
         jemaos::switches::kJemaOSServiceHostSuffixForTesting)) {

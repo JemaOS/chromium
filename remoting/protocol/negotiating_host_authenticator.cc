@@ -279,6 +279,15 @@ void NegotiatingHostAuthenticator::CreateAuthenticator(
       std::move(resume_callback).Run();
       break;
 
+    case AuthenticationMethod::JEMAOS_SPAKE2_CURVE25519:
+      // JEMAOS: SPAKE2 path for the web client (same key derivation as the
+      // shared-secret SPAKE2 method). Used only when the client advertises it.
+      current_authenticator_ = Spake2Authenticator::CreateForHost(
+          local_id_, remote_id_, config_->local_cert, config_->key_pair,
+          config_->shared_secret_hash, preferred_initial_state);
+      std::move(resume_callback).Run();
+      break;
+
     case AuthenticationMethod::JEMAOS_HMAC_SHA256:
       // JEMAOS: SPAKE2-free path for the JemaOS web client.
       current_authenticator_ = JemaosSecretAuthenticator::CreateForHost(

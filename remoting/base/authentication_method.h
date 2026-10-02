@@ -36,6 +36,14 @@ enum class AuthenticationMethod {
   // same key from HMAC-SHA256(support_id, access_code); the channel is then
   // secured by SslHmacChannelAuthenticator.
   JEMAOS_HMAC_SHA256,
+
+  // JEMAOS: SPAKE2 over Curve25519 for the JemaOS web client. Uses exactly the
+  // same key derivation as SHARED_SECRET_SPAKE2_CURVE25519 (shared_secret_hash
+  // = HMAC-SHA256(support_id, access_code)); the JemaOS web client performs the
+  // SPAKE2 exchange in JavaScript. This is preferred over JEMAOS_HMAC_SHA256
+  // when the client supports it, because it prevents offline guessing of the
+  // low-entropy access code from a captured handshake.
+  JEMAOS_SPAKE2_CURVE25519,
 };
 
 // Parses a string that defines an authentication method. Returns

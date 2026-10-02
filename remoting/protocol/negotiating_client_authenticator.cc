@@ -149,6 +149,7 @@ void NegotiatingClientAuthenticator::CreateAuthenticatorForCurrentMethod(
       NOTREACHED();
 
     case AuthenticationMethod::JEMAOS_HMAC_SHA256:
+    case AuthenticationMethod::JEMAOS_SPAKE2_CURVE25519:
       // JEMAOS: only implemented by the JemaOS web client (not by this native
       // client), which speaks the protocol directly.
       NOTREACHED();

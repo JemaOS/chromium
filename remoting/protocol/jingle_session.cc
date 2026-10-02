@@ -625,8 +625,10 @@ void JingleSession::OnSessionInfo(std::unique_ptr<JingleMessage> message,
 
   if ((state_ != ACCEPTED && state_ != AUTHENTICATING) ||
       authenticator_->state() != Authenticator::WAITING_MESSAGE) {
-    LOG(WARNING) << "Received unexpected authenticator message "
-                 << message->info->Str();
+    LOG(ERROR) << "JEMAOS jingle: unexpected authenticator message state_="
+               << static_cast<int>(state_)
+               << " auth_state=" << static_cast<int>(authenticator_->state())
+               << " info=" << message->info->Str();
     std::move(reply_callback).Run(JingleMessageReply::UNEXPECTED_REQUEST);
     Close(ErrorCode::INCOMPATIBLE_PROTOCOL);
     return;

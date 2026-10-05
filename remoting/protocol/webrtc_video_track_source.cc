@@ -47,6 +47,13 @@ std::unique_ptr<webrtc::DesktopFrame> MaybeDownscaleFrame(
   libyuv::ARGBScale(frame->data(), frame->stride(), size.width(), size.height(),
                     scaled->data(), scaled->stride(), dst_width, dst_height,
                     libyuv::kFilterBilinear);
+
+  // Mark the whole downscaled frame as changed. Without this, the frame's
+  // updated_region is empty and WebrtcVideoFrameAdapter::CreateVideoFrame maps
+  // that to an empty update-rect, which WebRTC interprets as "no change" and
+  // drops the frame -> the remote view would freeze.
+  scaled->mutable_updated_region()->SetRect(
+      webrtc::DesktopRect::MakeSize(scaled->size()));
   return scaled;
 }
 

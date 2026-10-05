@@ -176,7 +176,6 @@ void Spake2Authenticator::ProcessMessageInternal(
   bool cert_present;
   if (!DecodeBinaryValueFromXml(message, kCertificateTag, &cert_present,
                                 &remote_cert_)) {
-    LOG(ERROR) << "JEMAOS spake2: certificate decode failed";
     state_ = REJECTED;
     rejection_reason_ = RejectionReason::PROTOCOL_ERROR;
     return;
@@ -184,7 +183,7 @@ void Spake2Authenticator::ProcessMessageInternal(
 
   // Client always expects certificate in the first message.
   if (!is_host_ && remote_cert_.empty()) {
-    LOG(ERROR) << "JEMAOS spake2: No valid host certificate.";
+    LOG(WARNING) << "No valid host certificate.";
     state_ = REJECTED;
     rejection_reason_ = RejectionReason::PROTOCOL_ERROR;
     return;
@@ -199,24 +198,15 @@ void Spake2Authenticator::ProcessMessageInternal(
       !DecodeBinaryValueFromXml(message, kVerificationHashTag,
                                 &verification_hash_present,
                                 &verification_hash)) {
-    LOG(ERROR) << "JEMAOS spake2: spake/hash decode failed";
     state_ = REJECTED;
     rejection_reason_ = RejectionReason::PROTOCOL_ERROR;
     return;
   }
 
-  LOG(ERROR) << "JEMAOS spake2: is_host=" << is_host_
-             << " auth_key_empty=" << auth_key_.empty()
-             << " spake_present=" << spake_message_present
-             << " spake_len=" << spake_message.size()
-             << " verif_present=" << verification_hash_present
-             << " verif_len=" << verification_hash.size()
-             << " local_id=" << local_id_ << " remote_id=" << remote_id_;
-
   // |auth_key_| is generated when <spake-message> is received.
   if (auth_key_.empty()) {
     if (!spake_message_present) {
-      LOG(ERROR) << "JEMAOS spake2: <spake-message> not found.";
+      LOG(WARNING) << "<spake-message> not found.";
       state_ = REJECTED;
       rejection_reason_ = RejectionReason::PROTOCOL_ERROR;
       return;
@@ -229,7 +219,6 @@ void Spake2Authenticator::ProcessMessageInternal(
         reinterpret_cast<const uint8_t*>(spake_message.data()),
         spake_message.size());
     if (!result) {
-      LOG(ERROR) << "JEMAOS spake2: SPAKE2_process_msg failed";
       state_ = REJECTED;
       rejection_reason_ = RejectionReason::INVALID_CREDENTIALS;
       return;
@@ -242,14 +231,14 @@ void Spake2Authenticator::ProcessMessageInternal(
     expected_verification_hash_ =
         CalculateVerificationHash(!is_host_, remote_id_, local_id_);
   } else if (spake_message_present) {
-    LOG(ERROR) << "JEMAOS spake2: Received duplicate <spake-message>.";
+    LOG(WARNING) << "Received duplicate <spake-message>.";
     state_ = REJECTED;
     rejection_reason_ = RejectionReason::PROTOCOL_ERROR;
     return;
   }
 
   if (spake_message_sent_ && !verification_hash_present) {
-    LOG(ERROR) << "JEMAOS spake2: Didn't receive <verification-hash>.";
+    LOG(WARNING) << "Didn't receive <verification-hash> when expected.";
     state_ = REJECTED;
     rejection_reason_ = RejectionReason::PROTOCOL_ERROR;
     return;
@@ -259,14 +248,10 @@ void Spake2Authenticator::ProcessMessageInternal(
     if (!crypto::SecureMemEqual(
             base::as_byte_span(verification_hash),
             base::as_byte_span(expected_verification_hash_))) {
-      LOG(ERROR) << "JEMAOS spake2: verification-hash MISMATCH (got "
-                 << verification_hash.size() << "B, expected "
-                 << expected_verification_hash_.size() << "B)";
       state_ = REJECTED;
       rejection_reason_ = RejectionReason::INVALID_CREDENTIALS;
       return;
     }
-    LOG(ERROR) << "JEMAOS spake2: verification-hash OK -> ACCEPTED";
     state_ = ACCEPTED;
     return;
   }

@@ -4,14 +4,53 @@
 
 #include "remoting/protocol/webrtc_video_track_source.h"
 
+#include <memory>
 #include <utility>
 
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/task/sequenced_task_runner.h"
 #include "remoting/protocol/webrtc_video_frame_adapter.h"
+#include "third_party/libyuv/include/libyuv/scale_argb.h"
 
 namespace remoting::protocol {
+
+namespace {
+
+// JEMAOS: cap the encoded video width. HiDPI hosts (e.g. 3000x2000) otherwise
+// encode ~6 megapixels per frame, which raises encoding cost, bandwidth and
+// latency. Downscaling to <=1920 wide cuts ~2.4x the pixels while the host
+// still reports its real desktop geometry for input mapping.
+constexpr int kJemaMaxEncodedWidth = 1920;
+
+std::unique_ptr<webrtc::DesktopFrame> MaybeDownscaleFrame(
+    std::unique_ptr<webrtc::DesktopFrame> frame) {
+  const webrtc::DesktopSize size = frame->size();
+  if (size.width() <= kJemaMaxEncodedWidth || size.height() <= 0) {
+    return frame;
+  }
+
+  int dst_width = kJemaMaxEncodedWidth;
+  // Preserve aspect ratio and keep dimensions even (encoders require it).
+  int dst_height = static_cast<int>(
+      static_cast<int64_t>(size.height()) * dst_width / size.width());
+  dst_height &= ~1;
+  if (dst_height < 2) {
+    dst_height = 2;
+  }
+
+  auto scaled = std::make_unique<webrtc::BasicDesktopFrame>(
+      webrtc::DesktopSize(dst_width, dst_height));
+  scaled->set_dpi(frame->dpi());
+  scaled->set_capturer_id(frame->capturer_id());
+
+  libyuv::ARGBScale(frame->data(), frame->stride(), size.width(), size.height(),
+                    scaled->data(), scaled->stride(), dst_width, dst_height,
+                    libyuv::kFilterBilinear);
+  return scaled;
+}
+
+}  // namespace
 
 WebrtcVideoTrackSource::WebrtcVideoTrackSource(
     AddSinkCallback add_sink_callback)
@@ -85,6 +124,9 @@ void WebrtcVideoTrackSource::SendCapturedFrame(
     LOG(WARNING) << "No sink registered, dropping frame.";
     return;
   }
+
+  // JEMAOS: cap the encoded resolution before handing the frame to WebRTC.
+  desktop_frame = MaybeDownscaleFrame(std::move(desktop_frame));
 
   webrtc::VideoFrame video_frame = WebrtcVideoFrameAdapter::CreateVideoFrame(
       std::move(desktop_frame), std::move(frame_stats));

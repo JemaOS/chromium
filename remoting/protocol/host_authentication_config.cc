@@ -46,11 +46,10 @@ HostAuthenticationConfig::GetSupportedMethods() {
       methods.push_back(AuthenticationMethod::PAIRED_SPAKE2_CURVE25519);
     }
     methods.push_back(AuthenticationMethod::SHARED_SECRET_SPAKE2_CURVE25519);
-    // JEMAOS: advertise SPAKE2 for the web client (preferred: resists offline
-    // guessing of the access code), then the SPAKE2-free fallback used by
-    // clients that do not implement the SPAKE2 exchange yet.
+    // JEMAOS: SPAKE2 over Curve25519 is the only JemaOS method. The legacy
+    // jemaos_hmac_sha256 method (no SPAKE2, offline-guessable) is no longer
+    // advertised or accepted.
     methods.push_back(AuthenticationMethod::JEMAOS_SPAKE2_CURVE25519);
-    methods.push_back(AuthenticationMethod::JEMAOS_HMAC_SHA256);
   }
   return methods;
 }

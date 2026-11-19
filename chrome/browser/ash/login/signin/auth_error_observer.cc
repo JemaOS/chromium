@@ -16,6 +16,7 @@
 #include "components/signin/public/base/consent_level.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/sync/service/sync_service.h"
+#include "components/user_manager/user.h"
 #include "components/user_manager/user_manager.h"
 
 namespace ash {
@@ -24,7 +25,24 @@ namespace ash {
 bool AuthErrorObserver::ShouldObserve(Profile* profile) {
   const user_manager::User* const user =
       ProfileHelper::Get()->GetUserByProfile(profile);
-  return user && user->HasGaiaAccount();
+  if (!user || !user->HasGaiaAccount()) {
+    return false;
+  }
+  //---***JEMAOS BEGIN***---
+  // Jema/Flint accounts hold no Google credential: observing Sync/Google auth
+  // errors for them drives the OAuth status machinery with a non-Google token
+  // ("incorrectly invalidated token case") and participates in the post-login
+  // crash. They are authenticated by the Jema API, not Google.
+  if (user->IsJemaAccountUser() || user->IsFlintAccountUser()) {
+    return false;
+  }
+  const std::string gaia_id = user->GetAccountId().GetGaiaId();
+  if (gaia_id.find("jema_id_") == 0 || gaia_id.find("ft_id_") == 0 ||
+      gaia_id.find("flint_id_") == 0) {
+    return false;
+  }
+  //---***JEMAOS END***---
+  return true;
 }
 
 AuthErrorObserver::AuthErrorObserver(Profile* profile) : profile_(profile) {

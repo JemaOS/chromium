@@ -1298,6 +1298,17 @@ bool UserManagerImpl::IsUserAllowed(const User& user) const {
          user.GetType() == UserType::kJemaChild ||
          user.GetType() == UserType::kChild);
 
+  // JEMAOS: Jema/Flint online accounts authenticate against the Jema API,
+  // not Google. The device user-allowlist (meant for GAIA accounts) must
+  // never terminate their session: with no allowlist policy loaded yet (or
+  // AllowNewUser=false) the GAIA check returned false and
+  // ChromeSessionManager killed the session a few seconds after every
+  // online login -> the black-screen crash-loop. Local accounts were
+  // unaffected (HasGaiaAccount() is false for them).
+  if (user.IsJemaAccountUser() || user.IsFlintAccountUser()) {
+    return true;
+  }
+
   return UserManager::IsUserAllowed(
       user, IsGuestSessionAllowed(),
       user.HasGaiaAccount() && IsGaiaUserAllowed(user));

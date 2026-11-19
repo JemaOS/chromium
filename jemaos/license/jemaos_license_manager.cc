@@ -262,7 +262,7 @@ void LicenseManager::CheckLicenseInternal() {
   // account has none by design: showing it "your subscription has ended"
   // is wrong and confusing, so stay silent for those profiles.
   const user_manager::User* user =
-      profile_ ? ash::ProfileHelper::Get()->GetUserByProfile(profile_) : nullptr;
+      profile_ ? ::ash::ProfileHelper::Get()->GetUserByProfile(profile_) : nullptr;
   const bool jema_online_account =
       user && (user->IsJemaAccountUser() || user->IsFlintAccountUser());
   if (jema_online_account && profile_ && enforcement_) {

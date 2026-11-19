@@ -441,6 +441,25 @@ bool IsRunningTest() {
              ::switches::kTestType);
 }
 
+//---***JEMAOS BEGIN***---
+// Jema/Flint accounts authenticate against the Jema API. They are flagged as
+// "has GAIA account" for the generic ChromeOS plumbing, but they hold NO Google
+// credential: feeding their opaque Jema token into GAIA/OAuth2 machinery
+// (session restore, token handle fetch) dereferences Google-only state and
+// segfaults the browser a few seconds after the desktop appears (crash loop ->
+// session_manager gives up -> user is thrown back to the login screen).
+bool IsJemaFamilyAccountId(const AccountId& account_id) {
+  const std::string gaia_id = account_id.GetGaiaId();
+  return gaia_id.find("jema_id_") == 0 || gaia_id.find("ft_id_") == 0 ||
+         gaia_id.find("flint_id_") == 0;
+}
+
+bool IsJemaFamilyUser(const user_manager::User* user) {
+  return user && (user->IsJemaAccountUser() || user->IsFlintAccountUser() ||
+                  IsJemaFamilyAccountId(user->GetAccountId()));
+}
+//---***JEMAOS END***---
+
 bool IsOnlineSignin(const UserContext& user_context) {
   return user_context.GetAuthFlow() == UserContext::AUTH_FLOW_GAIA_WITH_SAML ||
          //---***JEMAOS BEGIN***---
@@ -852,6 +871,14 @@ void UserSessionManager::RestoreAuthenticationSession(Profile* user_profile) {
 
   const user_manager::User* user =
       ProfileHelper::Get()->GetUserByProfile(user_profile);
+
+  //---***JEMAOS BEGIN***---
+  // No Google session to restore for Jema/Flint accounts.
+  if (IsJemaFamilyUser(user)) {
+    VLOG(1) << "[JEMAOS] Skipping GAIA session restore for a Jema account";
+    return;
+  }
+  //---***JEMAOS END***---
 
   auto* identity_manager = IdentityManagerFactory::GetForProfile(user_profile);
   const bool account_id_valid =
@@ -2201,7 +2228,11 @@ void UserSessionManager::OnUserProfileLoaded(Profile* profile,
     observer->StartObserving();
   }
 
-  if (TokenHandlesEnabled() && user && user->HasGaiaAccount()) {
+  //---***JEMAOS BEGIN***---
+  // Token handles are a Google-only concept; never fetch one with a Jema token.
+  if (TokenHandlesEnabled() && user && user->HasGaiaAccount() &&
+      !IsJemaFamilyUser(user)) {
+  //---***JEMAOS END***---
     CreateTokenUtilIfMissing();
     if (IsOnlineSignin(user_context_)) {
       // If the user has gone through an online Gaia flow, then their LST is

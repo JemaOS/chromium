@@ -589,6 +589,12 @@
     <message name="IDS_JEMAOS_INSTALLER_CREATE_OS_PART_SIZE_HELPER_TEXT" desc="Helper text explaining how the JemaOS partition is created">
       <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> crée une nouvelle partition dans l'espace libre du disque. Si le disque est plein, la partition Windows est réduite (aucune donnée Windows n'est effacée, mais sauvegardez vos données par précaution).
     </message>
+    <message name="IDS_JEMAOS_INSTALLER_SHRINK_OS_PART_OPTION" desc="Option that asks the installer to shrink the existing JemaOS partition to install a second JemaOS alongside">
+      Réduire cet appareil pour installer <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> à côté
+    </message>
+    <message name="IDS_JEMAOS_INSTALLER_SHRINK_OS_PART_HELPER_TEXT" desc="Helper text explaining that the existing JemaOS partition will be shrunk">
+      Le disque est plein et ne contient pas de partition Windows réductible. <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> réduit sa propre partition existante (aucune donnée n'est effacée, mais sauvegardez vos données par précaution), puis crée la nouvelle partition dans l'espace libéré.
+    </message>
     <message name="IDS_JEMAOS_INSTALLER_CREATE_OS_PART_FAILED" desc="Error message when the JemaOS partition could not be created">
       Impossible de créer la partition multi-amorçage. Vérifiez l'espace disponible ou réduisez la taille demandée.
     </message>
@@ -782,6 +788,12 @@
     </message>
     <message name="IDS_JEMAOS_INSTALLER_CREATE_OS_PART_SIZE_HELPER_TEXT" desc="Helper text explaining how the JemaOS partition is created">
       <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> creates a new partition in the disk's free space. If the disk is full, the Windows partition is shrunk (no Windows data is erased, but back up your data as a precaution).
+    </message>
+    <message name="IDS_JEMAOS_INSTALLER_SHRINK_OS_PART_OPTION" desc="Option that asks the installer to shrink the existing JemaOS partition to install a second JemaOS alongside">
+      Shrink this device to install <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> alongside
+    </message>
+    <message name="IDS_JEMAOS_INSTALLER_SHRINK_OS_PART_HELPER_TEXT" desc="Helper text explaining that the existing JemaOS partition will be shrunk">
+      The disk is full and has no shrinkable Windows partition. <ph name="DEVICE_OS">$1<ex>JemaOS</ex></ph> shrinks its own existing partition (no data is erased, but back up your data as a precaution), then creates the new partition in the freed space.
     </message>
     <message name="IDS_JEMAOS_INSTALLER_CREATE_OS_PART_FAILED" desc="Error message when the JemaOS partition could not be created">
       Could not create the multi-boot partition. Check the available space or reduce the requested size.

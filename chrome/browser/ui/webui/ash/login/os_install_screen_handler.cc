@@ -202,6 +202,12 @@ void OsInstallScreenHandler::DeclareJemaInstallerLocalizedValues(
   builder->AddF("jemaosInstallerCreateOSPartSizeHelperText",
                IDS_JEMAOS_INSTALLER_CREATE_OS_PART_SIZE_HELPER_TEXT,
                IDS_INSTALLED_PRODUCT_OS_NAME);
+  builder->AddF("jemaosInstallerShrinkOSPartOption",
+               IDS_JEMAOS_INSTALLER_SHRINK_OS_PART_OPTION,
+               IDS_INSTALLED_PRODUCT_OS_NAME);
+  builder->AddF("jemaosInstallerShrinkOSPartHelperText",
+               IDS_JEMAOS_INSTALLER_SHRINK_OS_PART_HELPER_TEXT,
+               IDS_INSTALLED_PRODUCT_OS_NAME);
   builder->Add("jemaosInstallerCreateOSPartFailed",
                IDS_JEMAOS_INSTALLER_CREATE_OS_PART_FAILED);
 

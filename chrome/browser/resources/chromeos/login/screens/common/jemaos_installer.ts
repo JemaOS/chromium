@@ -780,6 +780,17 @@ const candidateOSPart = dev => {
   return availOSPart(dev) && JemaOSInstaller.SizeInBytes(dev.size) > recommandedSize && !(dev.mountpoint && dev.mountpoint.startsWith('/tmp/jemaos_dualboot_'));
 }
 
+// An already-installed JemaOS (or ChromeOS) STATE partition: ext4 whose
+// filesystem label is H-STATE (installed system) or STATE. It is NEVER a
+// format target (availOSPart excludes it); when the disk has no free space
+// and no Windows, the installer can SHRINK it to install a second JemaOS
+// alongside (shrink_jemaos_and_create_dualboot in jemaos_util.sh).
+const jemaosStatePart = dev => {
+  const fstype = (dev.fstype || '').trim();
+  const label = (dev.label || '').trim();
+  return fstype === 'ext4' && (label === 'H-STATE' || label === 'STATE');
+};
+
 enum InstallSteps {
   PREPARE = 'prepare',
   PORTAL = 'portal',
@@ -1287,8 +1298,22 @@ class JemaOSInstallerScreen extends JemaOSInstallerScreenElementBase {
       // has no ready-to-use partition: previously the target list ended up
       // empty (only the disk group label was shown) and Install stayed
       // disabled. The value is "create:<disk>"; see onInstallClicked_.
+      // When the disk is full with no Windows but carries an existing JemaOS
+      // STATE partition, say so explicitly: the backend will shrink that
+      // partition instead of dying with "no NTFS found".
+      const hasNtfs = this.fullDiskList_.some(p => p.type === 'part' &&
+        p.name.startsWith(disk.name) && (p.fstype || '').trim() === 'ntfs');
+      const hasJemaosState = this.fullDiskList_.some(p => p.type === 'part' &&
+        p.name.startsWith(disk.name) && jemaosStatePart(p));
+      const shrinkOnly = availOSPartList.length === 0 && !hasNtfs && hasJemaosState;
+      this.shrinkOnlyDisks_ = this.shrinkOnlyDisks_ || new Set();
+      if (shrinkOnly) {
+        this.shrinkOnlyDisks_.add(disk.name);
+      } else {
+        this.shrinkOnlyDisks_.delete(disk.name);
+      }
       osPartList.push({
-        title: `${this.i18n('jemaosInstallerCreateOSPartOption')} (${JemaOSInstaller.GetDevPath(disk.name)})`,
+        title: `${this.i18n(shrinkOnly ? 'jemaosInstallerShrinkOSPartOption' : 'jemaosInstallerCreateOSPartOption')} (${JemaOSInstaller.GetDevPath(disk.name)})`,
         value: `create:${disk.name}`,
       });
       const availEFIPartList = this.fullDiskList_.filter(p => p.type === 'part' && p.name.startsWith(disk.name) && availEFIPart(p));
@@ -1329,7 +1354,12 @@ class JemaOSInstallerScreen extends JemaOSInstallerScreenElementBase {
     if (partName.startsWith('create:')) {
       // Target partition does not exist yet; prepare_dualboot_partition
       // creates it at install time, so there is nothing to validate here.
-      this.dualbootConfigSelectOSPartMessage_ = '';
+      // On a shrink-only disk, explain that the existing JemaOS partition
+      // will be shrunk (no data erased).
+      const diskName = partName.slice('create:'.length);
+      this.dualbootConfigSelectOSPartMessage_ =
+        (this.shrinkOnlyDisks_ && this.shrinkOnlyDisks_.has(diskName)) ?
+          this.i18n('jemaosInstallerShrinkOSPartHelperText') : '';
       return;
     }
     const dev = this.fullDiskList_.find(d => d.name === partName);

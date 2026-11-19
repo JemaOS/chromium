@@ -1141,8 +1141,8 @@ class JemaOSInstallerScreen extends JemaOSInstallerScreenElementBase {
 
   handleInstallError_(e) {
     if (this.uiStep === InstallSteps.DONE) return;
-    const { detail: { error } } = e;
-    console.log('handleInstallError_', error);
+    const { detail: { error, desc } } = e;
+    console.log('handleInstallError_', error, desc);
     this.setUIStep(InstallSteps.DONE);
     this.result_ = InstallResults.FAILURE;
     let output = ''
@@ -1153,10 +1153,11 @@ class JemaOSInstallerScreen extends JemaOSInstallerScreenElementBase {
         output  = error.message;
       }
     }
+    const createPartFailed = desc === 'Create the JemaOS multi-boot partition';
     if (output) {
-      this.installOutput_ = output.trim();
+      this.installOutput_ = (desc && !createPartFailed ? `${desc}\n` : '') + output.trim();
     }
-    this.progressMessage_ = this.i18n(this.isCreatePartition_ ?
+    this.progressMessage_ = this.i18n(createPartFailed ?
       'jemaosInstallerCreateOSPartFailed' : 'jemaosInstallerInstallFailedMessage');
   }
 

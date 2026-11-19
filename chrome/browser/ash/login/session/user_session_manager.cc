@@ -1170,6 +1170,11 @@ void UserSessionManager::OnSessionRestoreStateChanged(
   // Otherwise, auth token dependent code would be in an invalid state.
   // Important piece such as policy code might be broken because of this and
   // subject to an exploit. See http://crbug.com/677312.
+  const bool jema_online_account =
+      user_context_.GetAuthFlow() == UserContext::AUTH_FLOW_JEMA_ONLINE ||
+      user_context_.GetAccountId().GetGaiaId().find("jema_id_") == 0 ||
+      user_context_.GetAccountId().GetGaiaId().find("ft_id_") == 0 ||
+      user_context_.GetAccountId().GetGaiaId().find("flint_id_") == 0;
   if (IsOnlineSignin(user_context_) &&
       state == OAuth2LoginManager::SESSION_RESTORE_FAILED &&
       //---***JEMAOS BEGIN***---
@@ -1177,10 +1182,11 @@ void UserSessionManager::OnSessionRestoreStateChanged(
       // API, not a Google OAuth2 token: the OAuth2 session restore can never
       // succeed for them (their stored token is a Jema credential, not an
       // OAuth2 refresh token), and terminating the session kicked every
-      // online login back to the login panel (black screen). Let the session
-      // live; the OAuth2 token state is simply marked invalid, which is
-      // harmless for Jema services.
-      user_context_.GetAuthFlow() != UserContext::AUTH_FLOW_JEMA_ONLINE
+      // online login back to the login panel (black screen ~3 s, repeated,
+      // then sign-out). Guard by ACCOUNT ID too: depending on the login path
+      // the AUTH_FLOW_JEMA_ONLINE marker can be absent here, and the flow
+      // check alone let the termination through -> the crash-loop.
+      !jema_online_account
       //---***JEMAOS END***---
       ) {
     SYSLOG(ERROR)

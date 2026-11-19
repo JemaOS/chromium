@@ -215,6 +215,7 @@ std::vector<ExternalInstallOptions> GetChromeBrandedApps(
     apps.push_back(GetConfigForJemaChess());
     apps.push_back(GetConfigForNephtys());
     apps.push_back(GetConfigForJemaPDF());
+    apps.push_back(GetConfigForJemaSaas());
   }
   apps.insert(apps.end(), {
       // QuickText remains available for every tier (including Freemium).
@@ -312,6 +313,7 @@ std::vector<ExternalInstallOptions> GetPreinstalledWebApps(
     apps.push_back(GetConfigForJemaChess());
     apps.push_back(GetConfigForNephtys());
     apps.push_back(GetConfigForJemaPDF());
+    apps.push_back(GetConfigForJemaSaas());
   }
 #endif  // BUILDFLAG(IS_CHROMEOS)
   apps.insert(apps.end(), {

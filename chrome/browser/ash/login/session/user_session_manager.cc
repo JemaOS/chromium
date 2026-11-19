@@ -2357,6 +2357,14 @@ constexpr char kJemaOsTokenRefreshPath[] = "/v1/connect/refreshtoken";
 // 1 min: this tick also carries the subscription/seat-revocation check, so an
 // admin deactivation closes the session within ~1 minute instead of 15.
 constexpr base::TimeDelta kJemaOsTokenCheckInterval = base::Minutes(1);
+// Proactive renewal window for the opaque access token. The server-side
+// access token lives 24 h; renewing only after 6 h (old behaviour) left a
+// stale token whenever the PC slept through the window, and the premium
+// PWAs (12 s managed wait) hit the reconnect wall on wake. Renewing every
+// hour while the session is active keeps the shared cookie fresh; the
+// server keeps the access token VALUE stable, so concurrent consumers
+// never see a rotation.
+constexpr base::TimeDelta kJemaOsOpaqueTokenRenewAfter = base::Hours(1);
 // Refresh proactively when this much lifetime remains (JWT exp).
 constexpr base::TimeDelta kJemaOsRefreshMargin = base::Minutes(30);
 // Safety net for opaque tokens without an exp claim.
@@ -2433,7 +2441,7 @@ void UserSessionManager::MaybeRefreshAndInjectJemaOSToken() {
         if (issued_at == 0 ||
             base::Time::Now() - base::Time::FromDeltaSinceWindowsEpoch(
                                     base::Seconds(issued_at)) >
-                kJemaOsOpaqueTokenMaxAge) {
+                kJemaOsOpaqueTokenRenewAfter) {
           should_refresh = true;
         }
       }

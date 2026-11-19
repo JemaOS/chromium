@@ -21,6 +21,8 @@
 #include "jemaos/chromeos/ash/components/dbus/jemaos_shell_client/shell_state.h"
 #include "jemaos/license/jemaos_callback_status.h"
 #include "jemaos/switches/license/license_constants.h"
+#include "chrome/browser/ash/profiles/profile_helper.h"
+#include "components/user_manager/user.h"
 #include "jemaos/license/jemaos_license_enforcement.h"
 #include "chrome/browser/lifetime/application_lifetime.h"
 
@@ -250,15 +252,20 @@ void LicenseManager::CheckLicenseInternal() {
   }
 
   // Freemium / local account / subscription not proven: NEVER punish.
-  // No logout, no forced quit, no repeated notifications - at most one
-  // discreet notice per session, removed if the subscription activates.
   if (is_valid_) {
     is_valid_ = false;
     NotifyObservers();
   }
   VLOG(1) << "[JEMAOS] No active subscription (system A): freemium mode, "
              "no enforcement.";
-  if (profile_ && enforcement_) {
+  // Only Jema ONLINE accounts can have a subscription. A local/offline
+  // account has none by design: showing it "your subscription has ended"
+  // is wrong and confusing, so stay silent for those profiles.
+  const user_manager::User* user =
+      profile_ ? ProfileHelper::Get()->GetUserByProfile(profile_) : nullptr;
+  const bool jema_online_account =
+      user && (user->IsJemaAccountUser() || user->IsFlintAccountUser());
+  if (jema_online_account && profile_ && enforcement_) {
     enforcement_->ShowFreemiumNotice(profile_);
   }
   //---***JEMAOS END***---

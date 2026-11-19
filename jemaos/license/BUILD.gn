@@ -18,6 +18,8 @@ source_set("license") {
     "//chromeos/ash/components/dbus/update_engine",
     "//chrome/browser/ash/policy/enrollment",
     "//chrome/browser/ash/login",
+    "//chrome/browser/ash/profiles",
+    "//components/user_manager",
     "//jemaos/chromeos/ash/components/dbus/jemaos_shell_client",
     "//jemaos/constants",
     "//jemaos/prefs",

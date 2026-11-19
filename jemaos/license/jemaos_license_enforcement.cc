@@ -31,8 +31,11 @@
 
 namespace jemaos::license {
 namespace {
+  // The in-OS settings license route does not exist in this build: opening it
+  // landed on a dead page. Send the user to the SaaS billing page instead,
+  // where the subscription can actually be renewed.
   const char kJemaOSSettingsLicensePath[] =
-    "chrome://os-settings/jemaos/license";
+    "https://saas-app.jematech.fr/payment";
   const char kJemaOSLicenseForceQuitNotificationId[] =
     "jemaos.license.enforcement.forcequit";
   const char kJemaOSLicenseEnforceonmentNotifierId[] =

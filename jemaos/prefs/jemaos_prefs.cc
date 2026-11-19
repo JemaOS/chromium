@@ -68,10 +68,10 @@ void RegisterLocalStatePrefs(PrefRegistrySimple* registry) {
   registry->RegisterIntegerPref(
       kJemaLicenseStateType,
       static_cast<int>(jemaos::constants::LicenseStateType::kUnspecified));
-  registry->RegisterIntegerPref(
-      kJemaLicenseEnforcementLevel,
-      static_cast<int>(jemaos::constants::LicenseEnforcementLevel::kNone));
-  registry->RegisterIntegerPref(kJemaLicenseEnforcementLogOutInterval, 0);
+  // kJemaLicenseEnforcementLevel / kJemaLicenseEnforcementLogOutInterval are
+  // deliberately NOT registered any more: enforcement state lives in memory
+  // in LicenseManager (per profile), so one profile's expired license cannot
+  // punish the other profiles through device-wide local_state.
 #endif
 }
 

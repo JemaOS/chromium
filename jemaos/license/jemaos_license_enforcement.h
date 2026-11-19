@@ -46,6 +46,10 @@ class LicenseEnforcement {
                           EnforcementMode mode,
                           int logOutInterval);
     void StopEnforcement();
+    // Freemium information: at most ONE discreet notification per session.
+    // No popup window, no timer, no logout. Removed by StopEnforcement()
+    // when the subscription becomes active.
+    void ShowFreemiumNotice(Profile* profile);
 
   private:
     void StartEnforcementInternal();
@@ -54,28 +58,26 @@ class LicenseEnforcement {
     void CloseLicenseWindow();
     void ForceQuitCurrentUser();
 
-
     void ForceQuitNotification();
-    void KickOut();
 
     void OnForceQuitNotificationClicked();
     void RemoveForceQuitNotification();
-    void UpdateForceQuitNotification();
-    std::u16string ForceQuitNotificationMessage();
-    void PopupForceQuitNotification();
 
     void OnGetEolInfo(::ash::UpdateEngineClient::EolInfo info);
 
     std::unique_ptr<base::RepeatingTimer> enforce_timer_;
-    std::unique_ptr<base::OneShotTimer> force_quit_timer_;
-    std::unique_ptr<base::RepeatingTimer> notification_timer_;
     std::unique_ptr<message_center::Notification> notification_;
     Profile* profile_;
     std::string id_;
     std::string serial_number_;
-    EnforcementMode mode_;
-    int log_out_interval_;
+    EnforcementMode mode_ = EnforcementModeLevel0;
+    int log_out_interval_ = 0;
     bool is_eol_;
+    // One popup and one notification per enforcement session. The old code
+    // re-displayed the notification every 10 s and logged the user out on a
+    // timer, which produced the sign-out loop with expired licenses.
+    bool session_popup_shown_ = false;
+    bool session_notified_ = false;
 }; // class LicenseEnforcement
 
 } // namespace license

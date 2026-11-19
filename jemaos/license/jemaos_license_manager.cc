@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 #include "jemaos/license/jemaos_license_manager.h"
+#include <algorithm>
 #include "base/values.h"
 #include "base/logging.h"
 #include "base/strings/stringprintf.h"
@@ -95,8 +96,9 @@ void LicenseManager::Shutdown() {
   g_license_manager = nullptr;
 }
 
-LicenseManager::LicenseManager()
-  : mode_(FetchMode::OfflineMode),
+LicenseManager::LicenseManager():
+    mode_(FetchMode::OfflineMode),
+    retry_timer_(std::make_unique<base::OneShotTimer>()),
     init_timer_(std::make_unique<base::OneShotTimer>()),
     timer_(std::make_unique<base::RepeatingTimer>()),
     online_fetcher_(std::make_unique<LicenseOnlineFetcher>()),
@@ -129,10 +131,13 @@ void LicenseManager::Start() {
 }
 
 void LicenseManager::Stop() {
-  if (init_timer_->IsRunning())
+  if (init_timer_ && init_timer_->IsRunning())
     init_timer_->Stop();
-  if (timer_->IsRunning())
+  if (timer_ && timer_->IsRunning())
     timer_->Stop();
+  if (retry_timer_ && retry_timer_->IsRunning())
+    retry_timer_->Stop();
+  subscription_pref_registrar_.RemoveAll();
   Reset();
 }
 
@@ -148,29 +153,87 @@ void LicenseManager::InitCheckLicense() {
 
 
 void LicenseManager::CheckLicenseInternal() {
-  if (is_valid_ && !id_.empty()) {
-    VLOG(1) << "Everything is fine, stop checking.";
-    init_timer_->Stop();
-    timer_->Stop();
+  //---***JEMAOS BEGIN***---
+  // Source of truth = system A: the Connect API /v1/connect/os/subscription,
+  // whose verdict user_session_manager writes into the PROFILE pref
+  // jemaos.subscription_active. The legacy protobuf endpoint
+  // (apis.jematechnology.fr/license/chromeos/{id}) is dead (HTTP 200 with an
+  // empty body for every id) and is NO LONGER QUERIED: its empty answers
+  // were classified as definitive rejections (-1) and caused the sign-out
+  // loop. No fetch, no punishment, in either branch below.
+  // This runs early at startup: browser process / profile manager may not
+  // exist yet. Never dereference them unguarded.
+  if (!g_browser_process) {
+    state_ = ManagerState::Idle;
     return;
   }
-  if (id_.empty()) {
-    LOG(ERROR) << "There is no license id, invalid system.";
-    OnInvalid();
+  ProfileManager* profile_manager = g_browser_process->profile_manager();
+  if (!profile_manager) {
+    state_ = ManagerState::Idle;
     return;
   }
-  if (state_ != ManagerState::Idle) {
-    LOG(WARNING) << "There is an other thread running.";
+  Profile* active_profile = profile_manager->GetActiveUserProfile();
+  if (active_profile && active_profile != profile_) {
+    profile_ = active_profile;
+    // Reset(), not RemoveAll(): RemoveAll() keeps the old PrefService
+    // pointer, and Init() DCHECKs IsEmpty() || service_ == service, which
+    // would fail when switching to another profile's PrefService.
+    subscription_pref_registrar_.Reset();
+    if (profile_->GetPrefs()) {
+      subscription_pref_registrar_.Init(profile_->GetPrefs());
+      subscription_pref_registrar_.Add(
+          jemaos::prefs::kJemaSubscriptionActive,
+          base::BindRepeating(&LicenseManager::OnSubscriptionPrefChanged,
+                              weak_ptr_factory_.GetWeakPtr()));
+    }
+  }
+  const bool subscription_active =
+      profile_ && profile_->GetPrefs() &&
+      profile_->GetPrefs()->GetBoolean(jemaos::prefs::kJemaSubscriptionActive);
+
+  state_ = ManagerState::Idle;
+  transient_retry_count_ = 0;
+  if (retry_timer_ && retry_timer_->IsRunning()) {
+    retry_timer_->Stop();
+  }
+
+  if (subscription_active) {
+    // Active subscription: license valid. No enforcement, no protobuf fetch.
+    if (!is_valid_) {
+      is_valid_ = true;
+      NotifyObservers();
+    }
+    // Also removes any freemium notice left from before the subscription
+    // check answered.
+    if (enforcement_) {
+      enforcement_->StopEnforcement();
+    }
+    if (init_timer_) {
+      init_timer_->Stop();
+    }
+    VLOG(1) << "[JEMAOS] Subscription active (system A): license valid.";
     return;
   }
-  state_ = ManagerState::Running;
-  if (mode_ == FetchMode::OfflineMode) {
-    VLOG(1) << "fetch offline license";
-    IFetchOfflineLicense();
-  } else {
-    VLOG(1) << "fetch online license";
-    IFetchOnlineLicense();
+
+  // Freemium / local account / subscription not proven: NEVER punish.
+  // No logout, no forced quit, no repeated notifications - at most one
+  // discreet notice per session, removed if the subscription activates.
+  if (is_valid_) {
+    is_valid_ = false;
+    NotifyObservers();
   }
+  VLOG(1) << "[JEMAOS] No active subscription (system A): freemium mode, "
+             "no enforcement.";
+  if (profile_ && enforcement_) {
+    enforcement_->ShowFreemiumNotice(profile_);
+  }
+  //---***JEMAOS END***---
+}
+
+void LicenseManager::OnSubscriptionPrefChanged() {
+  // System A just wrote a new verdict; re-evaluate immediately instead of
+  // waiting for the next periodic check.
+  CheckLicenseInternal();
 }
 
 void LicenseManager::IGetId() {
@@ -226,14 +289,27 @@ void LicenseManager::OnFetchError(int errCode, const std::string& errMsg) {
     return;
   }
   LOG(ERROR) << "Fetch online license verification error";
-  // do nothing;
+  // Transport failures (timeout -30, no network context -40, HTTP errors)
+  // must reset the state machine and go through the transient-retry path,
+  // not leave state_ stuck at Running (which froze all later checks).
+  OnError(errCode, errMsg);
 }
 
 void LicenseManager::OnValidateError(int errCode, const std::string& errMsg, std::optional<base::Value> license) {
-  if (mode_ == FetchMode::OnlineMode && errCode == -9 && license) {
-    IStoreLicense(std::move(license));
-  }
+  // NEVER persist an expired license. It used to be stored here and replayed
+  // from the cache at every boot/login, re-arming enforcement each time:
+  // that was the sign-out loop. Only licenses that passed validation are
+  // stored (OnValid -> IStoreLicense).
   OnError(errCode, errMsg);
+}
+
+bool LicenseManager::IsDefinitiveLicenseError(int errCode) {
+  // Business verdicts only: -9 = license expired, -7 = invalid signature.
+  // Everything else (-1 empty answer, -2/-3/-4/-5 parse/missing fields,
+  // -6/-8/-10/-11/-12/-13 malformed payload, -30 timeout, -40 no network
+  // context, HTTP status codes) is transient or a server/client bug and
+  // must NEVER punish the user.
+  return errCode == -9 || errCode == -7;
 }
 
 void LicenseManager::OnError(int errCode, const std::string& errMsg) {
@@ -247,27 +323,39 @@ void LicenseManager::OnError(int errCode, const std::string& errMsg) {
     LOG(ERROR) << "Error occured from online verification, code:"
       << errCode << " message:" << errMsg;
     //---***JEMAOS BEGIN***---
-    // Only enforce on a DEFINITIVE license rejection: negative validator
-    // codes (except the fetch timeout -30) mean the validator examined the
-    // server's answer and rejected the license itself. Everything else is a
-    // transport problem (0 = no response, -30 = timeout, HTTP status codes)
-    // and may just mean the device is offline or the server is down; that
-    // must never force-quit the user.
-    const bool definitive_rejection = errCode < 0 && errCode != -30;
-    if (!definitive_rejection) {
+    // Only a DEFINITIVE business rejection (-9 expired, -7 bad signature)
+    // may enforce. The old test (errCode < 0 && errCode != -30) also caught
+    // transport/context errors (-1, -40, ...) and punished users for being
+    // offline or for a server hiccup.
+    if (!IsDefinitiveLicenseError(errCode)) {
       LOG(WARNING) << "[JEMAOS] License verification unavailable (code "
-                   << errCode << "); keeping previous state, no enforcement";
+                   << errCode << "); transient, no enforcement, retry with backoff";
       state_ = ManagerState::Idle;
-      mode_ = FetchMode::OfflineMode;
+      mode_ = FetchMode::OnlineMode;
+      // Exponential backoff: 1, 2, 4, 8, 16, then capped at 30 minutes.
+      if (retry_timer_ && !retry_timer_->IsRunning()) {
+        const int delay_minutes =
+            std::min(1 << std::min(transient_retry_count_, 5), 30);
+        ++transient_retry_count_;
+        retry_timer_->Start(
+            FROM_HERE, base::Minutes(delay_minutes),
+            base::BindOnce(&LicenseManager::CheckLicenseInternal,
+                           weak_ptr_factory_.GetWeakPtr()));
+      }
       return;
     }
     //---***JEMAOS END***---
+    transient_retry_count_ = 0;
     OnInvalid();
   }
 }
 
 void LicenseManager::OnValid(std::optional<base::Value> license) {
   VLOG(1) << "license is valid.";
+  transient_retry_count_ = 0;
+  if (retry_timer_ && retry_timer_->IsRunning()) {
+    retry_timer_->Stop();
+  }
   if (mode_ == FetchMode::OfflineMode && is_init_check_) {
     ISaveLocalLicenseString(std::move(license));
     mode_ = FetchMode::OnlineMode;
@@ -276,8 +364,12 @@ void LicenseManager::OnValid(std::optional<base::Value> license) {
   }
   is_valid_ = true;
   state_ = ManagerState::Idle;
-  init_timer_->Stop();
-  timer_->Stop();
+  if (init_timer_) {
+    init_timer_->Stop();
+  }
+  if (timer_) {
+    timer_->Stop();
+  }
   if (mode_ == FetchMode::OfflineMode) {
     // save string, to prevent call shellclient to store the same license get from online
     ISaveLocalLicenseString(std::move(license));
@@ -294,7 +386,9 @@ void LicenseManager::Reset() {
   // restore punishment
   VLOG(1) << "Reset invalid effect.";
   NotifyObservers();
-  enforcement_->StopEnforcement();
+  if (enforcement_) {
+    enforcement_->StopEnforcement();
+  }
 }
 
 bool LicenseManager::ShouldStartEnforcement() const {
@@ -302,44 +396,22 @@ bool LicenseManager::ShouldStartEnforcement() const {
 }
 
 void LicenseManager::OnInvalid() {
-  // trigger punishment
-  is_valid_ = false;
+  // Legacy protobuf path: a rejection here must NEVER punish the user.
+  // The source of truth is system A (kJemaSubscriptionActive); this
+  // callback only resets the legacy state machine and logs. It no longer
+  // touches is_valid_ nor starts enforcement.
   state_ = ManagerState::Idle;
   mode_ = FetchMode::OfflineMode;
-  VLOG(1) << "Start invalid effect.";
-  NotifyObservers();
-  if (!ShouldStartEnforcement()) {
-    VLOG(2) << "Skip enforcement.";
-    return;
-  }
-  StartEnforcement();
+  LOG(WARNING) << "[JEMAOS] Legacy license validation rejected; ignored "
+                  "(the subscription pref is the source of truth).";
 }
 
 void LicenseManager::StartEnforcement() {
-  if (!profile_) {
-    profile_ = g_browser_process->profile_manager()->GetActiveUserProfile();
-  }
-  if (!profile_ || !profile_->GetPrefs()) return;
-  PrefService* prefs = g_browser_process->local_state();
-  if (!prefs) return;
-  LicenseEnforcementLevel level = static_cast<LicenseEnforcementLevel>(prefs->GetInteger(jemaos::prefs::kJemaLicenseEnforcementLevel));
-  EnforcementMode mode;
-  switch (level) {
-    case LicenseEnforcementLevel::kNone:
-      mode = EnforcementModeLevel0;
-      break;
-    case LicenseEnforcementLevel::kForcePopup:
-      mode = EnforcementModeLevel1;
-      break;
-    case LicenseEnforcementLevel::kForceQuit:
-      mode = EnforcementModeLevel2;
-      break;
-    default:
-      mode = EnforcementModeLevel2;
-      break;
-  }
-  int log_out_interval = prefs->GetInteger(jemaos::prefs::kJemaLicenseEnforcementLogOutInterval);
-  enforcement_->StartEnforcement(profile_, id_, serial_number_, mode, log_out_interval);
+  // Disabled: punishment is no longer driven by the legacy protobuf
+  // license. System A (kJemaSubscriptionActive) gates premium features;
+  // freemium users are never logged out. Signature kept for compatibility.
+  LOG(WARNING) << "[JEMAOS] StartEnforcement called but enforcement is "
+                  "disabled (subscription-based licensing).";
 }
 
 void LicenseManager::SkipOnline() {
@@ -360,8 +432,11 @@ void LicenseManager::IValidateLicense(std::optional<std::string> license) {
 }
 
 void LicenseManager::OnValidPref(int licenseType, bool expired, int expirationAction, int showLicenseInSettings, int logOutInterval) {
+  if (!g_browser_process) return;
   if (!profile_) {
-    profile_ = g_browser_process->profile_manager()->GetActiveUserProfile();
+    ProfileManager* profile_manager = g_browser_process->profile_manager();
+    if (!profile_manager) return;
+    profile_ = profile_manager->GetActiveUserProfile();
   }
   if (!profile_ || !profile_->GetPrefs()) return;
 
@@ -416,10 +491,13 @@ void LicenseManager::OnValidPref(int licenseType, bool expired, int expirationAc
       level = LicenseEnforcementLevel::kNone;
       break;
   }
-  prefs->SetInteger(jemaos::prefs::kJemaLicenseEnforcementLevel, static_cast<int>(level));
+  // Punishment state stays IN MEMORY (per LicenseManager), never in
+  // device-wide local_state: one profile's expired license must not punish
+  // the other profiles of the device.
+  enforcement_level_ = static_cast<int>(level);
+  log_out_interval_ = logOutInterval;
 
   prefs->SetBoolean(jemaos::prefs::kJemaLicenseShouldShowInSettings, showLicenseInSettings == 1);
-  prefs->SetInteger(jemaos::prefs::kJemaLicenseEnforcementLogOutInterval, logOutInterval);
 }
 
 void LicenseManager::ISaveLocalLicenseString(std::optional<base::Value> license) {
@@ -483,9 +561,17 @@ void LicenseManager::LoggedInStateChanged() {
 void LicenseManager::IFetchOnlineLicense() {
   ::ash::NetworkStateHandler* network_state_handler =
       ::ash::NetworkHandler::Get()->network_state_handler();
-  if (!network_state_handler) return;
+  if (!network_state_handler) {
+    // Reset the state machine, otherwise state_ stays Running and every
+    // later check (including backoff retries) is skipped forever.
+    SkipOnline();
+    return;
+  }
   const ::ash::NetworkState* network = network_state_handler->DefaultNetwork();
-  if (!network) return;
+  if (!network) {
+    SkipOnline();
+    return;
+  }
   ::ash::NetworkState::PortalState portalStatus = network->portal_state();
   if (portalStatus !=
       ::ash::NetworkState::PortalState::kOnline) {

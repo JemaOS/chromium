@@ -133,7 +133,12 @@ void LicenseOnlineFetcher::StartFetch(
       std::move(resource_request), kTrafficAnnotation);
   simple_loader_->SetAllowHttpErrorResults(true);
   simple_loader_->SetTimeoutDuration(base::Minutes(kFetcherTimeout));
-  if (g_browser_process->system_network_context_manager()->HasInstance()) {
+  // Legacy path (no longer reached from LicenseManager, kept for safety):
+  // g_browser_process / the network context manager may be null early at
+  // startup or during shutdown.
+  if (g_browser_process &&
+      g_browser_process->system_network_context_manager() &&
+      g_browser_process->system_network_context_manager()->HasInstance()) {
     network::mojom::URLLoaderFactory* loader_factory =
       g_browser_process->system_network_context_manager()
                        ->GetURLLoaderFactory();

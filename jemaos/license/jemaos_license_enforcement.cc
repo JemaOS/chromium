@@ -38,17 +38,18 @@ namespace {
   const char kJemaOSLicenseEnforceonmentNotifierId[] =
     "jemaos.license-enforcement";
   const int kJemaOSForceQuitDelayInMinutes = 15;
-  const int kJemaOSRefreshForceQuitNotificationIntervalInSeconds = 10;
   const int kJemaOSEnforceIntervalInMinutes = 10;
 }  // namespace
 
 LicenseEnforcement::LicenseEnforcement():
     enforce_timer_(std::make_unique<base::RepeatingTimer>()),
-    force_quit_timer_(std::make_unique<base::OneShotTimer>()),
-    notification_timer_(std::make_unique<base::RepeatingTimer>()),
     profile_(nullptr), is_eol_(false) {}
 
-LicenseEnforcement::~LicenseEnforcement() = default;
+LicenseEnforcement::~LicenseEnforcement() {
+  // Drop the notification (and its Unretained(this) click delegate) from the
+  // message center, even if Stop()/StopEnforcement() was never called.
+  RemoveForceQuitNotification();
+}
 
 void LicenseEnforcement::StartEnforcement(Profile* profile,
                                           const std::string& licenseID,
@@ -69,6 +70,7 @@ void LicenseEnforcement::StartEnforcement(Profile* profile,
   VLOG(2) << "JemaOS License Enforcement, mode " << mode_ << ", log out interval: " << log_out_interval_;
 
   ::ash::UpdateEngineClient* update_engine_client = ::ash::UpdateEngineClient::Get();
+  if (!update_engine_client) return;
   update_engine_client->GetEolInfo(
       base::BindOnce(&LicenseEnforcement::OnGetEolInfo, base::Unretained(this)));
 }
@@ -104,7 +106,10 @@ void LicenseEnforcement::StartEnforcementInternal() {
 }
 
 void LicenseEnforcement::Enforce() {
-  if (mode_ > EnforcementModeLevel0) {
+  // Idempotent per session: the repeating timer may fire again, but the
+  // popup and the notification are shown only once until StopEnforcement.
+  if (mode_ > EnforcementModeLevel0 && !session_popup_shown_) {
+    session_popup_shown_ = true;
     PopupLicenseWindow(false);
   }
 
@@ -114,19 +119,17 @@ void LicenseEnforcement::Enforce() {
 }
 
 void LicenseEnforcement::StopEnforcement() {
-  if (is_eol_) {
-    return;
-  }
-  if (force_quit_timer_->IsRunning()) {
-    force_quit_timer_->Stop();
-  }
-  if (notification_timer_->IsRunning()) {
-    notification_timer_->Stop();
-  }
-  if (enforce_timer_->IsRunning()) {
+  // Safe even if nothing was ever started: the timer is constructed but may
+  // never have run, and the notification may be null.
+  if (enforce_timer_ && enforce_timer_->IsRunning()) {
     enforce_timer_->Stop();
   }
+  session_popup_shown_ = false;
+  session_notified_ = false;
   CloseLicenseWindow();
+  // Always remove the notification, INCLUDING on EOL devices: the freemium
+  // notice must disappear when the subscription activates, and its click
+  // delegate holds Unretained(this) which must not outlive this object.
   RemoveForceQuitNotification();
 }
 
@@ -134,7 +137,10 @@ void LicenseEnforcement::PopupLicenseWindow(bool from_user_interaction) {
   if (!profile_) return;
 
   VLOG(2) << "JemaOS License Enforcement, PopupLicenseWindow";
-  ash::NewWindowDelegate::GetInstance()->OpenUrl(
+  ash::NewWindowDelegate* new_window_delegate =
+      ash::NewWindowDelegate::GetInstance();
+  if (!new_window_delegate) return;
+  new_window_delegate->OpenUrl(
       GURL(kJemaOSSettingsLicensePath),
       from_user_interaction ?
       ash::NewWindowDelegate::OpenUrlFrom::kUserInteraction :
@@ -149,23 +155,30 @@ void LicenseEnforcement::CloseLicenseWindow() {
 void LicenseEnforcement::ForceQuitCurrentUser() {
   if (!profile_) return;
 
-  if (force_quit_timer_->IsRunning()) {
-    PopupForceQuitNotification();
+  // One notification per session, and NO automatic logout. The old code
+  // started a countdown (log_out_interval_, 60 s from the server) ending in
+  // KickOut -> AttemptUserExit, and re-displayed the notification every 10 s.
+  // With an expired license persisted and replayed at each login, that was
+  // an endless sign-out loop. The user keeps working; clicking the
+  // notification opens the license page.
+  if (session_notified_) {
     return;
   }
-
-  VLOG(2) << "JemaOS LicenseEnforcement, logout after "
-          << log_out_interval_ << " seconds";
+  session_notified_ = true;
   ForceQuitNotification();
-  force_quit_timer_->Start(
-      FROM_HERE,
-      base::Seconds(log_out_interval_),
-      base::BindOnce(&LicenseEnforcement::KickOut, base::Unretained(this)));
 }
 
-void LicenseEnforcement::KickOut() {
-  StopEnforcement();
-  chrome::AttemptUserExit();
+void LicenseEnforcement::ShowFreemiumNotice(Profile* profile) {
+  if (!profile) return;
+  profile_ = profile;
+  // One discreet notification per session; never repeated, never a logout.
+  // Reuses the one-shot notification built by ForceQuitNotification()
+  // (message: the user can continue working and save files).
+  if (session_notified_) {
+    return;
+  }
+  session_notified_ = true;
+  ForceQuitNotification();
 }
 
 void LicenseEnforcement::OnForceQuitNotificationClicked() {
@@ -178,7 +191,9 @@ void LicenseEnforcement::ForceQuitNotification() {
       kJemaOSLicenseForceQuitNotificationId,
       l10n_util::GetStringUTF16(
         IDS_ASH_JEMAOS_ENFORCEMENT_FORCE_QUIT_NOTIFICATION_TITLE),
-      std::u16string(), std::u16string(), GURL(),
+      l10n_util::GetStringUTF16(
+        IDS_ASH_JEMAOS_ENFORCEMENT_EXPIRED_NOTIFICATION_MESSAGE),
+      std::u16string(), GURL(),
       message_center::NotifierId(
           message_center::NotifierType::SYSTEM_COMPONENT,
           kJemaOSLicenseEnforceonmentNotifierId,
@@ -194,53 +209,35 @@ void LicenseEnforcement::ForceQuitNotification() {
   notification_->set_pinned(true);
   notification_->set_fullscreen_visibility(
       message_center::FullscreenVisibility::OVER_USER);
-
-  notification_timer_->Start(
-      FROM_HERE,
-      base::Seconds(kJemaOSRefreshForceQuitNotificationIntervalInSeconds),
-      base::BindRepeating(
-        &LicenseEnforcement::UpdateForceQuitNotification,
-        base::Unretained(this)));
-
-  UpdateForceQuitNotification();
-}
-
-std::u16string LicenseEnforcement::ForceQuitNotificationMessage() {
-  base::TimeDelta left =
-    force_quit_timer_->desired_run_time() - base::TimeTicks::Now();
-  int seconds = left.InSeconds();
-  return l10n_util::GetStringFUTF16(
-      IDS_ASH_JEMAOS_ENFORCEMENT_FORCE_QUIT_NOTIFICATION_MESSAGE,
-      base::NumberToString16(
-        seconds > 0 ? seconds : log_out_interval_));
-}
-
-void LicenseEnforcement::UpdateForceQuitNotification() {
-  if (notification_ == nullptr) return;
-  notification_->set_message(ForceQuitNotificationMessage());
   notification_->set_renotify(false);
 
-  NotificationDisplayServiceFactory::GetForProfile(profile_)->Display(
-      NotificationHandler::Type::TRANSIENT, *notification_,
-      /*metadata=*/nullptr);
-}
-
-void LicenseEnforcement::PopupForceQuitNotification() {
-  if (notification_ == nullptr) {
+  // Displayed exactly once; no refresh timer. The display service may not
+  // exist yet (early startup / profile teardown): drop the notification
+  // instead of keeping a pointer to something never shown.
+  NotificationDisplayService* display_service =
+      NotificationDisplayServiceFactory::GetForProfile(profile_);
+  if (!display_service) {
+    notification_.reset();
     return;
   }
-  notification_->set_renotify(true);
-
-  NotificationDisplayServiceFactory::GetForProfile(profile_)->Display(
+  display_service->Display(
       NotificationHandler::Type::TRANSIENT, *notification_,
       /*metadata=*/nullptr);
 }
 
 void LicenseEnforcement::RemoveForceQuitNotification() {
-  if (!profile_ || notification_ == nullptr) return;
-  NotificationDisplayServiceFactory::GetForProfile(profile_)->Close(
-      NotificationHandler::Type::TRANSIENT,
-      kJemaOSLicenseForceQuitNotificationId);
+  if (notification_ == nullptr) return;
+  if (profile_) {
+    NotificationDisplayService* display_service =
+        NotificationDisplayServiceFactory::GetForProfile(profile_);
+    if (display_service) {
+      display_service->Close(
+          NotificationHandler::Type::TRANSIENT,
+          kJemaOSLicenseForceQuitNotificationId);
+    }
+  }
+  // Always drop our pointer, even if the service is gone: keeping it would
+  // leave session_notified_ semantics and the click delegate dangling.
   notification_.reset();
 }
 

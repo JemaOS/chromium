@@ -23,6 +23,9 @@
     <message name="IDS_ASH_JEMAOS_ENFORCEMENT_FORCE_QUIT_NOTIFICATION_MESSAGE" desc="message of license enforcement for quit notification">
       Apologies, your subscription has ended. Your current JemaOS session will be signed out in <ph name="LOGOUT_DELAY">$1<ex>900</ex></ph> seconds.
     </message>
+    <message name="IDS_ASH_JEMAOS_ENFORCEMENT_EXPIRED_NOTIFICATION_MESSAGE" desc="one-time notification shown when the license is expired; no automatic sign-out">
+      Your subscription has ended. Renew it to keep receiving updates and support. You can continue working and save your files.
+    </message>
   </if>
   <if expr="use_jemaos_com">
     <message name="IDS_ASH_JEMAOS_CROSTINI_INSTALL_NOTIFICATION_TITLE" desc="title of crostini install notification">

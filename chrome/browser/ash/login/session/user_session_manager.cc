@@ -2348,7 +2348,9 @@ namespace {
 // JemaOS Connect API used to renew subscription access tokens.
 constexpr char kJemaOsConnectApiBase[] = "https://connect-api.jematech.fr";
 constexpr char kJemaOsTokenRefreshPath[] = "/v1/connect/refreshtoken";
-constexpr base::TimeDelta kJemaOsTokenCheckInterval = base::Minutes(15);
+// 1 min: this tick also carries the subscription/seat-revocation check, so an
+// admin deactivation closes the session within ~1 minute instead of 15.
+constexpr base::TimeDelta kJemaOsTokenCheckInterval = base::Minutes(1);
 // Refresh proactively when this much lifetime remains (JWT exp).
 constexpr base::TimeDelta kJemaOsRefreshMargin = base::Minutes(30);
 // Safety net for opaque tokens without an exp claim.

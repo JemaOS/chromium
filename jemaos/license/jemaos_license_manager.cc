@@ -9,6 +9,7 @@
 #include "base/strings/stringprintf.h"
 #include "base/files/file_util.h"
 #include "base/task/thread_pool.h"
+#include "base/task/single_thread_task_runner.h"
 #include "chrome/browser/ash/login/oobe_configuration.h"
 #include "chromeos/ash/components/network/portal_detector/network_portal_detector.h"
 #include "chrome/browser/browser_process.h"
@@ -213,7 +214,12 @@ void LicenseManager::CheckLicenseInternal() {
       if (enforcement_) {
         enforcement_->StopEnforcement();
       }
-      chrome::AttemptUserExit();
+      // NEVER call AttemptUserExit synchronously here: this can run inside a
+      // PrefService callback (OnSubscriptionPrefChanged), and AttemptUserExit
+      // writes a local_state pref -> reentrant pref notification -> CHECK
+      // crash -> session crash-loop. Defer to a fresh task.
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+          FROM_HERE, base::BindOnce([]() { chrome::AttemptUserExit(); }));
     }
     return;
   }

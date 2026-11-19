@@ -42,6 +42,11 @@ extern const char kConnectApiUserStatus[];
 // false for local accounts, Freemium accounts, or when the check never ran.
 extern const char kJemaSubscriptionActive[];
 
+// True when the fleet admin deactivated ALL JemaOS download seats of this
+// account. Unlike plain Freemium (never punished), this is an explicit
+// revocation: the session is closed and sign-in is refused until reactivated.
+extern const char kJemaSeatDeactivated[];
+
 // same with kFactoryResetRequested in chrome/common/pref_names.cc
 // dep conflict issue
 extern const char kFactoryResetRequested[];

@@ -26,6 +26,15 @@ class JemaPasswordValidator {
   static void Validate(const std::string& email,
                        const std::string& password,
                        base::OnceCallback<void(bool)> callback);
+
+  // Login gate for admin revocation: asks verify-password (which refuses when
+  // all the account's JemaOS seats are deactivated). Callback receives `true`
+  // ONLY on an explicit seat-deactivated refusal; any other outcome (valid,
+  // wrong password, offline) yields `false` so normal login is never blocked
+  // by a network hiccup.
+  static void CheckSeatBlocked(const std::string& email,
+                               const std::string& password,
+                               base::OnceCallback<void(bool)> callback);
 };
 
 }  // namespace ash

@@ -92,6 +92,8 @@ class CHROMEOS_EXPORT LicenseManager : public ::ash::LoginState::Observer {
   FetchMode mode_;
   Profile* profile_ = nullptr;
   bool is_valid_ = false;
+  // One sign-out per admin seat revocation; reset when the server reactivates.
+  bool seat_revocation_done_ = false;
   bool is_init_check_ = true;
   bool is_new_license_ = false;
   std::string id_ = "";

@@ -758,16 +758,20 @@ void LoginDisplayHostMojo::HandleAuthenticateUserWithPasswordOrPin(
   if (account_id.GetGaiaId().find("jema_id_") == 0 && !password.empty()) {
     const std::string saved = jemaos::prefs::GetJemaAccountPassword(
         g_browser_process->local_state(), account_id.GetUserEmail());
-    if (!saved.empty() && saved != password) {
+    // Admin revocation gate: even with the correct (unchanged) password or a
+    // PIN, refuse sign-in while the fleet admin has deactivated all seats.
+    // Checked online BEFORE any local unlock; offline/other errors fall
+    // through to normal login so a network hiccup never locks the user out.
+    if (!saved.empty()) {
       pending_jema_new_password_ = password;
       pending_jema_old_password_ = saved;
       pending_jema_authenticated_by_pin_ = authenticated_by_pin;
-      LOG(WARNING) << "[JEMAOS] Typed password differs from the saved one for "
-                   << account_id.GetUserEmail() << "; verifying online";
-      JemaPasswordValidator::Validate(
-          account_id.GetUserEmail(), password,
-          base::BindOnce(&LoginDisplayHostMojo::OnJemaPasswordValidated,
-                         weak_factory_.GetWeakPtr(), account_id));
+      pending_jema_seat_gate_ = true;
+      JemaPasswordValidator::CheckSeatBlocked(
+          account_id.GetUserEmail(), saved,
+          base::BindOnce(&LoginDisplayHostMojo::OnJemaSeatGateChecked,
+                         weak_factory_.GetWeakPtr(), account_id, password,
+                         authenticated_by_pin));
       return;
     }
   }
@@ -834,6 +838,35 @@ void LoginDisplayHostMojo::ContinueLoginWithPassword(
   // Ensure existing_user_controller_ is created before using it, especially
   // important for relogin scenarios where it might have been reset.
   GetExistingUserController()->Login(user_context, SigninSpecifics());
+}
+
+void LoginDisplayHostMojo::OnJemaSeatGateChecked(const AccountId& account_id,
+                                                 const std::string& password,
+                                                 bool authenticated_by_pin,
+                                                 bool blocked) {
+  const std::string saved = pending_jema_old_password_;
+  pending_jema_seat_gate_ = false;
+  if (blocked) {
+    LOG(WARNING) << "[JEMAOS] Login refused: seats deactivated by fleet admin "
+                 << "for " << account_id.GetUserEmail();
+    pending_jema_new_password_.clear();
+    pending_jema_old_password_.clear();
+    OnAuthFailure(AuthFailure(AuthFailure::AUTH_DISABLED));
+    return;
+  }
+  // Not revoked: continue the normal flow (password-change verification if
+  // the typed password differs from the saved one, else local login).
+  if (!saved.empty() && saved != password) {
+    JemaPasswordValidator::Validate(
+        account_id.GetUserEmail(), password,
+        base::BindOnce(&LoginDisplayHostMojo::OnJemaPasswordValidated,
+                       weak_factory_.GetWeakPtr(), account_id));
+    return;
+  }
+  pending_jema_new_password_.clear();
+  pending_jema_old_password_.clear();
+  ContinueLoginWithPassword(account_id, password, authenticated_by_pin,
+                            /*save_password=*/true);
 }
 
 void LoginDisplayHostMojo::OnJemaPasswordValidated(const AccountId& account_id,

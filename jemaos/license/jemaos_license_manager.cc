@@ -21,6 +21,7 @@
 #include "jemaos/license/jemaos_callback_status.h"
 #include "jemaos/switches/license/license_constants.h"
 #include "jemaos/license/jemaos_license_enforcement.h"
+#include "chrome/browser/lifetime/application_lifetime.h"
 
 #include "jemaos/switches/license/license_switches.h"
 #include "base/strings/string_number_conversions.h"
@@ -185,11 +186,38 @@ void LicenseManager::CheckLicenseInternal() {
           jemaos::prefs::kJemaSubscriptionActive,
           base::BindRepeating(&LicenseManager::OnSubscriptionPrefChanged,
                               weak_ptr_factory_.GetWeakPtr()));
+      subscription_pref_registrar_.Add(
+          jemaos::prefs::kJemaSeatDeactivated,
+          base::BindRepeating(&LicenseManager::OnSubscriptionPrefChanged,
+                              weak_ptr_factory_.GetWeakPtr()));
     }
   }
   const bool subscription_active =
       profile_ && profile_->GetPrefs() &&
       profile_->GetPrefs()->GetBoolean(jemaos::prefs::kJemaSubscriptionActive);
+  const bool seat_deactivated =
+      profile_ && profile_->GetPrefs() &&
+      profile_->GetPrefs()->GetBoolean(jemaos::prefs::kJemaSeatDeactivated);
+
+  // Explicit admin revocation (all seats deactivated): close the session.
+  // This is NOT the freemium path - the admin deliberately cut access. One
+  // clean sign-out per revocation (guarded), never a repeating loop: after
+  // sign-out LoginState fires Stop() and the flag stays set until the server
+  // says otherwise, so a re-login attempt is re-checked and refused again by
+  // the login gate, without crash-looping the browser.
+  if (seat_deactivated) {
+    state_ = ManagerState::Idle;
+    if (!seat_revocation_done_) {
+      seat_revocation_done_ = true;
+      LOG(WARNING) << "[JEMAOS] Seats deactivated by fleet admin: signing out.";
+      if (enforcement_) {
+        enforcement_->StopEnforcement();
+      }
+      chrome::AttemptUserExit();
+    }
+    return;
+  }
+  seat_revocation_done_ = false;
 
   state_ = ManagerState::Idle;
   transient_retry_count_ = 0;

@@ -38,6 +38,7 @@ const char kJemaOsDeviceUid[] = "jemaos.device_uid";
 const char kConnectApiUserStatus[] = "connect_api.user_status";
 
 const char kJemaSubscriptionActive[] = "jemaos.subscription_active";
+const char kJemaSeatDeactivated[] = "jemaos.seat_deactivated";
 
 const char kFactoryResetRequested[] = "FactoryResetRequested";
 

@@ -106,4 +106,60 @@ void JemaPasswordValidator::Validate(const std::string& email,
       256 * 1024);
 }
 
+void OnSeatCheckResponse(std::unique_ptr<network::SimpleURLLoader> loader,
+                         base::OnceCallback<void(bool)> callback,
+                         std::unique_ptr<std::string> response_body) {
+  const int net_error = loader ? loader->NetError() : net::ERR_FAILED;
+  const std::string body = response_body ? *response_body : std::string();
+  bool blocked = false;
+  if (net_error == net::OK) {
+    std::optional<base::Value> value = base::JSONReader::Read(body);
+    if (value && value->is_dict()) {
+      const std::string* code = value->GetDict().FindString("code");
+      blocked = code && *code == "SEAT_DEACTIVATED";
+    }
+  }
+  LOG(WARNING) << "[JEMAOS] Seat check at login: "
+               << (blocked ? "BLOCKED (admin revocation)" : "allowed");
+  std::move(callback).Run(blocked);
+}
+
+// static
+void JemaPasswordValidator::CheckSeatBlocked(
+    const std::string& email,
+    const std::string& password,
+    base::OnceCallback<void(bool)> callback) {
+  if (email.empty() || password.empty() || !g_browser_process ||
+      !g_browser_process->system_network_context_manager()) {
+    std::move(callback).Run(false);
+    return;
+  }
+  base::Value::Dict body;
+  body.Set("email", email);
+  body.Set("password", password);
+  std::string body_json;
+  base::JSONWriter::Write(body, &body_json);
+
+  auto resource_request = std::make_unique<network::ResourceRequest>();
+  resource_request->url =
+      GURL(std::string(kJemaOsConnectApiBase) + kJemaOsVerifyPasswordPath);
+  resource_request->method = "POST";
+  resource_request->credentials_mode = network::mojom::CredentialsMode::kOmit;
+  resource_request->headers.SetHeader("Content-Type", "application/json");
+  resource_request->headers.SetHeader("x-api-key", kJemaOsConnectApiKey);
+
+  auto loader = network::SimpleURLLoader::Create(
+      std::move(resource_request), kJemaPasswordValidatorAnnotation);
+  loader->SetAllowHttpErrorResults(true);
+  loader->AttachStringForUpload(body_json, "application/json");
+  auto* loader_ptr = loader.get();
+  loader_ptr->DownloadToString(
+      g_browser_process->system_network_context_manager()
+          ->GetSharedURLLoaderFactory()
+          .get(),
+      base::BindOnce(&OnSeatCheckResponse, std::move(loader),
+                     std::move(callback)),
+      256 * 1024);
+}
+
 }  // namespace ash

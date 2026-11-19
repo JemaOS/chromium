@@ -29,6 +29,7 @@ void RegisterProfilePrefs(PrefRegistrySimple* registry) {
   // active Pro/Pro+ subscription via the Connect API. Stays false for local
   // accounts and Freemium accounts.
   registry->RegisterBooleanPref(kJemaSubscriptionActive, false);
+  registry->RegisterBooleanPref(kJemaSeatDeactivated, false);
 #if BUILDFLAG(USE_JEMAOS_COM)
   registry->RegisterBooleanPref(kCrostiniInstallerNotificationUserInteracted,
                                 false);

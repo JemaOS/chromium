@@ -2772,10 +2772,18 @@ void UserSessionManager::OnJemaOSSubscriptionFetched(
   }
   const base::Value::Dict& dict = json->GetDict();
   const bool active = dict.FindBool("hasSubscription").value_or(false);
+  const bool seat_deactivated =
+      dict.FindBool("seat_deactivated").value_or(false);
   const bool previous =
       profile->GetPrefs()->GetBoolean(jemaos::prefs::kJemaSubscriptionActive);
   profile->GetPrefs()->SetBoolean(jemaos::prefs::kJemaSubscriptionActive,
                                   active);
+  profile->GetPrefs()->SetBoolean(jemaos::prefs::kJemaSeatDeactivated,
+                                  seat_deactivated);
+  if (seat_deactivated) {
+    LOG(WARNING) << "[JEMAOS] Fleet admin deactivated all seats of this "
+                    "account; the license manager will close the session.";
+  }
   LOG(INFO) << "[JEMAOS] Subscription state for "
             << profile->GetProfileUserName() << ": "
             << (active ? "active (Pro)" : "none (Freemium)");

@@ -1244,6 +1244,14 @@ void UserSessionManager::OnConnectionChanged(
     if (!user->is_profile_created()) {
       continue;
     }
+    //---***JEMAOS BEGIN***---
+    // Jema/Flint accounts have no Google OAuth2 session: driving
+    // OAuth2LoginManager for them when the network comes up (a few seconds
+    // after login) touches Google-only state and crashes the browser.
+    if (IsJemaFamilyUser(user)) {
+      continue;
+    }
+    //---***JEMAOS END***---
 
     Profile* user_profile = ProfileHelper::Get()->GetProfileByUser(user);
     DCHECK(user_profile);

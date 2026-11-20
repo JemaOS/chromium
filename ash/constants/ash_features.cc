@@ -503,7 +503,11 @@ BASE_FEATURE(kCrostiniContainerless,
 // Refer to: chromiumos/src/platform2/login_manager/chrome_setup.cc
 BASE_FEATURE(kCrostiniGpuSupport,
              "CrostiniGpuSupport",
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             //---***JEMAOS BEGIN***---
+             // GPU acceleration for Crostini enabled by default on JemaOS
+             // (equivalent of chrome://flags/#crostini-gpu-support = Enabled).
+             base::FEATURE_ENABLED_BY_DEFAULT);
+             //---***JEMAOS END***---
 
 // Force enable recreating the LXD DB at LXD launch.
 BASE_FEATURE(kCrostiniResetLxdDb,

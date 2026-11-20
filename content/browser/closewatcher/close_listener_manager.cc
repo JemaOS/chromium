@@ -42,7 +42,15 @@ void CloseListenerManager::MaybeUpdateInterceptStatus(
     return;
   }
   should_intercept_ = should_intercept;
-  GetWebContents().GetDelegate()->DidChangeCloseSignalInterceptStatus();
+  //---***JEMAOS BEGIN***---
+  // A renderer DidFocusFrame message can race window teardown: the delegate
+  // is detached (GetDelegate() == nullptr) before IsBeingDestroyed() flips,
+  // so the unguarded call segfaulted the browser a few seconds after login
+  // (online accounts open/close preinstalled PWAs during session startup).
+  if (WebContentsDelegate* delegate = GetWebContents().GetDelegate()) {
+    delegate->DidChangeCloseSignalInterceptStatus();
+  }
+  //---***JEMAOS END***---
 }
 
 WEB_CONTENTS_USER_DATA_KEY_IMPL(CloseListenerManager);

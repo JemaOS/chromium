@@ -6,6 +6,7 @@
 #define JEMAOS_LICENSE_MANAGER_H_
 #include <memory>
 #include <string>
+#include "base/scoped_observation.h"
 #include "base/timer/timer.h"
 #include "base/threading/thread.h"
 #include "components/prefs/pref_change_registrar.h"
@@ -13,6 +14,7 @@
 #include "jemaos/license/jemaos_license_fetcher.h"
 #include "jemaos/license/jemaos_license_validator.h"
 #include "chromeos/chromeos_export.h"
+#include "chrome/browser/profiles/profile_observer.h"
 #include "chromeos/ash/components/login/login_state/login_state.h"
 
 class Profile;
@@ -26,7 +28,8 @@ enum ManagerState {
   Running,
 };
 
-class CHROMEOS_EXPORT LicenseManager : public ::ash::LoginState::Observer {
+class CHROMEOS_EXPORT LicenseManager : public ::ash::LoginState::Observer,
+                                       public ProfileObserver {
  public:
   class Observer {
    public:
@@ -77,6 +80,9 @@ class CHROMEOS_EXPORT LicenseManager : public ::ash::LoginState::Observer {
   void OnValid(std::optional<base::Value> license);
   void SkipOnline();
   void LoggedInStateChanged() override;
+  // ProfileObserver: detach pref observers while the profile's PrefService
+  // is still alive (Stop()/destructor run after it is destroyed).
+  void OnProfileWillBeDestroyed(Profile* profile) override;
 
   void IGetOEMToken();
   void OnGotOEMToken(const std::string& token);
@@ -91,6 +97,7 @@ class CHROMEOS_EXPORT LicenseManager : public ::ash::LoginState::Observer {
   ManagerState state_ = ManagerState::Idle;
   FetchMode mode_;
   Profile* profile_ = nullptr;
+  base::ScopedObservation<Profile, ProfileObserver> profile_observation_{this};
   bool is_valid_ = false;
   // One sign-out per admin seat revocation; reset when the server reactivates.
   bool seat_revocation_done_ = false;

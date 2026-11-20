@@ -141,8 +141,27 @@ void LicenseManager::Stop() {
     timer_->Stop();
   if (retry_timer_ && retry_timer_->IsRunning())
     retry_timer_->Stop();
-  subscription_pref_registrar_.RemoveAll();
+  // Safe only because OnProfileWillBeDestroyed() already emptied the
+  // registrar while the PrefService was alive: Reset() internally calls
+  // RemoveAll(), which dereferences service_ for every remaining observer.
+  // With an empty map nothing is dereferenced.
+  subscription_pref_registrar_.Reset();
+  profile_ = nullptr;
   Reset();
+}
+
+void LicenseManager::OnProfileWillBeDestroyed(Profile* profile) {
+  if (profile != profile_) {
+    return;
+  }
+  // The profile's PrefService (and its PrefNotifierImpl observer map) is
+  // destroyed right after this notification, but Stop() (LoginState logout)
+  // and ~LicenseManager run later and would call RemoveAll() on the freed
+  // map -> SIGSEGV at 0x18, crash-looping every online session. Detach the
+  // observers NOW, while the PrefService is still alive.
+  subscription_pref_registrar_.RemoveAll();
+  subscription_pref_registrar_.Reset();
+  profile_ = nullptr;
 }
 
 void LicenseManager::InitCheckLicense() {
@@ -179,6 +198,7 @@ void LicenseManager::CheckLicenseInternal() {
   Profile* active_profile = profile_manager->GetActiveUserProfile();
   if (active_profile && active_profile != profile_) {
     profile_ = active_profile;
+    profile_observation_.Observe(profile_);
     // Reset(), not RemoveAll(): RemoveAll() keeps the old PrefService
     // pointer, and Init() DCHECKs IsEmpty() || service_ == service, which
     // would fail when switching to another profile's PrefService.
@@ -263,8 +283,16 @@ void LicenseManager::CheckLicenseInternal() {
   // is wrong and confusing, so stay silent for those profiles.
   const user_manager::User* user =
       profile_ ? ::ash::ProfileHelper::Get()->GetUserByProfile(profile_) : nullptr;
+  // IsJemaAccountUser()/IsFlintAccountUser() are NOT enough: local Flint/Jema
+  // accounts are stored as GOOGLE AccountIds ("ft_id_"/"jema_id_" gaia
+  // prefixes) and re-resolved to the same UserTypes by FixUserTypeForJema,
+  // so a LOCAL account passed this guard and got the "subscription has
+  // ended" notice. Only a dedicated online AccountType can hold a
+  // subscription; local accounts must stay silent.
   const bool jema_online_account =
-      user && (user->IsJemaAccountUser() || user->IsFlintAccountUser());
+      user &&
+      (user->GetAccountId().GetAccountType() == ::AccountType::FLINT_ACCOUNT ||
+       user->GetAccountId().GetAccountType() == ::AccountType::JEMA_ACCOUNT);
   if (jema_online_account && profile_ && enforcement_) {
     enforcement_->ShowFreemiumNotice(profile_);
   }
@@ -478,6 +506,9 @@ void LicenseManager::OnValidPref(int licenseType, bool expired, int expirationAc
     ProfileManager* profile_manager = g_browser_process->profile_manager();
     if (!profile_manager) return;
     profile_ = profile_manager->GetActiveUserProfile();
+    if (profile_) {
+      profile_observation_.Observe(profile_);
+    }
   }
   if (!profile_ || !profile_->GetPrefs()) return;
 
